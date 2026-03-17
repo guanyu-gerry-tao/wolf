@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Wolf config & data (user-specific)
+wolf.db
+*.sqlite
+*.sqlite3
+
+# Tailored resumes & outputs (generated files)
+output/
+tailored/
+*.tailored.md
+
+# Playwright
+playwright-report/
+test-results/
+screenshots/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# Claude Code memory
+.claude/
+
+# data files
+data/*
+!data/.gitkeep
