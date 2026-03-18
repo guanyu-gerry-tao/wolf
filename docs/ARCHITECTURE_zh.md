@@ -80,14 +80,7 @@ src/mcp/
 - 将收到的 tool 调用映射到 `src/commands/` 中对应的函数
 - 返回结构化 JSON 结果（不带终端格式化）
 
-**已注册的 tool：**
-
-| MCP Tool | 映射命令 | 描述 |
-|---|---|---|
-| `wolf_hunt` | `hunt()` | 搜索和评分职位 |
-| `wolf_tailor` | `tailor()` | 针对 JD 定制简历 |
-| `wolf_file` | `file()` | 自动填写申请表 |
-| `wolf_reach` | `reach()` | 寻找联系人并起草推广邮件 |
+MCP 层注册了 4 个工具（`wolf_hunt`、`wolf_tailor`、`wolf_file`、`wolf_reach`），每个直接映射到 `src/commands/` 中的同名函数。输入输出 schema 见 [TYPES_zh.md § MCP Tool Schema](TYPES_zh.md#mcp-tool-schema)。
 
 ### 3. 命令层（`src/commands/`）
 
@@ -125,31 +118,7 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
 
 ### 4. 类型层（`src/types/`）
 
-跨所有层共享的 TypeScript 类型。
-
-```
-src/types/
-└── index.ts          # 所有类型导出
-```
-
-**核心类型：**
-
-| 类型 | 用途 |
-|---|---|
-| `Job` | 职位信息：id、标题、公司、URL、来源、描述、分数、状态 |
-| `Resume` | 解析后的简历：各部分、要点、技能、元数据 |
-| `AppConfig` | 用户配置：简历路径、目标职位、地点、API key |
-| `HuntOptions` / `HuntResult` | `hunt` 命令的输入/输出 |
-| `TailorOptions` / `TailorResult` | `tailor` 命令的输入/输出 |
-| `FileOptions` / `FileResult` | `file` 命令的输入/输出 |
-| `ReachOptions` / `ReachResult` | `reach` 命令的输入/输出 |
-
-**Job 状态生命周期：**
-
-```
-new  →  reviewed  →  applied
-                  →  rejected
-```
+Types 层定义了各层共享的数据结构，是 wolf 的 single source of truth。核心类型包括 `Job`（职位信息）、`Resume`（解析后的简历）、`AppConfig`（用户配置）以及每个命令的 Options/Result 对。完整定义见 [TYPES_zh.md](TYPES_zh.md)。
 
 ### 5. 工具层（`src/utils/`）
 
@@ -172,15 +141,7 @@ src/utils/
 - **Handshake** — 爬虫和 API 支持非常有限；可能需要解析邮件通知或手动输入
 - **其他平台** — 可能需要通过 BrowserMCP 进行浏览器自动化、RSS 订阅或直接 API 调用
 
-**JobProvider 接口：**
-
-```typescript
-// src/types/index.ts
-interface JobProvider {
-  name: string;                          // 如 "linkedin", "handshake", "manual"
-  hunt(options: HuntOptions): Promise<Job[]>;
-}
-```
+`JobProvider` 接口只需实现 `name` 和 `hunt()` 两个成员。接口定义见 [TYPES_zh.md § Provider 接口](TYPES_zh.md#provider-接口)。
 
 **内置 provider（计划中）：**
 

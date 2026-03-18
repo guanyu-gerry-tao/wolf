@@ -91,15 +91,9 @@ Track application status locally.
 - Filter by status, score, date
 - All data in local SQLite — inspectable, portable, no cloud dependency
 
-### Dual Interface
+### Dual Interface & External Orchestration
 
-- **CLI** (commander.js) — for human users in the terminal
-- **MCP server** (MCP SDK) — for AI agents (OpenClaw, LangGraph, etc.)
-- Both interfaces share the same core logic; behavior is identical
-
-### External Orchestration
-
-wolf is designed to be **orchestrated, not to orchestrate**. External tools (OpenClaw, n8n, LangGraph) can drive wolf via CLI (`--json` output) or MCP tools. wolf does not manage workflows itself.
+wolf provides both a CLI (commander.js) and an MCP server (MCP SDK), sharing the same core logic. It is designed to be **orchestrated, not to orchestrate** — external tools like OpenClaw, n8n, and LangGraph can drive wolf via CLI (`--json` output) or MCP tools. Architecture details and integration examples: [ARCHITECTURE.md § External Orchestration](ARCHITECTURE.md#external-orchestration-integration).
 
 ## Out of Scope
 
@@ -114,7 +108,6 @@ The following are explicitly **not** part of wolf's goals:
 | **Portfolio / personal website generation** | Orthogonal to job applications; many dedicated tools exist |
 | **Job posting aggregation service** | wolf is a personal tool, not a platform serving multiple users |
 | **Interview scheduling** (calendar management, availability coordination) | Requires calendar integration and real-time coordination outside wolf's scope |
-| ~~**Cover letter formatting / PDF export**~~ | ~~Moved in-scope: resume exported via LaTeX→PDF, cover letter via Markdown→PDF~~ |
 
 ## Platform & Constraints
 
@@ -123,16 +116,5 @@ The following are explicitly **not** part of wolf's goals:
 | **Runtime** | Node.js (TypeScript) |
 | **OS** | macOS and Linux; Windows support is not a priority |
 | **Data storage** | Local SQLite database (`data/wolf.sqlite`); no cloud sync |
-| **Privacy** | API keys and OAuth credentials stay on your machine (`~/.wolf/credentials/`, `.env`); wolf never uploads your resume or personal data except through explicit API calls you initiate |
 | **Network** | Internet required only for external API calls (Apify, Claude, Gmail); core tracking and status work offline |
 
-## Relationship to Other Tools
-
-| Tool | Relationship |
-|---|---|
-| **OpenClaw** | Upstream orchestrator — can invoke wolf's MCP tools as part of a larger agent workflow |
-| **n8n** | Can drive wolf via CLI shell commands (`wolf hunt --json`) or MCP client connection |
-| **LangGraph** | Can use wolf as a tool provider via MCP, treating each command as a graph node |
-| **Claude Desktop** | Can connect to wolf's MCP server to expose job hunting tools in the chat interface |
-
-wolf is always the **callee**, never the caller. It provides capabilities; orchestration lives elsewhere.

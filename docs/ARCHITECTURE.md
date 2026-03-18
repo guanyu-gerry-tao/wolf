@@ -81,14 +81,7 @@ src/mcp/
 - Map incoming tool calls to the corresponding function in `src/commands/`
 - Return structured JSON results (no terminal formatting)
 
-**Registered tools:**
-
-| MCP Tool | Maps to Command | Description |
-|---|---|---|
-| `wolf_hunt` | `hunt()` | Find and score jobs |
-| `wolf_tailor` | `tailor()` | Tailor resume to a JD |
-| `wolf_file` | `file()` | Auto-fill application form |
-| `wolf_reach` | `reach()` | Find contacts and draft outreach |
+MCP 层注册了 4 个工具（`wolf_hunt`、`wolf_tailor`、`wolf_file`、`wolf_reach`），每个直接映射到 `src/commands/` 中的同名函数。输入输出 schema 见 [TYPES.md § MCP Tool Schemas](TYPES.md#mcp-tool-schemas)。
 
 ### 3. Commands Layer (`src/commands/`)
 
@@ -126,31 +119,7 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
 
 ### 4. Types (`src/types/`)
 
-Shared TypeScript types used across all layers.
-
-```
-src/types/
-└── index.ts          # All type exports
-```
-
-**Core types:**
-
-| Type | Purpose |
-|---|---|
-| `Job` | A job listing: id, title, company, url, source, description, score, status |
-| `Resume` | Parsed resume: sections, bullet points, skills, metadata |
-| `AppConfig` | User configuration: resume path, target roles, locations, API keys |
-| `HuntOptions` / `HuntResult` | Input/output for `hunt` command |
-| `TailorOptions` / `TailorResult` | Input/output for `tailor` command |
-| `FileOptions` / `FileResult` | Input/output for `file` command |
-| `ReachOptions` / `ReachResult` | Input/output for `reach` command |
-
-**Job status lifecycle:**
-
-```
-new  →  reviewed  →  applied
-                  →  rejected
-```
+Types 层定义了各层共享的数据结构，是 wolf 的 single source of truth。核心类型包括 `Job`（职位信息）、`Resume`（解析后的简历）、`AppConfig`（用户配置）以及每个命令的 Options/Result 对。完整定义见 [TYPES.md](TYPES.md)。
 
 ### 5. Utils (`src/utils/`)
 
@@ -173,15 +142,7 @@ Job data can come from **many different channels**, not just web scrapers. The `
 - **Handshake** — Very limited scraping/API support; may require email parsing or manual entry
 - **Other platforms** — May need browser automation via BrowserMCP, RSS feeds, or direct API calls
 
-**JobProvider interface:**
-
-```typescript
-// src/types/index.ts
-interface JobProvider {
-  name: string;                          // e.g. "linkedin", "handshake", "manual"
-  hunt(options: HuntOptions): Promise<Job[]>;
-}
-```
+`JobProvider` 接口只需实现 `name` 和 `hunt()` 两个成员。接口定义见 [TYPES.md § Provider Interface](TYPES.md#provider-interface)。
 
 **Built-in providers (planned):**
 
