@@ -250,6 +250,103 @@ data/
 └── outreach/         # Draft outreach emails
 ```
 
+## Inter-Component Communication
+
+Commands do not call each other directly. **SQLite is the shared communication bus.**
+
+Each command reads input from the database, does its work, and writes results back:
+
+```
+hunt()   ── writes → [SQLite: jobs table] ── reads → tailor()
+tailor() ── writes → [SQLite: tailored_resume_path] ── reads → file()
+file()   ── writes → [SQLite: status="applied"] ── reads → reach()
+reach()  ── writes → [SQLite: outreach_draft_path]
+```
+
+Concrete example:
+
+```typescript
+// hunt: save discovered jobs
+db.saveJob({ id: "abc", title: "SDE", company: "Google", status: "new", score: 0.9 })
+
+// tailor: read job, write tailored resume path back
+const job = db.getJob("abc")
+db.updateJob("abc", { tailoredResumePath: "./data/tailored/abc.md" })
+
+// file: read job + resume path, update status
+const job = db.getJob("abc")  // has job.url + job.tailoredResumePath
+db.updateJob("abc", { status: "applied", screenshotPath: "./data/screenshots/abc.png" })
+
+// reach: read job, write outreach draft
+const job = db.getJob("abc")  // has job.company, job.title
+db.updateJob("abc", { outreachDraft: "./data/outreach/abc.md" })
+```
+
+This design means:
+- Commands are **fully independent** — each can run alone without importing others
+- Order is flexible — user (or an orchestrator) decides the sequence
+- State is **inspectable** — `wolf status` just reads the same SQLite
+- Crash recovery is free — partial progress is already persisted
+
+## External Orchestration Integration
+
+wolf is designed to be **orchestrated, not to orchestrate**. The MCP layer already exposes all commands as callable tools. This means external workflow engines can drive wolf without any code changes.
+
+### n8n integration
+
+n8n can call wolf in two ways:
+
+```
+┌────────────────────────────────────────────────────┐
+│  n8n workflow                                      │
+│                                                    │
+│  [Trigger] → [Execute: wolf hunt --json]           │
+│                     ↓                              │
+│           [IF score > 0.8]                         │
+│              ↓           ↓                         │
+│  [Execute: wolf tailor]  [Skip]                    │
+│              ↓                                     │
+│  [Execute: wolf file --dry-run]                    │
+│              ↓                                     │
+│  [Human approval node]                             │
+│              ↓                                     │
+│  [Execute: wolf reach --send]                      │
+└────────────────────────────────────────────────────┘
+```
+
+- **Option A: CLI shell execution** — n8n's "Execute Command" node runs `wolf hunt --json`, `wolf tailor --json`, etc. The `--json` flag makes wolf output machine-readable JSON instead of terminal tables.
+- **Option B: MCP client** — n8n connects to `wolf mcp serve` as an MCP client and calls `wolf_hunt`, `wolf_tailor` directly with structured input/output.
+
+### LangGraph / AI agent integration
+
+Any LangGraph agent (or similar framework) can use wolf as a tool provider via MCP:
+
+```
+┌──────────────────────────────────────────────┐
+│  LangGraph agent                             │
+│                                              │
+│  [State: job_search] → call wolf_hunt        │
+│         ↓                                    │
+│  [State: evaluate]   → read results, decide  │
+│         ↓                                    │
+│  [State: tailor]     → call wolf_tailor      │
+│         ↓                                    │
+│  [State: apply]      → call wolf_file        │
+│         ↓                                    │
+│  [State: outreach]   → call wolf_reach       │
+└──────────────────────────────────────────────┘
+```
+
+The agent connects to wolf's MCP server and treats each wolf tool as a node in its graph. Wolf handles the job-specific logic; the agent handles orchestration, branching, and human-in-the-loop decisions.
+
+### Design implications
+
+To keep wolf friendly to external orchestrators:
+1. **All commands support `--json` output** — machine-readable, no ANSI colors
+2. **All commands are idempotent where possible** — running `tailor` twice on the same job overwrites the previous result safely
+3. **MCP tools have strict input/output schemas** — external tools can validate before calling
+4. **No command depends on another command's in-memory state** — SQLite is the only shared state, readable by any process
+
 ## Build & Run
 
 ```
