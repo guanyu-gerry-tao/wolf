@@ -44,6 +44,8 @@ wolf/
 | MCP server | MCP SDK |
 | Job scraping | Apify (LinkedIn, Handshake) |
 | AI | Claude API (anthropic SDK) |
+| Resume rendering | LaTeX (xelatex) → PDF |
+| Cover letter rendering | md-to-pdf (Markdown → PDF) |
 | Browser automation | Playwright |
 | Local storage | SQLite |
 | Email | Gmail API (OAuth2) |

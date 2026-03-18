@@ -47,9 +47,10 @@
 > wolf 可以针对特定 JD 定制你的简历
 
 ### `wolf tailor` / `wolf_tailor`
-- [ ] 从 `.md` 源文件解析简历
+- [ ] 从 `.tex` 源文件解析简历
 - [ ] Claude API prompt — 根据 JD 关键词改写要点
-- [ ] 输出定制简历为新的 `.md` 文件
+- [ ] 输出定制简历为新的 `.tex` 文件 + 通过 `xelatex` 编译为 PDF
+- [ ] 生成求职信为 `.md` 文件 + 通过 `md-to-pdf` 转换为 PDF
 - [ ] 打印匹配分数和关键改动摘要
 - [ ] `--diff` flag — 显示修改前后对比
 - [ ] 接入 MCP tool（替换 stub）

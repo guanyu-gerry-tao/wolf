@@ -47,9 +47,10 @@
 > wolf can tailor your resume to a specific JD
 
 ### `wolf tailor` / `wolf_tailor`
-- [ ] Parse resume from `.md` source file
+- [ ] Parse resume from `.tex` source file
 - [ ] Claude API prompt — rewrite bullet points to match JD keywords
-- [ ] Output tailored resume as new `.md` file
+- [ ] Output tailored resume as new `.tex` file + compile to PDF via `xelatex`
+- [ ] Generate cover letter as `.md` file + convert to PDF via `md-to-pdf`
 - [ ] Print match score and key changes summary
 - [ ] `--diff` flag — show before/after comparison
 - [ ] Wire up MCP tool (replace stub)
