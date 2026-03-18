@@ -162,7 +162,7 @@ npm run test             # run all tests
 npm run test -- --watch  # re-run on file changes
 ```
 
-### Test-First Development (TFD)
+### Test-Driven Development (TDD)
 
 **Write the test before the code.** This is not optional.
 

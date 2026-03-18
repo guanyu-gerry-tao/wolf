@@ -162,7 +162,7 @@ npm run test             # 运行所有测试
 npm run test -- --watch  # 文件变更时自动重新运行
 ```
 
-### 测试先行（Test-First Development）
+### 测试驱动开发（Test-Driven Development, TDD）
 
 **先写测试，再写代码。** 这不是可选的。
 

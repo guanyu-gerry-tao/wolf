@@ -437,9 +437,9 @@ TypeScript (src/)  →  tsc  →  JavaScript (dist/)  →  node dist/cli/index.j
 
 ## Testing Strategy
 
-### Test-First Development (TFD)
+### Test-Driven Development (TDD)
 
-**All new features and commands MUST follow test-first development:**
+**All new features and commands MUST follow test-driven development:**
 
 1. **Write failing tests first** — define expected behavior before writing implementation
 2. **Implement until tests pass** — write the minimum code to satisfy the tests
