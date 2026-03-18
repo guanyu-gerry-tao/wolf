@@ -369,7 +369,65 @@ TypeScript (src/)  →  tsc  →  JavaScript (dist/)  →  node dist/cli/index.j
 
 ## Testing Strategy
 
+### Test-First Development (TFD)
+
+**All new features and commands MUST follow test-first development:**
+
+1. **Write failing tests first** — define expected behavior before writing implementation
+2. **Implement until tests pass** — write the minimum code to satisfy the tests
+3. **Refactor with confidence** — tests protect against regressions
+
+This is especially critical for AI-integrated features (scoring, resume rewriting, email drafting). Tests with mocked AI responses act as **hallucination guardrails** — they define the expected output structure and constraints, catching cases where the AI returns malformed, off-topic, or fabricated data.
+
+**Example — testing `hunt` scoring:**
+
+```typescript
+// Write this FIRST:
+it('should reject AI scores outside 0.0-1.0 range', async () => {
+  mockClaude.returns({ score: 1.5 }); // hallucinated score
+  await expect(hunt(options)).rejects.toThrow('Score out of range');
+});
+
+it('should require score justification field', async () => {
+  mockClaude.returns({ score: 0.8 }); // missing justification
+  await expect(hunt(options)).rejects.toThrow('Missing justification');
+});
+
+// THEN implement the validation in hunt.ts
+```
+
+### Test Levels
+
 - **Unit tests** for `src/commands/` — mock external services, test business logic
 - **Integration tests** for CLI and MCP layers — verify argument parsing and output formatting
 - **E2E tests** for `wolf file` — Playwright tests against sample forms
 - Test runner: vitest (lightweight, TypeScript-native)
+
+### AI Hallucination Prevention
+
+Commands that use Claude API MUST validate AI responses:
+
+| Command | Validation |
+|---|---|
+| `hunt` (scoring) | Score is a number in [0.0, 1.0], justification is non-empty string |
+| `tailor` (rewriting) | Output preserves resume structure, no fabricated experience or skills |
+| `reach` (email draft) | Email contains correct company/role names from input, no invented facts |
+
+All validations are enforced by tests written **before** the implementation.
+
+### CI/CD
+
+CI/CD will be introduced when the project has sufficient test coverage (target: after Milestone 2).
+
+**Planned pipeline:**
+
+```
+push / PR → lint (ESLint) → type-check (tsc --noEmit) → test (vitest) → build (tsc)
+```
+
+**Phases:**
+1. **Milestone 1-2:** Local testing with `npm test`. Set up GitHub Actions config but keep it simple (lint + type-check + test).
+2. **Milestone 3+:** Add E2E tests to CI. Gate PRs on all checks passing.
+3. **Milestone 5+:** Add release automation (changelog generation, npm publish).
+
+**Rule:** No code merges to `main` without passing tests. CI is the enforcer, not human discipline.

@@ -12,7 +12,7 @@ AI-powered job hunting CLI + MCP server. Finds roles, tailors resumes, fills for
 
 Goal: wolf is runnable as both a CLI and an MCP server, all subcommands registered (stubs ok).
 
-See [docs/milestones.md](docs/milestones.md) for full milestone plan.
+See [docs/MILESTONES.md](docs/MILESTONES.md) for full milestone plan.
 
 ## Project structure (planned)
 
@@ -67,6 +67,12 @@ APIFY_API_TOKEN=
 GMAIL_CLIENT_ID=
 GMAIL_CLIENT_SECRET=
 ```
+
+## Documentation rules
+
+- All markdown documents (except `CLAUDE.md` and `README.md`) MUST have a Chinese version with `_zh` suffix (e.g., `ARCHITECTURE.md` → `ARCHITECTURE_zh.md`)
+- When creating or updating an English doc, always create or update the corresponding `_zh` version in the same commit
+- Chinese versions must stay in sync with their English counterparts
 
 ## Common commands
 
