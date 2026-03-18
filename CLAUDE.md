@@ -73,6 +73,10 @@ GMAIL_CLIENT_ID=
 GMAIL_CLIENT_SECRET=
 ```
 
+## Workflow rules
+
+- Do NOT commit or push without explicit user approval. Always show changes and wait for confirmation first.
+
 ## Documentation rules
 
 - All markdown documents (except `CLAUDE.md` and `README.md`) MUST have a Chinese version with `_zh` suffix (e.g., `ARCHITECTURE.md` → `ARCHITECTURE_zh.md`)
