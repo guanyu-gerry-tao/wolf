@@ -201,8 +201,9 @@ Using AI tools to write code is **allowed and encouraged**. Claude Code, Cursor,
 Not sure what to work on? Here's how to find tasks:
 
 1. **Check the milestone checklist** — open [docs/MILESTONES.md](docs/MILESTONES.md) and look for unchecked items (`- [ ]`)
-2. **Browse GitHub Issues** — pick one that interests you, or create a new one
-3. **Ask the project owner** — if you're unsure what to pick, just ask
+2. **Browse GitHub Issues** — filter by `good first issue` or `help wanted` to find tasks ready for pickup
+3. **Claim a task** — comment on the issue ("I'd like to work on this") or contact the project owner directly. The owner will assign the issue to you so there's no duplicated work
+4. **Start work only after being assigned** — this prevents two people building the same thing
 
 ---
 

@@ -201,8 +201,9 @@ it('should reject scores outside 0.0-1.0', async () => {
 不知道做什么？这样找任务：
 
 1. **看里程碑清单** — 打开 [docs/MILESTONES.md](docs/MILESTONES.md)，找未勾选的项目（`- [ ]`）
-2. **浏览 GitHub Issues** — 选一个感兴趣的，或者新建一个
-3. **问项目 owner** — 如果不确定选哪个，直接问就行
+2. **浏览 GitHub Issues** — 筛选 `good first issue` 或 `help wanted` 标签，找已准备好的任务
+3. **认领任务** — 在 issue 下留言（"I'd like to work on this"）或直接联系项目 owner，owner 会把 issue assign 给你，避免重复开发
+4. **被 assign 后再开始** — 防止两个人做同一件事
 
 ---
 
