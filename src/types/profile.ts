@@ -1,4 +1,4 @@
-import type { CompanySize } from "./company";
+import type { CompanySize } from "./company.js";
 
 /**
  * Per-profile scoring configuration.

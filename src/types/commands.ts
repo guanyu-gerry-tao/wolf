@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from "./job";
+import type { Job, JobStatus } from "./job.js";
 
 export interface HuntOptions {
   profileId?: string;      // defaults to defaultProfileId

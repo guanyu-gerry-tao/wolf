@@ -1,4 +1,4 @@
-import type { CompanySize } from "./company";
+import type { CompanySize } from "./company.js";
 
 /** Where a job sits in the user's personal pipeline. */
 export type JobStatus =
