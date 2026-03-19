@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -21,8 +21,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.10",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.2.6",
+    "vitest": "^4.1.0",
     "typescript": "^5.8.2"
   }
 }
