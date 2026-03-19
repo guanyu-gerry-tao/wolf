@@ -24,7 +24,7 @@ wolf/
 │   ├── commands/
 │   │   ├── hunt/     # Scraper, scorer, dedup
 │   │   ├── tailor/   # Resume parser, Claude prompt, diff
-│   │   ├── file/     # Playwright, form detection, submit
+│   │   ├── fill/     # Playwright, form detection, submit
 │   │   ├── reach/    # Contact finder, email drafter, Gmail sender
 │   │   └── status/   # Job list, filters
 │   ├── types/        # Shared types: Job, Resume, AppConfig
@@ -58,13 +58,13 @@ wolf/
 | `wolf init` | Interactive setup wizard |
 | `wolf hunt` | Find and score jobs |
 | `wolf tailor` | Tailor resume to a JD |
-| `wolf file` | Auto-fill job application form |
+| `wolf fill` | Auto-fill job application form |
 | `wolf reach` | Find HR contacts and send outreach |
 | `wolf status` | List tracked jobs with status/score |
 
 ## MCP tools
 
-`wolf_hunt`, `wolf_tailor`, `wolf_file`, `wolf_reach`
+`wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`
 
 ## Environment variables
 

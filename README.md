@@ -12,7 +12,7 @@ AI-powered job hunting workflow that finds roles, tailors your resume, and reach
 |---|---|
 | `wolf hunt` | Scrape LinkedIn & Handshake, score jobs against your profile |
 | `wolf tailor` | Rewrite resume bullets to match a JD, compile to PDF |
-| `wolf file` | Auto-fill job application forms via Playwright |
+| `wolf fill` | Auto-fill job application forms via Playwright |
 | `wolf reach` | Find HR contacts, draft & send personalized outreach |
 | `wolf status` | Track all jobs with status, score, and filters |
 
@@ -35,7 +35,7 @@ wolf/
 ├── src/
 │   ├── cli/          # Commander.js CLI entry point & subcommands
 │   ├── mcp/          # MCP server entry point & tool definitions
-│   ├── commands/     # Core logic: hunt, tailor, file, reach, status
+│   ├── commands/     # Core logic: hunt, tailor, fill, reach, status
 │   ├── types/        # Shared types (Job, Resume, AppConfig)
 │   └── utils/        # Shared helpers
 ├── docs/             # Project documentation (see below)

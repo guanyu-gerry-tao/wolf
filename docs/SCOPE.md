@@ -63,9 +63,9 @@ Collect and store personal information needed for applications and outreach.
 - **Skills and experience summary**
 - **Contact info** (name, email, phone, LinkedIn URL)
 - Stored locally in `~/.wolf/config.json` — never uploaded unless you initiate an API call
-- Used by `wolf file` (form filling), `wolf reach` (email drafting), and `wolf tailor` (resume context)
+- Used by `wolf fill` (form filling), `wolf reach` (email drafting), and `wolf tailor` (resume context)
 
-### Form Filling (`wolf file`)
+### Form Filling (`wolf fill`)
 
 Automate job application form submission using browser automation.
 

@@ -14,11 +14,11 @@
 
 ### CLI 骨架
 - [ ] 搭建 `commander.js` CLI 入口（`wolf`）
-- [ ] 注册子命令：`wolf hunt`、`wolf tailor`、`wolf file`、`wolf reach`、`wolf status`（stub 即可）
+- [ ] 注册子命令：`wolf hunt`、`wolf tailor`、`wolf fill`、`wolf reach`、`wolf status`（stub 即可）
 
 ### MCP 骨架
 - [ ] MCP 服务器入口（`wolf mcp serve`）
-- [ ] 注册 MCP tool：`wolf_hunt`、`wolf_tailor`、`wolf_file`、`wolf_reach`（stub 即可）
+- [ ] 注册 MCP tool：`wolf_hunt`、`wolf_tailor`、`wolf_fill`、`wolf_reach`（stub 即可）
 - [ ] 为所有 4 个 tool 定义类型化的输入/输出 schema
 - [ ] 验证从 Claude Desktop / OpenClaw 的连接
 
@@ -60,12 +60,12 @@
 ## 里程碑 4 — 表单预填
 > wolf 可以自动填写求职申请表
 
-### `wolf file` / `wolf_file`
+### `wolf fill` / `wolf_fill`
 - [ ] Playwright 浏览器设置（headless + headed 模式）
 - [ ] 表单字段检测（姓名、邮箱、简历上传、求职信等）
 - [ ] 将用户资料数据映射到检测到的字段
-- [ ] `wolf file --dry-run` — 打印检测到的字段，不提交
-- [ ] `wolf file` — 实际填写并提交
+- [ ] `wolf fill --dry-run` — 打印检测到的字段，不提交
+- [ ] `wolf fill` — 实际填写并提交
 - [ ] 完成后截图，用于审计追踪
 - [ ] 处理常见边界情况（下拉菜单、复选框、文件上传）
 - [ ] 接入 MCP tool（替换 stub）
