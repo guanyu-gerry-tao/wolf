@@ -22,7 +22,7 @@ wolf is a dual-interface application: it runs as both a **CLI tool** (for human 
                                 v
                 ┌──────────────────────────────┐
                 │       Commands (Core)        │
-                │  hunt / tailor / file / reach │
+                │  hunt / tailor / fill / reach │
                 │           status             │
                 └──────┬───────────────┬───────┘
                        │               │
@@ -81,7 +81,7 @@ src/mcp/
 - Map incoming tool calls to the corresponding function in `src/commands/`
 - Return structured JSON results (no terminal formatting)
 
-MCP 层注册了 4 个工具（`wolf_hunt`、`wolf_tailor`、`wolf_file`、`wolf_reach`），每个直接映射到 `src/commands/` 中的同名函数。输入输出 schema 见 [TYPES.md § MCP Tool Schemas](TYPES.md#mcp-tool-schemas)。
+MCP 层注册了 4 个工具（`wolf_hunt`、`wolf_tailor`、`wolf_fill`、`wolf_reach`），每个直接映射到 `src/commands/` 中的同名函数。输入输出 schema 见 [TYPES.md § MCP Tool Schemas](TYPES.md#mcp-tool-schemas)。
 
 ### 3. Commands Layer (`src/commands/`)
 
@@ -91,7 +91,7 @@ The core of wolf. Each file exports a single async function containing all busin
 src/commands/
 ├── hunt.ts           # Job search and scoring
 ├── tailor.ts         # Resume tailoring
-├── file.ts           # Form auto-fill
+├── fill.ts           # Form auto-fill
 ├── reach.ts          # HR contact finding and outreach
 ├── status.ts         # Job tracking dashboard
 └── init.ts           # Setup wizard
@@ -200,7 +200,7 @@ Each external service is accessed only from `src/commands/`, `src/utils/`, or jo
 |---|---|---|
 | **Apify** | `apify-client` | `ApifyLinkedInProvider`, `ApifyHandshakeProvider`, `reach` (people search) |
 | **Claude API** | `@anthropic-ai/sdk` | `hunt` (JD scoring), `tailor` (resume rewriting), `reach` (email drafting) |
-| **Playwright** | `playwright` | `file` (form detection, filling, submission, screenshots) |
+| **Playwright** | `playwright` | `fill` (form detection, filling, submission, screenshots) |
 | **BrowserMCP** | Chrome DevTools Protocol | `BrowserMCPProvider` (AI-driven job page navigation) |
 | **SQLite** | `better-sqlite3` | `db.ts` (job storage, status tracking) |
 | **Gmail API** | `googleapis` | `reach` (send email), `EmailProvider` (parse job alert emails) |
@@ -236,11 +236,11 @@ CLI parses args
   ← CLI prints diff and summary
 ```
 
-### `wolf file --job <job_id> --dry-run`
+### `wolf fill --job <job_id> --dry-run`
 
 ```
 CLI parses args
-  → file({ jobId: "abc123", dryRun: true })
+  → fill({ jobId: "abc123", dryRun: true })
     → db.getJob(jobId)                       # fetch job URL
     → playwright.launch()                    # start browser
     → detectFormFields(page)                 # scan form inputs
@@ -287,8 +287,8 @@ Each command reads input from the database, does its work, and writes results ba
 
 ```
 hunt()   ── writes → [SQLite: jobs table] ── reads → tailor()
-tailor() ── writes → [SQLite: tailored_resume_path] ── reads → file()
-file()   ── writes → [SQLite: status="applied"] ── reads → reach()
+tailor() ── writes → [SQLite: tailored_resume_path] ── reads → fill()
+fill()   ── writes → [SQLite: status="applied"] ── reads → reach()
 reach()  ── writes → [SQLite: outreach_draft_path]
 ```
 
@@ -302,7 +302,7 @@ db.saveJob({ id: "abc", title: "SDE", company: "Google", status: "new", score: 0
 const job = db.getJob("abc")
 db.updateJob("abc", { tailoredResumePath: "./data/tailored/abc.md" })
 
-// file: read job + resume path, update status
+// fill: read job + resume path, update status
 const job = db.getJob("abc")  // has job.url + job.tailoredResumePath
 db.updateJob("abc", { status: "applied", screenshotPath: "./data/screenshots/abc.png" })
 
@@ -335,7 +335,7 @@ n8n can call wolf in two ways:
 │              ↓           ↓                         │
 │  [Execute: wolf tailor]  [Skip]                    │
 │              ↓                                     │
-│  [Execute: wolf file --dry-run]                    │
+│  [Execute: wolf fill --dry-run]                    │
 │              ↓                                     │
 │  [Human approval node]                             │
 │              ↓                                     │
@@ -360,7 +360,7 @@ Any LangGraph agent (or similar framework) can use wolf as a tool provider via M
 │         ↓                                    │
 │  [State: tailor]     → call wolf_tailor      │
 │         ↓                                    │
-│  [State: apply]      → call wolf_file        │
+│  [State: apply]      → call wolf_fill        │
 │         ↓                                    │
 │  [State: outreach]   → call wolf_reach       │
 └──────────────────────────────────────────────┘
@@ -429,7 +429,7 @@ it('should require score justification field', async () => {
 
 - **Unit tests** for `src/commands/` — mock external services, test business logic
 - **Integration tests** for CLI and MCP layers — verify argument parsing and output formatting
-- **E2E tests** for `wolf file` — Playwright tests against sample forms
+- **E2E tests** for `wolf fill` — Playwright tests against sample forms
 - Test runner: vitest (lightweight, TypeScript-native)
 
 ### AI Hallucination Prevention

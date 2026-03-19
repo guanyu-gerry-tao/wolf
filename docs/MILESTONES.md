@@ -14,11 +14,11 @@
 
 ### CLI skeleton
 - [ ] Set up `commander.js` CLI entry point (`wolf`)
-- [ ] Register subcommands: `wolf hunt`, `wolf tailor`, `wolf file`, `wolf reach`, `wolf status` (stubs ok)
+- [ ] Register subcommands: `wolf hunt`, `wolf tailor`, `wolf fill`, `wolf reach`, `wolf status` (stubs ok)
 
 ### MCP skeleton
 - [ ] MCP server entry point (`wolf mcp serve`)
-- [ ] Register MCP tools: `wolf_hunt`, `wolf_tailor`, `wolf_file`, `wolf_reach` (stubs ok)
+- [ ] Register MCP tools: `wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach` (stubs ok)
 - [ ] Typed input/output schemas defined for all 4 tools
 - [ ] Verify connection from Claude Desktop / OpenClaw
 
@@ -60,12 +60,12 @@
 ## Milestone 4 — Form Prefill
 > wolf can auto-fill job application forms
 
-### `wolf file` / `wolf_file`
+### `wolf fill` / `wolf_fill`
 - [ ] Playwright browser setup (headless + headed modes)
 - [ ] Form field detection (name, email, resume upload, cover letter, etc.)
 - [ ] Map user profile data to detected fields
-- [ ] `wolf file --dry-run` — print detected fields without submitting
-- [ ] `wolf file` — fill and submit live
+- [ ] `wolf fill --dry-run` — print detected fields without submitting
+- [ ] `wolf fill` — fill and submit live
 - [ ] Screenshot on completion for audit trail
 - [ ] Handle common edge cases (dropdowns, checkboxes, file uploads)
 - [ ] Wire up MCP tool (replace stub)
