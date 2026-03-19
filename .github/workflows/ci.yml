@@ -1,0 +1,35 @@
+name: CI
+
+# Run on every push to main, and on every PR targeting main or feat/* branches
+# 每次 push 到 main，或者向 main / feat/* 开 PR 时自动运行
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      - "feat/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
