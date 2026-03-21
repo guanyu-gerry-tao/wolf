@@ -6,21 +6,21 @@
 > wolf 可作为 CLI 和 MCP 服务器运行，所有子命令已注册（stub 即可）
 
 ### 项目搭建
-- [ ] 初始化 TypeScript + Node.js 项目结构
-- [ ] 定义共享类型（`Job`、`Resume`、`AppConfig`）
-- [ ] `wolf init` — 交互式设置向导（简历路径、目标职位、地点）
-- [ ] 配置读写（`~/.wolf/config.json`）
-- [ ] `.env` 处理 API key（Apify、Claude、Gmail）
+- [x] 初始化 TypeScript + Node.js 项目结构
+- [x] 定义共享类型（`Job`、`Resume`、`AppConfig`）
+- [x] `wolf init` — 交互式设置向导（简历路径、目标职位、地点）
+- [x] 配置读写（workspace 根目录下的 `wolf.toml`，通过 `wolf init` 创建）
+- [x] API key 以 `WOLF_*` 环境变量形式存储；通过 `wolf env set/show/clear` 管理
 
 ### CLI 骨架
-- [ ] 搭建 `commander.js` CLI 入口（`wolf`）
-- [ ] 注册子命令：`wolf hunt`、`wolf tailor`、`wolf fill`、`wolf reach`、`wolf status`（stub 即可）
+- [x] 搭建 `commander.js` CLI 入口（`wolf`）
+- [x] 注册子命令：`wolf hunt`、`wolf tailor`、`wolf fill`、`wolf reach`、`wolf status`（stub 即可）
 
 ### MCP 骨架
-- [ ] MCP 服务器入口（`wolf mcp serve`）
-- [ ] 注册 MCP tool：`wolf_hunt`、`wolf_tailor`、`wolf_fill`、`wolf_reach`（stub 即可）
-- [ ] 为所有 4 个 tool 定义类型化的输入/输出 schema
-- [ ] 验证从 Claude Desktop / OpenClaw 的连接
+- [x] MCP 服务器入口（`wolf mcp serve`）
+- [x] 注册 MCP tool：`wolf_hunt`、`wolf_tailor`、`wolf_fill`、`wolf_reach`（stub 即可）
+- [x] 为所有 4 个 tool 定义类型化的输入/输出 schema
+- [x] 验证从 Claude Desktop / OpenClaw 的连接
 
 ---
 
