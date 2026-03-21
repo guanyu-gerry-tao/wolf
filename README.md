@@ -79,8 +79,16 @@ wolf/
 # Install dependencies
 npm install
 
-# Build
+# Build and install globally
 npm run build
+npm install -g .
+
+# Set up your workspace (creates wolf.toml, resume/, data/)
+mkdir my-job-search && cd my-job-search
+wolf init
+
+# Configure API keys (written to ~/.zshrc)
+wolf env set
 
 # Run CLI
 wolf --help
