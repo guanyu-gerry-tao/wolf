@@ -6,6 +6,13 @@
 
 AI-powered job hunting workflow that finds roles, tailors your resume, and reaches out — automatically. Runs as both a **CLI tool** and an **MCP server**, so it can be invoked by other agents such as [OpenClaw](https://github.com/guanyu-tao/OpenClaw).
 
+## Contributing
+
+wolf is open source and welcomes contributions. Whether you're fixing a bug, implementing a feature, or improving docs — all are welcome.
+
+- English guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- 中文指南: [CONTRIBUTING_zh.md](CONTRIBUTING_zh.md)
+
 ## What wolf does
 
 | Command | Description |
