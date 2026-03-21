@@ -1,0 +1,125 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
+// We test the functions against a real temp directory, so we need to point
+// CONFIG_PATH at our temp dir. Since config.ts derives CONFIG_PATH from
+// process.cwd() at module load time, we mock process.cwd() before importing.
+import { vi } from 'vitest';
+
+let tmpDir: string;
+
+describe('config utils', () => {
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wolf-test-'));
+    vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  describe('saveConfig + loadConfig', () => {
+    it('roundtrips a config object through wolf.toml', async () => {
+      const { saveConfig, loadConfig } = await import('../config.js');
+
+      const config = {
+        profiles: [{
+          id: 'default',
+          label: 'Default',
+          name: 'Test User',
+          alternateName: [],
+          email: 'test@example.com',
+          alternateEmail: [],
+          phone: '555-0000',
+          alternatePhone: [],
+          linkedinUrl: null,
+          githubUrl: null,
+          websiteUrl: null,
+          immigrationStatus: 'US citizen',
+          currentCity: null,
+          willingToRelocate: true,
+          workAuthTimeline: null,
+          targetRoles: ['Software Engineer'],
+          targetLocations: ['Remote'],
+          skills: [],
+          resumePath: 'resume/cv.tex',
+          targetedCompanyIds: [],
+          scoringPreferences: {
+            preferences: { minSalary: null, preferredCompanySizes: [] },
+            weights: { workAuth: 0.2, roleMatch: 0.35, location: 0.2, remote: 0.1, salary: 0.1, companySize: 0.05 },
+            dealbreakers: { sponsorship: null, remote: null },
+          },
+        }],
+        defaultProfileId: 'default',
+        providers: { linkedin: { enabled: true } },
+        hunt: { minScore: 0.5, maxResults: 50 },
+        tailor: { defaultTemplatePath: null, defaultCoverLetterTone: 'professional' },
+        reach: { defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+      } as any;
+
+      await saveConfig(config);
+
+      const loaded = await loadConfig();
+      expect(loaded.defaultProfileId).toBe('default');
+      expect(loaded.profiles[0]!.name).toBe('Test User');
+      expect(loaded.profiles[0]!.email).toBe('test@example.com');
+      expect(loaded.hunt.minScore).toBe(0.5);
+    });
+
+    it('throws if wolf.toml does not exist', async () => {
+      const { loadConfig } = await import('../config.js');
+      await expect(loadConfig()).rejects.toThrow('wolf.toml not found');
+    });
+  });
+
+  describe('backupConfig', () => {
+    it('copies wolf.toml to wolf.toml.backup1', async () => {
+      const { saveConfig, backupConfig } = await import('../config.js');
+      await saveConfig({ profiles: [], defaultProfileId: '', providers: {}, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultTemplatePath: null, defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } } as any);
+
+      await backupConfig();
+
+      const backup = await fs.readFile(path.join(tmpDir, 'wolf.toml.backup1'), 'utf-8');
+      expect(backup.length).toBeGreaterThan(0);
+    });
+
+    it('rotates backups: backup1 becomes backup2 on second call', async () => {
+      const { saveConfig, backupConfig } = await import('../config.js');
+      const stub = { profiles: [], defaultProfileId: '', providers: {}, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultTemplatePath: null, defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } } as any;
+
+      await saveConfig(stub);
+      await backupConfig(); // creates backup1
+
+      await saveConfig(stub);
+      await backupConfig(); // backup1 → backup2, new backup1
+
+      const b1 = await fs.access(path.join(tmpDir, 'wolf.toml.backup1')).then(() => true).catch(() => false);
+      const b2 = await fs.access(path.join(tmpDir, 'wolf.toml.backup2')).then(() => true).catch(() => false);
+      expect(b1).toBe(true);
+      expect(b2).toBe(true);
+    });
+
+    it('keeps at most 5 backups', async () => {
+      const { saveConfig, backupConfig } = await import('../config.js');
+      const stub = { profiles: [], defaultProfileId: '', providers: {}, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultTemplatePath: null, defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } } as any;
+
+      for (let i = 0; i < 6; i++) {
+        await saveConfig(stub);
+        await backupConfig();
+      }
+
+      const b5 = await fs.access(path.join(tmpDir, 'wolf.toml.backup5')).then(() => true).catch(() => false);
+      const b6 = await fs.access(path.join(tmpDir, 'wolf.toml.backup6')).then(() => true).catch(() => false);
+      expect(b5).toBe(true);
+      expect(b6).toBe(false);
+    });
+
+    it('does not throw if wolf.toml does not exist yet', async () => {
+      const { backupConfig } = await import('../config.js');
+      await expect(backupConfig()).resolves.not.toThrow();
+    });
+  });
+});
