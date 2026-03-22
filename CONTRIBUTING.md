@@ -182,14 +182,29 @@ Recommended: open the project in VS Code, start Claude Code or GitHub Copilot, a
 
 > wolf uses a layered architecture: business logic belongs in `src/commands/`, not in `src/cli/` or `src/mcp/`. If you're unsure where code should go, ask your AI or read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**Strongly recommended: write tests before writing implementation.**
+**Test skeletons are already written — your job is to make them pass.**
 
-> This is called Test-Driven Development (TDD). Write a test that describes the expected behavior, run it (it fails), then write code to make it pass. This protects your code from regressions later. Not sure how to write tests? Ask your AI.
+wolf uses Test-Driven Development (TDD). For every function you implement, a test skeleton already exists in the corresponding `__tests__/` file. The tests look like this:
 
-Test files go in a `__tests__/` folder next to the source file:
+```typescript
+it.todo('returns a valid ScoringResponse and updates the job in DB');
+```
+
+`it.todo` means the test is pending — it doesn't run yet. Once you implement the function, convert each `it.todo` to a real test with assertions:
+
+```typescript
+it('returns a valid ScoringResponse and updates the job in DB', async () => {
+  // set up test data
+  // call the function
+  // assert the result
+});
+```
+
+Test files live next to the source they test:
 
 ```
-src/utils/config.ts  →  src/utils/__tests__/config.test.ts
+src/utils/batch.ts  →  src/utils/__tests__/batch.test.ts
+src/commands/score/index.ts  →  src/commands/score/__tests__/score.test.ts
 ```
 
 Run tests:
@@ -197,6 +212,8 @@ Run tests:
 ```bash
 npm test
 ```
+
+All `it.todo` tests show up as "todo" (not failures) — CI stays green even if not everything is implemented yet. Once you convert a todo to a real test, it must pass before your PR is accepted.
 
 ---
 

@@ -164,14 +164,29 @@ git checkout -b feat/你的功能名
 
 > wolf 的代码结构是分层的：业务逻辑只能放在 `src/commands/`，不能放在 `src/cli/` 或 `src/mcp/`。如果不确定代码该放哪里，问 AI，或者看 [docs/ARCHITECTURE_zh.md](docs/ARCHITECTURE_zh.md)。
 
-**强烈建议：先写测试，再写实现。**
+**测试骨架已经写好了——你的任务是让它们通过。**
 
-> 这叫"测试驱动开发（TDD）"。先写一个描述你期望行为的测试，运行它（会失败），然后写代码让它通过。好处是你的代码有保护，以后改动不容易出错。不确定怎么写测试，问 AI。
+wolf 采用测试驱动开发（TDD）。你要实现的每个函数，对应的 `__tests__/` 文件里都已经有测试骨架了，长这样：
 
-测试文件放在 `__tests__/` 目录下：
+```typescript
+it.todo('returns a valid ScoringResponse and updates the job in DB');
+```
+
+`it.todo` 表示这个测试还没实现——它不会运行。当你写完函数之后，把每个 `it.todo` 改成真正的测试：
+
+```typescript
+it('returns a valid ScoringResponse and updates the job in DB', async () => {
+  // 准备测试数据
+  // 调用函数
+  // 断言结果
+});
+```
+
+测试文件和它测试的源文件放在同一层的 `__tests__/` 里：
 
 ```
-src/utils/config.ts  →  src/utils/__tests__/config.test.ts
+src/utils/batch.ts  →  src/utils/__tests__/batch.test.ts
+src/commands/score/index.ts  →  src/commands/score/__tests__/score.test.ts
 ```
 
 运行测试：
@@ -179,6 +194,8 @@ src/utils/config.ts  →  src/utils/__tests__/config.test.ts
 ```bash
 npm test
 ```
+
+所有 `it.todo` 的测试会显示为"todo"（不是失败）——就算有些函数还没实现，CI 也不会报红。一旦你把 todo 改成真正的测试，这个测试就必须通过，PR 才能被合并。
 
 ## 第七步：提交代码
 
