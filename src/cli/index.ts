@@ -46,10 +46,14 @@ program
   .description('Process unscored jobs: extract fields, apply filters, and score via Claude Batch API')
   .option('-p, --profile <id>', 'Profile to use')
   .option('-j, --jobs <ids...>', 'Score only specific job IDs')
+  .option('--single', 'Score one job synchronously via Haiku (skips Batch API); requires --jobs with a single ID')
+  .option('--poll', 'Poll pending batches for results without submitting new jobs')
   .action(async (opts) => {
     const result = await score({
       profileId: opts.profile,
       jobIds: opts.jobs,
+      single: opts.single,
+      poll: opts.poll,
     });
     console.log(JSON.stringify(result, null, 2));
   });

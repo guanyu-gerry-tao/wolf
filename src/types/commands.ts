@@ -14,10 +14,23 @@ export interface HuntResult {
   newCount: number;        // jobs not previously seen (after dedup)
 }
 
+export interface AddOptions {
+  title: string;
+  company: string;
+  jdText: string;
+  url?: string;         // original job posting URL, if available
+  profileId?: string;   // defaults to defaultProfileId
+}
+
+export interface AddResult {
+  jobId: string;        // DB-assigned ID for chaining into wolf_score or wolf_tailor
+}
+
 export interface ScoreOptions {
   profileId?: string;                    // defaults to defaultProfileId
   jobIds?: string[];                     // score only specific jobs; defaults to all with score: null
   poll?: boolean;                        // default false — if true, poll pending batches instead of submitting new
+  single?: boolean;                      // default false — if true, skip Batch API and score synchronously via Haiku
   aiProvider?: 'anthropic' | 'openai';  // defaults to anthropic
 }
 
@@ -25,6 +38,9 @@ export interface ScoreResult {
   submitted: number;   // jobs submitted for scoring
   filtered: number;    // jobs eliminated by dealbreakers
   polled?: number;     // pending batches polled (only when poll: true)
+  // Populated only when single: true — immediate result for AI orchestrators to present to user
+  singleScore?: number;
+  singleComment?: string;  // same as Job.scoreJustification; returned immediately so AI can present inline
 }
 
 export interface TailorOptions {

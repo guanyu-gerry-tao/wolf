@@ -37,6 +37,32 @@ Then call with those parameters.`,
   );
 
   server.registerTool(
+    'wolf_add',
+    {
+      description: `Add a single job to wolf's database from structured data provided by the AI caller.
+Use this when the user shares a job they found — screenshot, pasted JD text, or URL content.
+YOU (the AI) must extract title, company, and jdText from the user's input before calling this tool.
+wolf_add only stores — it does not parse raw text or screenshots.
+After calling wolf_add, chain to wolf_score with single: true to immediately score the job,
+then present the result to the user and offer to run wolf_tailor.`,
+      inputSchema: {
+        title: z.string().describe('Job title extracted from the user\'s input'),
+        company: z.string().describe('Company name extracted from the user\'s input'),
+        jdText: z.string().describe('Full job description text extracted from the user\'s input'),
+        url: z.string().optional().describe('Original job posting URL, if available'),
+        profileId: z.string().optional().describe('Profile to use; defaults to defaultProfileId in wolf.toml'),
+      },
+    },
+    // TODO(M2): replace with async (args) => { const result = await add(args); ... }
+    (args) => {
+      if (!args.title || !args.company || !args.jdText) {
+        return { content: [{ type: 'text', text: JSON.stringify(missingParam('title/company/jdText', 'Extract title, company, and jdText from the user\'s input before calling wolf_add.')) }] };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_add')) }] };
+    }
+  );
+
+  server.registerTool(
     'wolf_score',
     {
       description: `Process unscored jobs in the database: extract structured fields from JD text,
@@ -46,6 +72,8 @@ Returns a batch ID immediately — scoring completes in the background.`,
       inputSchema: {
         profileId: z.string().optional().describe('Profile to use for dealbreakers and scoring preferences; defaults to defaultProfileId in wolf.toml'),
         jobIds: z.array(z.string()).optional().describe('Score only specific job IDs; defaults to all unscored jobs'),
+        single: z.boolean().optional().describe('If true, skip Batch API and score synchronously via Haiku — use this after wolf_add for immediate results'),
+        poll: z.boolean().optional().describe('If true, poll pending batches for results without submitting new jobs'),
       },
     },
     // TODO(M2): replace with async (args) => { const result = await score(args); ... }
