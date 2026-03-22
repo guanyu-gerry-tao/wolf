@@ -120,3 +120,17 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** `wolf hunt` 承担了太多职责——在一次阻塞调用中完成了抓取、过滤和评分。希望评分可以独立运行，支持定时触发或由 agent 调用。
 **AI：** 接入和评分的运行频率不同：hunt 可能每小时或按需运行，scoring 在 batch 结果返回后异步执行。分离后两者均可独立自动化。
 **结果：** 采用。`wolf hunt` 拉取原始职位并以 `score: null` 保存。`wolf score` 读取未评分职位，通过 AI 提取结构化字段，应用 dealbreaker，再提交 Claude Batch API。两者均作为 CLI 命令和 MCP tool 对外暴露。
+
+---
+
+**2026-03-22 — 新增 `wolf add` 作为 AI 编排器的手动职位接入入口**
+**我：** 当用户分享自己发现的职位（截图、粘贴的 JD、URL 内容）时，AI（Claude/OpenClaw）没有任何接口可以处理这种情况。考虑过做成 CLI 命令，但用户体验很差（用户无法输入结构化 JSON，更不用说粘贴截图了）。
+**AI：** wolf 主要由 AI 编排器操作，而不是用户直接输入命令。AI 已经拥有用户的原始内容，可以自行提取结构。`wolf add` 应当是一个仅限 MCP 的接口，接收已结构化的数据——AI 调用方负责提取，wolf 负责存储。tool description 必须明确说明这种分工。
+**结果：** 采用。`wolf_add` 作为 MCP tool 添加（无 CLI 对应命令）。AI 在调用前从用户输入中提取 `{ title, company, jdText, url? }`。wolf 存储职位并返回 `jobId`，供 AI 链式调用 `wolf_score` 或 `wolf_tailor`。
+
+---
+
+**2026-03-22 — `wolf score --single` 通过 Haiku 实现同步立即评分**
+**我：** `wolf add` 之后，AI 应该能立即对该职位评分并将结果呈现给用户，而不是等待异步 batch。
+**AI：** Batch API 的存在是为了批量评分省钱。对于用户主动触发的单条职位，同步调用 Haiku 才是正确选择：几秒钟而非几分钟/几小时，且单条评分的绝对费用差异可以忽略不计。
+**结果：** 采用。`ScoreOptions.single: true` 跳过 Batch API，同步调用 Haiku。批量评分默认仍走 batch。

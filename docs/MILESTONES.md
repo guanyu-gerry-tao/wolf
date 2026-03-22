@@ -34,12 +34,18 @@
 - [ ] Save raw jobs to local DB (SQLite) with `status: raw`, `score: null`
 - [ ] Wire up MCP tool (replace stub)
 
+### `wolf_add` (MCP only)
+- [ ] Accept structured job data `{ title, company, jdText, url? }` from AI orchestrator
+- [ ] Store job in DB with `status: raw`, `score: null`; return `jobId`
+- [ ] No CLI equivalent — AI caller (Claude/OpenClaw) is responsible for extracting structure from user input (screenshot, pasted text, URL)
+
 ### `wolf score` / `wolf_score`
 - [ ] Read unscored jobs (`score: null`) from DB
 - [ ] AI field extraction — Claude API extracts structured fields (sponsorship, tech stack, remote, salary) from raw JD text
 - [ ] Apply dealbreakers (hard filters) — disqualified jobs saved as `status: filtered`
 - [ ] Claude API (Batch) — async scoring of remaining jobs against user profile (0.0–1.0)
 - [ ] Hybrid scoring: algorithm scores structured dimensions (location, salary, work auth); Claude scores `roleMatch` only
+- [ ] `--single` flag — skip Batch API, score one job synchronously via Haiku (for AI-orchestrated flows after `wolf_add`)
 - [ ] Filter by `min_score` from config; tag jobs `new` / `reviewed` / `applied` / `rejected`
 - [ ] Wire up MCP tool (replace stub)
 

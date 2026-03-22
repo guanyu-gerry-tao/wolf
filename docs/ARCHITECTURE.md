@@ -81,7 +81,7 @@ src/mcp/
 - Map incoming tool calls to the corresponding function in `src/commands/`
 - Return structured JSON results (no terminal formatting)
 
-The MCP layer registers 5 tools (`wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`, `wolf_status`), each mapping directly to the corresponding function in `src/commands/`. Input/output schemas are defined in [TYPES.md § MCP Tool Schemas](TYPES.md#mcp-tool-schemas).
+The MCP layer registers 6 tools (`wolf_hunt`, `wolf_add`, `wolf_score`, `wolf_tailor`, `wolf_fill`, `wolf_reach`, `wolf_status`). `wolf_add` is MCP-only — it has no CLI equivalent, because its caller (an AI agent) already holds the structured content and wolf only needs to store it. Input/output schemas are defined in [TYPES.md § MCP Tool Schemas](TYPES.md#mcp-tool-schemas).
 
 ### 3. Commands Layer (`src/commands/`)
 
@@ -90,6 +90,7 @@ The core of wolf. Each file exports a single async function containing all busin
 ```
 src/commands/
 ├── hunt/             # Job ingestion — fetch raw jobs from providers, save to DB
+├── add/              # Single job ingestion — store AI-structured job from MCP caller
 ├── score/            # Job processing — AI extraction, dealbreaker filtering, scoring
 ├── tailor/           # Resume tailoring
 ├── fill/             # Form auto-fill
@@ -108,6 +109,13 @@ src/commands/
 **Example signatures:**
 
 ```typescript
+// src/commands/add/index.ts — single job from AI orchestrator (MCP only)
+export async function add(options: AddOptions): Promise<AddResult> {
+  // 1. Receive already-structured { title, company, jdText, url? } from AI caller
+  // 2. Save to DB with status: raw, score: null
+  // 3. Return jobId for chaining into wolf_score or wolf_tailor
+}
+
 // src/commands/hunt/index.ts — fetch only
 export async function hunt(options: HuntOptions): Promise<HuntResult> {
   // 1. Load enabled providers from config
@@ -167,7 +175,7 @@ Job data can come from **many different channels**. The `hunt` command uses a **
 | `ApiProvider` | Fetch from any user-configured HTTP endpoint | Generic — works with any JSON API; AI extracts structured fields from raw response |
 | `EmailProvider` | Parse job alert emails (Gmail API) | Medium — need email parsing rules |
 | `BrowserMCPProvider` | AI-driven browsing via Chrome BrowserMCP | AI navigates job pages and extracts listings |
-| `ManualProvider` | User pastes JD or inputs via `wolf hunt --manual` | Lowest friction for one-off entries |
+| `ManualProvider` | User pastes JD or inputs via `wolf hunt --manual` (CLI) | For CLI users; AI agents use `wolf_add` instead |
 
 **How `hunt` uses providers (ingest only):**
 
@@ -270,7 +278,25 @@ CLI parses args
   ← CLI prints ingestion summary
 ```
 
-### `wolf score`
+### `wolf_add` (AI-orchestrated flow)
+
+```
+User shares job with AI (screenshot / pasted text / URL)
+  → AI (Claude/OpenClaw) extracts { title, company, jdText, url? }
+  → wolf_add({ title, company, jdText })
+    → add({ title, company, jdText })
+      → db.saveJob({ ...structured, status: 'raw', score: null })
+      → return { jobId }
+  → wolf_score({ jobIds: [jobId], single: true })
+    → score({ jobIds: [jobId], single: true })
+      → ai.extractFields([job])               # Claude: structured field extraction
+      → applyDealbreakers(job, profile)       # hard filter check
+      → claude.haiku.score(job, profile)      # synchronous Haiku call, returns immediately
+      → return { submitted: 1, filtered: 0 }
+  ← AI presents score + analysis to user, offers to tailor
+```
+
+### `wolf score` (bulk batch flow)
 
 ```
 CLI parses args
@@ -279,7 +305,7 @@ CLI parses args
     → ai.extractFields(jobs)                  # Claude: extract sponsorship, techStack, remote, salary from JD text
     → applyDealbreakers(jobs, profile)        # hard filter — disqualified → status: filtered
     → ai.submitBatch(remaining, profile)      # submit to Claude Batch API (async, returns immediately)
-    → return { batchId, pending, filtered }
+    → return { submitted, filtered }
   ← CLI prints batch summary; scoring completes in background
 ```
 

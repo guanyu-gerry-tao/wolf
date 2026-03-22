@@ -34,12 +34,18 @@
 - [ ] 将原始职位保存到本地数据库（SQLite），状态为 `raw`，评分为 `null`
 - [ ] 接入 MCP tool（替换 stub）
 
+### `wolf_add`（仅 MCP）
+- [ ] 接收来自 AI 编排器的结构化职位数据 `{ title, company, jdText, url? }`
+- [ ] 将职位存入数据库，状态为 `raw`，评分为 `null`；返回 `jobId`
+- [ ] 无 CLI 对应命令 — AI 调用方（Claude/OpenClaw）负责从用户输入（截图、粘贴文本、URL）中提取结构
+
 ### `wolf score` / `wolf_score`
 - [ ] 从数据库读取未评分职位（`score: null`）
 - [ ] AI 字段提取 — Claude API 从原始 JD 文本中提取结构化字段（sponsorship、技术栈、远程、薪资）
 - [ ] 应用 dealbreaker（硬过滤）— 被淘汰的职位保存为 `status: filtered`
 - [ ] Claude API（Batch）— 异步对剩余职位进行评分（0.0–1.0）
 - [ ] 混合评分：算法评分结构化维度（地点、薪资、工作授权），Claude 仅评分 `roleMatch`
+- [ ] `--single` flag — 跳过 Batch API，通过 Haiku 同步评分单条职位（用于 `wolf_add` 后的 AI 编排流程）
 - [ ] 按配置中的 `min_score` 过滤；标记职位 `new` / `reviewed` / `applied` / `rejected`
 - [ ] 接入 MCP tool（替换 stub）
 
