@@ -16,7 +16,7 @@
 export const env = {
   /** Required for all Claude API calls (scoring, tailoring, outreach drafting). */
   ANTHROPIC_API_KEY: process.env.WOLF_ANTHROPIC_API_KEY ?? null,
-  /** Required for LinkedIn and Handshake scraping via Apify. */
+  /** Required for job provider integrations that use external APIs. */
   APIFY_API_TOKEN: process.env.WOLF_APIFY_API_TOKEN ?? null,
   /** Required for Gmail API OAuth2 (sending outreach emails). */
   GMAIL_CLIENT_ID: process.env.WOLF_GMAIL_CLIENT_ID ?? null,
