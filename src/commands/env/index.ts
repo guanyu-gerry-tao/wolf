@@ -26,7 +26,7 @@ const KEY_INFO: Record<WolfKey, KeyInfo> = {
   },
   WOLF_APIFY_API_TOKEN: {
     prompt:  'Apify API Token',
-    purpose: 'Scrapes LinkedIn and Handshake job listings.',
+    purpose: 'Used by job provider integrations that access external services.',
     howTo:   'apify.com → Sign up → Settings → Integrations → API token (free tier available)',
   },
   WOLF_GMAIL_CLIENT_ID: {
