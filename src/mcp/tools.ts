@@ -37,6 +37,24 @@ Then call with those parameters.`,
   );
 
   server.registerTool(
+    'wolf_score',
+    {
+      description: `Process unscored jobs in the database: extract structured fields from JD text,
+apply dealbreaker filters, and submit remaining jobs to Claude Batch API for async scoring.
+Use this after wolf_hunt has ingested jobs, or on a schedule to keep scores up to date.
+Returns a batch ID immediately — scoring completes in the background.`,
+      inputSchema: {
+        profileId: z.string().optional().describe('Profile to use for dealbreakers and scoring preferences; defaults to defaultProfileId in wolf.toml'),
+        jobIds: z.array(z.string()).optional().describe('Score only specific job IDs; defaults to all unscored jobs'),
+      },
+    },
+    // TODO(M2): replace with async (args) => { const result = await score(args); ... }
+    (_args) => {
+      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_score')) }] };
+    }
+  );
+
+  server.registerTool(
     'wolf_tailor',
     {
       description: `Tailor the user's resume and optionally generate a cover letter for a specific job.

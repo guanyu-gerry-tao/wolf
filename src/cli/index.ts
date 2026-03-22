@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { hunt } from '../commands/hunt/index.js';
+import { score } from '../commands/score/index.js';
 import { tailor } from '../commands/tailor/index.js';
 import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
@@ -36,6 +37,19 @@ program
       role: opts.role,
       location: opts.location,
       maxResults: opts.maxResults,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+program
+  .command('score')
+  .description('Process unscored jobs: extract fields, apply filters, and score via Claude Batch API')
+  .option('-p, --profile <id>', 'Profile to use')
+  .option('-j, --jobs <ids...>', 'Score only specific job IDs')
+  .action(async (opts) => {
+    const result = await score({
+      profileId: opts.profile,
+      jobIds: opts.jobs,
     });
     console.log(JSON.stringify(result, null, 2));
   });

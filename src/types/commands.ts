@@ -10,9 +10,21 @@ export interface HuntOptions {
 }
 
 export interface HuntResult {
-  jobs: Job[];
-  newCount: number;        // jobs not previously seen
-  avgScore: number;
+  ingestedCount: number;   // total jobs fetched across all providers
+  newCount: number;        // jobs not previously seen (after dedup)
+}
+
+export interface ScoreOptions {
+  profileId?: string;                    // defaults to defaultProfileId
+  jobIds?: string[];                     // score only specific jobs; defaults to all with score: null
+  poll?: boolean;                        // default false — if true, poll pending batches instead of submitting new
+  aiProvider?: 'anthropic' | 'openai';  // defaults to anthropic
+}
+
+export interface ScoreResult {
+  submitted: number;   // jobs submitted for scoring
+  filtered: number;    // jobs eliminated by dealbreakers
+  polled?: number;     // pending batches polled (only when poll: true)
 }
 
 export interface TailorOptions {
@@ -91,9 +103,10 @@ export interface StatusResult {
 /**
  * Plugin interface (strategy pattern) for job sources.
  * Each provider independently implements this interface.
- * wolf hunt iterates all enabled providers, merges and deduplicates results, then scores.
+ * wolf hunt iterates all enabled providers, merges and deduplicates raw results.
+ * Scoring is handled separately by wolf score.
  */
 export interface JobProvider {
   name: string;
-  hunt(options: HuntOptions): Promise<Job[]>;
+  hunt(options: HuntOptions): Promise<object[]>;  // returns raw JSON objects from the data source
 }

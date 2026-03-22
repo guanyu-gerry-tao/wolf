@@ -1,26 +1,25 @@
 import type { HuntOptions, HuntResult } from '../../types/index.js';
 
 /**
- * Finds and scores job listings from all enabled providers.
+ * Fetches raw job listings from all enabled providers and saves them to the database.
  *
  * Pipeline:
  * 1. Load enabled providers from config
- * 2. Run each provider in sequence, collect all jobs
+ * 2. Run each provider in sequence, collect raw job objects
  * 3. Deduplicate across providers
- * 4. Apply dealbreakers (hard filters) — disqualified jobs are saved as "filtered"
- * 5. Score remaining jobs (hybrid: algorithm + Claude API for roleMatch)
- * 6. Persist all results to SQLite
+ * 4. Persist raw jobs to SQLite with status: raw, score: null
+ *
+ * Scoring is handled separately by `score()`. This command returns immediately
+ * after ingestion — no AI calls are made here.
  *
  * @param _options - Hunt options; overrides config defaults when provided.
- * @returns Scored job listings, new count, and average score.
- * @throws If no providers are enabled or a required API key is missing.
+ * @returns Ingested count and new (deduplicated) count.
+ * @throws If no providers are enabled.
  */
 export async function hunt(_options: HuntOptions): Promise<HuntResult> {
-  // TODO: load enabled providers from config
-  // TODO: run each provider, collect jobs
-  // TODO: deduplicate results
-  // TODO: apply dealbreakers
-  // TODO: score with hybrid model (algorithm + Claude API for roleMatch)
-  // TODO: save to SQLite
+  // TODO(M2): load enabled providers from config
+  // TODO(M2): run each provider, collect raw job objects
+  // TODO(M2): deduplicate results across providers
+  // TODO(M2): save to SQLite with { status: 'raw', score: null }
   throw new Error('Not implemented');
 }

@@ -17,8 +17,8 @@ export type JobStatus =
  */
 export type Salary = number | "unpaid";
 
-/** Where wolf found the job. */
-export type JobSource = "linkedin" | "handshake" | "email" | "browser_mcp" | "manual";
+/** Where wolf found the job. Set by each provider — not an exhaustive enum. */
+export type JobSource = string;
 
 /**
  * One job listing — the central data object stored in SQLite.
