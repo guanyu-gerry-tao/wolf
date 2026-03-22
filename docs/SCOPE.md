@@ -21,8 +21,7 @@ wolf is a **personal automation tool**, not a platform or service. It runs on yo
 
 Find job listings from multiple sources and save them locally.
 
-- **LinkedIn** scraping via Apify
-- **Handshake** scraping via Apify (best-effort; limited actor support)
+- **Pluggable provider system** — ingest jobs from any source via the `JobProvider` interface
 - **Email alerts** parsing via Gmail API (job alert emails from LinkedIn, Handshake, etc.)
 - **Browser-assisted** extraction via BrowserMCP (AI-driven page navigation)
 - **Manual entry** — paste a JD or URL directly (`wolf hunt --manual`)
@@ -62,7 +61,7 @@ Collect and store personal information needed for applications and outreach.
 - **Target roles and locations**
 - **Skills and experience summary**
 - **Contact info** (name, email, phone, LinkedIn URL)
-- Stored locally in `~/.wolf/config.json` — never uploaded unless you initiate an API call
+- Stored locally in `wolf.toml` — never uploaded unless you initiate an API call
 - Used by `wolf fill` (form filling), `wolf reach` (email drafting), and `wolf tailor` (resume context)
 
 ### Form Filling (`wolf fill`)
@@ -78,7 +77,7 @@ Automate job application form submission using browser automation.
 
 Find hiring contacts and send personalized cold emails.
 
-- LinkedIn people search via Apify (recruiters, hiring managers)
+- Find HR contacts (recruiters, hiring managers) by company
 - Email address inference (firstname.lastname@company.com patterns)
 - AI-drafted personalized emails via Claude API
 - Send via Gmail API with explicit `--send` flag + confirmation
@@ -116,5 +115,5 @@ The following are explicitly **not** part of wolf's goals:
 | **Runtime** | Node.js (TypeScript) |
 | **OS** | macOS and Linux; Windows support is not a priority |
 | **Data storage** | Local SQLite database (`data/wolf.sqlite`); no cloud sync |
-| **Network** | Internet required only for external API calls (Apify, Claude, Gmail); core tracking and status work offline |
+| **Network** | Internet required only for external API calls (Claude, Gmail, and any provider APIs you configure); core tracking and status work offline |
 

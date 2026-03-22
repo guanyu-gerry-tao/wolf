@@ -22,7 +22,7 @@ wolf/
 │   ├── cli/          # commander.js CLI entry point and subcommands
 │   ├── mcp/          # MCP server entry point and tool definitions
 │   ├── commands/
-│   │   ├── hunt/     # Scraper, scorer, dedup
+│   │   ├── hunt/     # Provider system, scorer, dedup
 │   │   ├── tailor/   # Resume parser, Claude prompt, diff
 │   │   ├── fill/     # Playwright, form detection, submit
 │   │   ├── reach/    # Contact finder, email drafter, Gmail sender
@@ -42,7 +42,7 @@ wolf/
 | Language | TypeScript + Node.js |
 | CLI framework | commander.js |
 | MCP server | MCP SDK |
-| Job scraping | Apify (LinkedIn, Handshake) |
+| Job data | Pluggable provider system |
 | AI | Claude API (anthropic SDK) |
 | Resume rendering | LaTeX (xelatex) → PDF |
 | Cover letter rendering | md-to-pdf (Markdown → PDF) |

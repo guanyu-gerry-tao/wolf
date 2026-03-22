@@ -25,14 +25,14 @@
 ---
 
 ## 里程碑 2 — 猎手
-> wolf 可以从 LinkedIn 和 Handshake 搜索和评分职位
+> wolf 可以接入、过滤和评分职位列表
 
 ### `wolf hunt` / `wolf_hunt`
-- [ ] Apify LinkedIn 爬虫集成
-- [ ] Handshake 爬虫集成
+- [ ] 可插拔 provider 系统 — 通过 `JobProvider` 接口从任意来源接入职位数据
 - [ ] 跨来源结果去重
-- [ ] 将原始 JD 结果保存到本地数据库（SQLite 或 JSON 文件）
-- [ ] Claude API — 根据用户画像评分 JD 相关性（0.0–1.0）
+- [ ] 将原始 JD 结果保存到本地数据库（SQLite）
+- [ ] 评分前应用 dealbreaker（硬过滤）
+- [ ] Claude API（Batch）— 异步根据用户画像评分 JD 相关性（0.0–1.0）
 - [ ] 按配置中的 `min_score` 过滤
 - [ ] 标记职位：`new` / `reviewed` / `applied` / `rejected`
 - [ ] 接入 MCP tool（替换 stub）
@@ -76,7 +76,7 @@
 > wolf 可以找到 HR 联系人并起草冷邮件
 
 ### `wolf reach` / `wolf_reach`
-- [ ] 通过 Apify 进行 LinkedIn 人员搜索（按公司搜索招聘人员/招聘经理）
+- [ ] 查找 HR 联系人（按公司搜索招聘人员/招聘经理）
 - [ ] 提取姓名、职位、邮箱（如有）
 - [ ] 后备方案：生成可能的邮箱格式（`firstname.lastname@company.com`）
 - [ ] Claude API prompt — 起草个性化冷邮件（语气可配置）

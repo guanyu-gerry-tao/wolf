@@ -25,14 +25,14 @@
 ---
 
 ## Milestone 2 — Hunter
-> wolf can find and score jobs from LinkedIn and Handshake
+> wolf can ingest, filter, and score job listings
 
 ### `wolf hunt` / `wolf_hunt`
-- [ ] Apify LinkedIn scraper integration
-- [ ] Handshake scraper integration
+- [ ] Pluggable provider system — ingest jobs from any source via `JobProvider` interface
 - [ ] Deduplicate results across sources
-- [ ] Save raw JD results to local DB (SQLite or JSON file)
-- [ ] Claude API — score JD relevance against user profile (0.0–1.0)
+- [ ] Save raw JD results to local DB (SQLite)
+- [ ] Apply dealbreakers (hard filters) before scoring
+- [ ] Claude API (Batch) — score JD relevance against user profile (0.0–1.0), async
 - [ ] Filter by `min_score` from config
 - [ ] Tag jobs: `new` / `reviewed` / `applied` / `rejected`
 - [ ] Wire up MCP tool (replace stub)
@@ -76,7 +76,7 @@
 > wolf can find HR contacts and draft cold emails
 
 ### `wolf reach` / `wolf_reach`
-- [ ] LinkedIn people search via Apify (recruiter / hiring manager by company)
+- [ ] Find HR contacts (recruiter / hiring manager by company)
 - [ ] Extract name, title, email where available
 - [ ] Fallback: generate likely email format (`firstname.lastname@company.com`)
 - [ ] Claude API prompt — draft personalized cold email (tone configurable)

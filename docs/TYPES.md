@@ -93,7 +93,7 @@ Where wolf found the job. Used for filtering and debugging.
 type JobSource = "linkedin" | "handshake" | "email" | "browser_mcp" | "manual";
 ```
 
-- `linkedin` / `handshake`: scraped via Apify
+- `linkedin` / `handshake`: ingested via a job provider
 - `email`: parsed from a forwarded job alert email
 - `browser_mcp`: found by an external agent browsing the web
 - `manual`: user added it themselves
@@ -493,7 +493,7 @@ interface CompanyUpdate {
 
 ## Provider Interface
 
-`JobProvider` is a plugin interface using the **strategy pattern**. Each job source (LinkedIn, Handshake, etc.) implements this interface independently. When `wolf hunt` runs, it iterates over all enabled providers, calls `hunt()` on each, then merges and deduplicates the raw results before scoring.
+`JobProvider` is a plugin interface using the **strategy pattern**. Each job source implements this interface independently. When `wolf hunt` runs, it iterates over all enabled providers, calls `hunt()` on each, then merges and deduplicates the raw results before scoring.
 
 The key benefit: adding a new job source only requires writing a new class that implements `JobProvider`. No changes to the core hunt logic needed.
 
@@ -506,7 +506,7 @@ interface JobProvider {
 
 `hunt(options)` is an async function: you give it search parameters, and it goes out to the internet, fetches matching jobs, and returns them as a `Job[]` array. `Promise<Job[]>` means the result arrives asynchronously (because network requests take time).
 
-Built-in providers: `ApifyLinkedInProvider`, `ApifyHandshakeProvider`, `EmailProvider`, `BrowserMCPProvider`, `ManualProvider`.
+Built-in providers: `EmailProvider`, `BrowserMCPProvider`, `ManualProvider`.
 
 ---
 

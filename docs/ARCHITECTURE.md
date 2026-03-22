@@ -31,7 +31,7 @@ wolf is a dual-interface application: it runs as both a **CLI tool** (for human 
         ┌──────────┐ ┌────────┐ ┌──────────┐ ┌─────────┐
         │ External │ │ AI     │ │ Browser  │ │ Local   │
         │ Services │ │ Layer  │ │ Layer    │ │ Storage │
-        │ Apify,   │ │ Claude │ │Playwright│ │ SQLite  │
+        │ External │ │ Claude │ │Playwright│ │ SQLite  │
         │ Gmail    │ │  API   │ │          │ │         │
         └──────────┘ └────────┘ └──────────┘ └─────────┘
 ```
@@ -110,7 +110,7 @@ src/commands/
 // src/commands/hunt.ts
 export async function hunt(options: HuntOptions): Promise<HuntResult> {
   // 1. Read config
-  // 2. Call Apify scrapers
+  // 2. Run enabled job providers
   // 3. Deduplicate results
   // 4. Score with Claude API
   // 5. Save to local DB
@@ -145,21 +145,16 @@ src/utils/
 
 ### 6. Job Source Provider System
 
-Job data can come from **many different channels**, not just web scrapers. The `hunt` command uses a **JobProvider** abstraction to support pluggable job sources.
+Job data can come from **many different channels**. The `hunt` command uses a **JobProvider** abstraction to support pluggable job sources.
 
-**Why:** Different platforms have wildly different accessibility:
-- **LinkedIn** — Apify scraper works well
-- **Handshake** — Very limited scraping/API support; may require email parsing or manual entry
-- **Other platforms** — May need browser automation via BrowserMCP, RSS feeds, or direct API calls
+**Why:** Different platforms have wildly different accessibility and each user may have different data sources available.
 
-`JobProvider` 接口只需实现 `name` 和 `hunt()` 两个成员。接口定义见 [TYPES.md § Provider Interface](TYPES.md#provider-interface)。
+`JobProvider` interface requires only `name` and `hunt()`. Definition in [TYPES.md § Provider Interface](TYPES.md#provider-interface).
 
 **Built-in providers (planned):**
 
 | Provider | Strategy | Difficulty |
 |---|---|---|
-| `ApifyLinkedInProvider` | Apify LinkedIn scraper | Low — well-supported |
-| `ApifyHandshakeProvider` | Apify Handshake scraper | High — limited actors available |
 | `EmailProvider` | Parse job alert emails (Gmail API) | Medium — need email parsing rules |
 | `BrowserMCPProvider` | AI-driven browsing via Chrome BrowserMCP | Medium — AI navigates and extracts |
 | `ManualProvider` | User pastes JD or inputs via `wolf hunt --manual` | Low — just a form/prompt |
@@ -202,8 +197,8 @@ enabled = true
 This design means:
 - Adding a new job source = adding one new file implementing `JobProvider`, no changes to `hunt.ts`
 - Users enable/disable providers via config
-- Each provider can have its own strategy (scrape vs email vs manual vs BrowserMCP)
-- Providers are **independent** — if Handshake scraping breaks, LinkedIn still works
+- Each provider can have its own strategy (email vs manual vs BrowserMCP vs any source)
+- Providers are **independent** — if one source fails, others still work
 
 ### 7. External Service Integrations
 
@@ -211,7 +206,7 @@ Each external service is accessed only from `src/commands/`, `src/utils/`, or jo
 
 | Service | SDK / Method | Used By |
 |---|---|---|
-| **Apify** | `apify-client` | `ApifyLinkedInProvider`, `ApifyHandshakeProvider`, `reach` (people search) |
+| **Apify** | `apify-client` | Optional — used by providers that choose this strategy |
 | **Claude API** | `@anthropic-ai/sdk` | `hunt` (JD scoring), `tailor` (resume rewriting), `reach` (email drafting) |
 | **Playwright** | `playwright` | `fill` (form detection, filling, submission, screenshots) |
 | **BrowserMCP** | Chrome DevTools Protocol | `BrowserMCPProvider` (AI-driven job page navigation) |
@@ -226,9 +221,8 @@ Each external service is accessed only from `src/commands/`, `src/utils/`, or jo
 CLI parses args
   → hunt({ role: "Software Engineer", location: "NYC" })
     → config.load()                          # read wolf.toml from workspace root
-    → apify.runLinkedInScraper(role, loc)     # scrape LinkedIn
-    → apify.runHandshakeScraper(role, loc)    # scrape Handshake
-    → deduplicate(linkedinJobs, hsJobs)       # merge and dedupe
+    → providers.forEach(p => p.hunt(options)) # run all enabled providers
+    → deduplicate(allJobs)                   # merge and dedupe
     → applyDealbreakers(jobs, profile)        # hard filter before scoring (saves AI calls)
     → scoreJobs(jobs, profile)               # hybrid: algorithm (workAuth/location/salary/…) + Claude API (roleMatch only)
     → db.saveJobs(scoredJobs)                # persist to SQLite
@@ -410,7 +404,7 @@ TypeScript (src/)  →  tsc  →  JavaScript (dist/)  →  node dist/cli/index.j
 - **Gmail OAuth tokens** stored in `~/.wolf/credentials/`, never committed
 - **Form filling** defaults to dry-run; explicit `--no-dry-run` or confirmation required for live submission
 - **Email sending** requires `--send` flag plus interactive confirmation
-- **No data leaves the machine** except through explicit API calls (Apify, Claude, Gmail)
+- **No data leaves the machine** except through explicit API calls (Claude, Gmail, and any provider APIs you configure)
 
 ## Testing Strategy
 

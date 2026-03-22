@@ -17,7 +17,7 @@ wolf is open source and welcomes contributions. Whether you're fixing a bug, imp
 
 | Command | Description |
 |---|---|
-| `wolf hunt` | Scrape LinkedIn & Handshake, score jobs against your profile |
+| `wolf hunt` | Find, filter, and score job listings against your profile |
 | `wolf tailor` | Rewrite resume bullets to match a JD, compile to PDF |
 | `wolf fill` | Auto-fill job application forms via Playwright |
 | `wolf reach` | Find HR contacts, draft & send personalized outreach |
@@ -28,7 +28,7 @@ wolf is open source and welcomes contributions. Whether you're fixing a bug, imp
 | # | Milestone | Summary | Status |
 |---|---|---|---|
 | 1 | Scaffolding & Skeleton | CLI + MCP server runnable, all subcommands registered (stubs) | **In progress** |
-| 2 | Hunter | Job scraping, scoring, dedup, local DB | Planned |
+| 2 | Hunter | Job ingestion, AI scoring, dedup, local DB | Planned |
 | 3 | Resume Tailor | AI-powered resume rewriting + LaTeX → PDF | Planned |
 | 4 | Form Prefill | Playwright-based application form auto-fill | Planned |
 | 5 | Outreach | Contact finder + cold email drafting via Gmail | Planned |
@@ -72,7 +72,7 @@ wolf/
 | Language | TypeScript + Node.js |
 | CLI | commander.js |
 | MCP server | MCP SDK |
-| Job scraping | Apify (LinkedIn, Handshake) |
+| Job data | Pluggable provider system |
 | AI | Claude API (Anthropic SDK) |
 | Resume | LaTeX (xelatex) → PDF |
 | Cover letter | md-to-pdf (Markdown → PDF) |

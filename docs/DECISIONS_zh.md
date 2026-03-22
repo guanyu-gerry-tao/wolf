@@ -26,7 +26,7 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 ---
 
 **2026-03-18 — JobProvider 插件模式**
-**我：** 数据源之前是硬编码的。我提出 LinkedIn、Handshake、邮件提醒、手动录入在实际操作中差异很大，没有一种通用的抓取策略。
+**我：** 数据源之前是硬编码的。我提出 LinkedIn、Handshake、邮件提醒、手动录入在实际操作中差异很大，没有一种通用的接入策略。
 **AI：** 提议了 `JobProvider` 抽象。添加新数据源 = 新建一个文件，不修改 `hunt.ts`。
 **结果：** 采用。顺带衍生出了 `BrowserMCPProvider` 和 `ManualProvider`，都是我最初没有规划的数据源。
 

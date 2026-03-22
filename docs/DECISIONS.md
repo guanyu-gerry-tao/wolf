@@ -26,7 +26,7 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 ---
 
 **2026-03-18 — JobProvider plugin pattern**
-**Me:** Sources were hardcoded. I raised that LinkedIn, Handshake, email alerts, and manual entry all work differently in practice — no single scraping strategy fits all.
+**Me:** Sources were hardcoded. I raised that LinkedIn, Handshake, email alerts, and manual entry all work differently in practice — no single ingestion strategy fits all.
 **AI:** Proposed the `JobProvider` abstraction. New source = one new file, no changes to `hunt.ts`.
 **Result:** Adopted. Also surfaced `BrowserMCPProvider` and `ManualProvider` as valid sources I hadn't initially planned for.
 

@@ -93,7 +93,7 @@ wolf 从哪里找到这个职位。用于筛选和调试。
 type JobSource = "linkedin" | "handshake" | "email" | "browser_mcp" | "manual";
 ```
 
-- `linkedin` / `handshake`：通过 Apify 抓取
+- `linkedin` / `handshake`：通过 job provider 接入
 - `email`：从转发的招聘邮件中解析
 - `browser_mcp`：由外部 Agent 浏览网页时发现
 - `manual`：用户自己手动添加
@@ -493,7 +493,7 @@ interface CompanyUpdate {
 
 ## Provider 接口
 
-`JobProvider` 是使用**策略模式**的插件接口。每个职位来源（LinkedIn、Handshake 等）各自独立实现该接口。`wolf hunt` 运行时，遍历所有已启用的 provider，分别调用 `hunt()` 获取原始职位列表，再合并去重、统一评分。
+`JobProvider` 是使用**策略模式**的插件接口。每个职位来源各自独立实现该接口。`wolf hunt` 运行时，遍历所有已启用的 provider，分别调用 `hunt()` 获取原始职位列表，再合并去重、统一评分。
 
 关键优点：新增一个职位来源，只需写一个实现了 `JobProvider` 的新类，无需改动核心 hunt 逻辑。
 
@@ -506,7 +506,7 @@ interface JobProvider {
 
 `hunt(options)` 是一个异步函数：你给它搜索参数，它去互联网抓取匹配的职位，并以 `Job[]` 数组的形式返回。`Promise<Job[]>` 表示结果是异步到达的（因为网络请求需要时间）。
 
-内置 provider：`ApifyLinkedInProvider`、`ApifyHandshakeProvider`、`EmailProvider`、`BrowserMCPProvider`、`ManualProvider`。
+内置 provider：`EmailProvider`、`BrowserMCPProvider`、`ManualProvider`。
 
 ---
 

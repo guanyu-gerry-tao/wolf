@@ -30,7 +30,7 @@ wolf 是一个双接口应用：既可以作为 **CLI 工具**（供人类用户
               v            v     v                 v
         ┌──────────┐ ┌────────┐ ┌──────────┐ ┌─────────┐
         │ 外部服务  │ │ AI 层  │ │ 浏览器层  │ │ 本地存储 │
-        │ Apify,   │ │ Claude │ │Playwright│ │ SQLite  │
+        │ External │ │ Claude │ │Playwright│ │ SQLite  │
         │ Gmail    │ │  API   │ │          │ │         │
         └──────────┘ └────────┘ └──────────┘ └─────────┘
 ```
@@ -109,7 +109,7 @@ src/commands/
 // src/commands/hunt.ts
 export async function hunt(options: HuntOptions): Promise<HuntResult> {
   // 1. 读取配置
-  // 2. 调用 Apify 爬虫
+  // 2. 运行已启用的 job provider
   // 3. 结果去重
   // 4. 用 Claude API 打分
   // 5. 存入本地数据库
@@ -144,12 +144,9 @@ src/utils/
 
 ### 6. 职位来源 Provider 系统
 
-职位数据可以来自**多种不同渠道**，不仅仅是网页爬虫。`hunt` 命令使用 **JobProvider** 抽象来支持可插拔的职位来源。
+职位数据可以来自**多种不同渠道**。`hunt` 命令使用 **JobProvider** 抽象来支持可插拔的职位来源。
 
-**为什么需要这个：** 不同平台的可访问性差异巨大：
-- **LinkedIn** — Apify 爬虫运作良好
-- **Handshake** — 爬虫和 API 支持非常有限；可能需要解析邮件通知或手动输入
-- **其他平台** — 可能需要通过 BrowserMCP 进行浏览器自动化、RSS 订阅或直接 API 调用
+**为什么需要这个：** 不同用户有不同的职位数据来源，provider 系统允许灵活接入任意渠道。
 
 `JobProvider` 接口只需实现 `name` 和 `hunt()` 两个成员。接口定义见 [TYPES_zh.md § Provider 接口](TYPES_zh.md#provider-接口)。
 
@@ -157,8 +154,6 @@ src/utils/
 
 | Provider | 策略 | 难度 |
 |---|---|---|
-| `ApifyLinkedInProvider` | Apify LinkedIn 爬虫 | 低 — 支持良好 |
-| `ApifyHandshakeProvider` | Apify Handshake 爬虫 | 高 — 可用的 actor 非常少 |
 | `EmailProvider` | 解析求职提醒邮件（Gmail API） | 中等 — 需要邮件解析规则 |
 | `BrowserMCPProvider` | AI 驱动的浏览，通过 Chrome BrowserMCP | 中等 — AI 导航并提取信息 |
 | `ManualProvider` | 用户粘贴 JD 或通过 `wolf hunt --manual` 输入 | 低 — 只是一个表单/提示 |
@@ -201,8 +196,8 @@ enabled = true
 这个设计意味着：
 - 新增职位来源 = 新增一个实现 `JobProvider` 的文件，不需要修改 `hunt.ts`
 - 用户通过配置启用/禁用 provider
-- 每个 provider 可以有自己的策略（爬虫 vs 邮件 vs 手动 vs BrowserMCP）
-- Provider 之间**相互独立** — Handshake 爬虫坏了，LinkedIn 照常工作
+- 每个 provider 可以有自己的策略（邮件 vs 手动 vs BrowserMCP vs 任意来源）
+- Provider 之间**相互独立** — 某个来源失效，其他 provider 照常工作
 
 ### 7. 外部服务集成
 
@@ -210,7 +205,7 @@ enabled = true
 
 | 服务 | SDK / 方式 | 使用者 |
 |---|---|---|
-| **Apify** | `apify-client` | `ApifyLinkedInProvider`、`ApifyHandshakeProvider`、`reach`（人员搜索） |
+| **Apify** | `apify-client` | 可选 — 由选择此策略的 provider 使用 |
 | **Claude API** | `@anthropic-ai/sdk` | `hunt`（JD 评分）、`tailor`（简历改写）、`reach`（邮件起草） |
 | **Playwright** | `playwright` | `fill`（表单检测、填写、提交、截图） |
 | **BrowserMCP** | Chrome DevTools Protocol | `BrowserMCPProvider`（AI 驱动的职位页面导航） |
@@ -225,9 +220,8 @@ enabled = true
 CLI 解析参数
   → hunt({ role: "Software Engineer", location: "NYC" })
     → config.load()                          # 读取工作区根目录的 wolf.toml
-    → apify.runLinkedInScraper(role, loc)     # 爬取 LinkedIn
-    → apify.runHandshakeScraper(role, loc)    # 爬取 Handshake
-    → deduplicate(linkedinJobs, hsJobs)       # 合并去重
+    → providers.forEach(p => p.hunt(options)) # 运行所有已启用的 provider
+    → deduplicate(allJobs)                   # 合并去重
     → applyDealbreakers(jobs, profile)        # 硬性过滤（节省 AI API 调用）
     → scoreJobs(jobs, profile)               # 混合评分：算法（workAuth/location/salary/…）+ Claude API（仅 roleMatch）
     → db.saveJobs(scoredJobs)                # 持久化到 SQLite
@@ -407,7 +401,7 @@ TypeScript (src/)  →  tsc  →  JavaScript (dist/)  →  node dist/cli/index.j
 - **Gmail OAuth token** 存储在 `~/.wolf/credentials/`，永远不提交
 - **表单填写** 默认试运行；实际提交需要显式 `--no-dry-run` 或确认
 - **邮件发送** 需要 `--send` flag 加交互确认
-- **数据不出本机**，除非通过显式的 API 调用（Apify、Claude、Gmail）
+- **数据不出本机**，除非通过显式的 API 调用（Claude、Gmail 以及你配置的 provider API）
 
 ## 测试策略
 
