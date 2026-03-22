@@ -14,27 +14,33 @@
 
 ### CLI skeleton
 - [x] Set up `commander.js` CLI entry point (`wolf`)
-- [x] Register subcommands: `wolf hunt`, `wolf tailor`, `wolf fill`, `wolf reach`, `wolf status` (stubs ok)
+- [x] Register subcommands: `wolf hunt`, `wolf score`, `wolf tailor`, `wolf fill`, `wolf reach`, `wolf status` (stubs ok)
 
 ### MCP skeleton
 - [x] MCP server entry point (`wolf mcp serve`)
-- [x] Register MCP tools: `wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach` (stubs ok)
-- [x] Typed input/output schemas defined for all 4 tools
+- [x] Register MCP tools: `wolf_hunt`, `wolf_score`, `wolf_tailor`, `wolf_fill`, `wolf_reach` (stubs ok)
+- [x] Typed input/output schemas defined for all 5 tools
 - [x] Verify connection from Claude Desktop / OpenClaw
 
 ---
 
 ## Milestone 2 — Hunter
-> wolf can ingest, filter, and score job listings
+> wolf can ingest and score job listings from any configured source
 
 ### `wolf hunt` / `wolf_hunt`
 - [ ] Pluggable provider system — ingest jobs from any source via `JobProvider` interface
-- [ ] Deduplicate results across sources
-- [ ] Save raw JD results to local DB (SQLite)
-- [ ] Apply dealbreakers (hard filters) before scoring
-- [ ] Claude API (Batch) — score JD relevance against user profile (0.0–1.0), async
-- [ ] Filter by `min_score` from config
-- [ ] Tag jobs: `new` / `reviewed` / `applied` / `rejected`
+- [ ] `ApiProvider` — generic HTTP provider; fetches from any user-configured API endpoint
+- [ ] Deduplicate results across providers
+- [ ] Save raw jobs to local DB (SQLite) with `status: raw`, `score: null`
+- [ ] Wire up MCP tool (replace stub)
+
+### `wolf score` / `wolf_score`
+- [ ] Read unscored jobs (`score: null`) from DB
+- [ ] AI field extraction — Claude API extracts structured fields (sponsorship, tech stack, remote, salary) from raw JD text
+- [ ] Apply dealbreakers (hard filters) — disqualified jobs saved as `status: filtered`
+- [ ] Claude API (Batch) — async scoring of remaining jobs against user profile (0.0–1.0)
+- [ ] Hybrid scoring: algorithm scores structured dimensions (location, salary, work auth); Claude scores `roleMatch` only
+- [ ] Filter by `min_score` from config; tag jobs `new` / `reviewed` / `applied` / `rejected`
 - [ ] Wire up MCP tool (replace stub)
 
 ### `wolf status`

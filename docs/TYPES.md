@@ -87,16 +87,13 @@ type Salary = number | "unpaid";
 
 ### `JobSource`
 
-Where wolf found the job. Used for filtering and debugging.
+Where wolf found the job. Used for filtering and debugging. Each provider sets its own source string — wolf does not maintain a closed enum of sources.
 
 ```typescript
-type JobSource = "linkedin" | "handshake" | "email" | "browser_mcp" | "manual";
+type JobSource = string;  // e.g. "api:my-source", "email", "browser_mcp", "manual"
 ```
 
-- `linkedin` / `handshake`: ingested via a job provider
-- `email`: parsed from a forwarded job alert email
-- `browser_mcp`: found by an external agent browsing the web
-- `manual`: user added it themselves
+Providers are responsible for setting a stable, human-readable `source` value on every job they return. This lets users filter by source in `wolf status` without wolf needing to know about every possible provider in advance.
 
 ---
 
@@ -312,7 +309,7 @@ Fields marked `?` are **optional**: when absent, the command falls back to confi
 
 ### `hunt`
 
-`wolf hunt` searches enabled job sources, scores results against your profile, and stores new jobs in the database.
+`wolf hunt` fetches raw job listings from all enabled providers and saves them to the database. It does **not** score — scoring is handled separately by `wolf score`.
 
 ```typescript
 interface HuntOptions {
@@ -325,9 +322,27 @@ interface HuntOptions {
 }
 
 interface HuntResult {
-  jobs: Job[];
-  newCount: number;            // number of jobs not previously seen
-  avgScore: number;
+  ingestedCount: number;       // total jobs fetched across all providers
+  newCount: number;            // jobs not previously seen (deduped)
+}
+```
+
+---
+
+### `score`
+
+`wolf score` reads unscored jobs from the database, uses AI to extract structured fields from JD text, applies dealbreaker filters, and submits remaining jobs to Claude Batch API for async scoring. Returns immediately — scoring completes in the background.
+
+```typescript
+interface ScoreOptions {
+  profileId?: string;          // which profile's dealbreakers and preferences to apply; defaults to defaultProfileId
+  jobIds?: string[];           // score only specific jobs; defaults to all with score: null
+}
+
+interface ScoreResult {
+  batchId: string;             // Claude Batch API batch ID — use to poll for results
+  pending: number;             // jobs submitted for scoring
+  filtered: number;            // jobs eliminated by dealbreakers (not scored)
 }
 ```
 
@@ -493,20 +508,20 @@ interface CompanyUpdate {
 
 ## Provider Interface
 
-`JobProvider` is a plugin interface using the **strategy pattern**. Each job source implements this interface independently. When `wolf hunt` runs, it iterates over all enabled providers, calls `hunt()` on each, then merges and deduplicates the raw results before scoring.
+`JobProvider` is a plugin interface using the **strategy pattern**. Each job source implements this interface independently. When `wolf hunt` runs, it iterates over all enabled providers, calls `hunt()` on each, and saves the raw results to the database. **Providers return raw JSON — they do not normalize or score.**
 
-The key benefit: adding a new job source only requires writing a new class that implements `JobProvider`. No changes to the core hunt logic needed.
+Structuring, field extraction, and scoring are handled separately by `wolf score`, which feeds raw job objects to Claude and gets back structured `Job` fields (title, company, sponsorship, tech stack, etc.).
+
+The key benefit: adding a new job source only requires writing a new class that implements `JobProvider`. No changes to `hunt.ts` or `score.ts` needed.
 
 ```typescript
 interface JobProvider {
-  name: string;
-  hunt(options: HuntOptions): Promise<Job[]>;
+  name: string;                                    // identifies the source in the database
+  hunt(options: HuntOptions): Promise<object[]>;   // returns raw JSON objects from the data source
 }
 ```
 
-`hunt(options)` is an async function: you give it search parameters, and it goes out to the internet, fetches matching jobs, and returns them as a `Job[]` array. `Promise<Job[]>` means the result arrives asynchronously (because network requests take time).
-
-Built-in providers: `EmailProvider`, `BrowserMCPProvider`, `ManualProvider`.
+Built-in providers (planned): `ApiProvider`, `EmailProvider`, `BrowserMCPProvider`, `ManualProvider`.
 
 ---
 
@@ -517,6 +532,7 @@ Each MCP tool maps directly to a command:
 | MCP Tool | Input Type | Output Type |
 |---|---|---|
 | `wolf_hunt` | `HuntOptions` | `HuntResult` |
+| `wolf_score` | `ScoreOptions` | `ScoreResult` |
 | `wolf_tailor` | `TailorOptions` | `TailorResult` |
 | `wolf_fill` | `FillOptions` | `FillResult` |
 | `wolf_reach` | `ReachOptions` | `ReachResult` |

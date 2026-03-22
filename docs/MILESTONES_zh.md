@@ -14,27 +14,33 @@
 
 ### CLI 骨架
 - [x] 搭建 `commander.js` CLI 入口（`wolf`）
-- [x] 注册子命令：`wolf hunt`、`wolf tailor`、`wolf fill`、`wolf reach`、`wolf status`（stub 即可）
+- [x] 注册子命令：`wolf hunt`、`wolf score`、`wolf tailor`、`wolf fill`、`wolf reach`、`wolf status`（stub 即可）
 
 ### MCP 骨架
 - [x] MCP 服务器入口（`wolf mcp serve`）
-- [x] 注册 MCP tool：`wolf_hunt`、`wolf_tailor`、`wolf_fill`、`wolf_reach`（stub 即可）
-- [x] 为所有 4 个 tool 定义类型化的输入/输出 schema
+- [x] 注册 MCP tool：`wolf_hunt`、`wolf_score`、`wolf_tailor`、`wolf_fill`、`wolf_reach`（stub 即可）
+- [x] 为所有 5 个 tool 定义类型化的输入/输出 schema
 - [x] 验证从 Claude Desktop / OpenClaw 的连接
 
 ---
 
 ## 里程碑 2 — 猎手
-> wolf 可以接入、过滤和评分职位列表
+> wolf 可以从任意配置来源接入并评分职位列表
 
 ### `wolf hunt` / `wolf_hunt`
 - [ ] 可插拔 provider 系统 — 通过 `JobProvider` 接口从任意来源接入职位数据
-- [ ] 跨来源结果去重
-- [ ] 将原始 JD 结果保存到本地数据库（SQLite）
-- [ ] 评分前应用 dealbreaker（硬过滤）
-- [ ] Claude API（Batch）— 异步根据用户画像评分 JD 相关性（0.0–1.0）
-- [ ] 按配置中的 `min_score` 过滤
-- [ ] 标记职位：`new` / `reviewed` / `applied` / `rejected`
+- [ ] `ApiProvider` — 通用 HTTP provider，可从任意用户配置的 API 端点拉取数据
+- [ ] 跨 provider 结果去重
+- [ ] 将原始职位保存到本地数据库（SQLite），状态为 `raw`，评分为 `null`
+- [ ] 接入 MCP tool（替换 stub）
+
+### `wolf score` / `wolf_score`
+- [ ] 从数据库读取未评分职位（`score: null`）
+- [ ] AI 字段提取 — Claude API 从原始 JD 文本中提取结构化字段（sponsorship、技术栈、远程、薪资）
+- [ ] 应用 dealbreaker（硬过滤）— 被淘汰的职位保存为 `status: filtered`
+- [ ] Claude API（Batch）— 异步对剩余职位进行评分（0.0–1.0）
+- [ ] 混合评分：算法评分结构化维度（地点、薪资、工作授权），Claude 仅评分 `roleMatch`
+- [ ] 按配置中的 `min_score` 过滤；标记职位 `new` / `reviewed` / `applied` / `rejected`
 - [ ] 接入 MCP tool（替换 stub）
 
 ### `wolf status`

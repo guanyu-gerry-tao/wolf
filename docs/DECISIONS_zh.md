@@ -113,3 +113,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** 在 Claude Desktop 中调用 `wolf_tailor` 时挂起，没有任何响应——stub 抛出的 `throw new Error('Not implemented')` 产生了未处理的 rejected Promise。
 **AI：** Stub handler 根本不需要调用底层命令。改为同步函数可以完全消除 async 路径，不可能挂起。同时添加了 `TODO(M2)` 注释，标记每个 handler 在命令实现后应替换为 `async/await` 的位置。
 **结果：** 对四个命令工具全部采用。`wolf_status` 保持 async，因为它实际上需要读取 `wolf.toml` 和环境变量。
+
+---
+
+**2026-03-21 — 将 `wolf hunt`（接入）和 `wolf score`（处理）拆分为两个命令**
+**我：** `wolf hunt` 承担了太多职责——在一次阻塞调用中完成了抓取、过滤和评分。希望评分可以独立运行，支持定时触发或由 agent 调用。
+**AI：** 接入和评分的运行频率不同：hunt 可能每小时或按需运行，scoring 在 batch 结果返回后异步执行。分离后两者均可独立自动化。
+**结果：** 采用。`wolf hunt` 拉取原始职位并以 `score: null` 保存。`wolf score` 读取未评分职位，通过 AI 提取结构化字段，应用 dealbreaker，再提交 Claude Batch API。两者均作为 CLI 命令和 MCP tool 对外暴露。

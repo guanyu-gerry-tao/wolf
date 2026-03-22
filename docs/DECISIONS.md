@@ -113,3 +113,10 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **Me:** The workspace directory will likely be cloud-synced (iCloud/OneDrive) or zipped and shared alongside resume files. A `.env` file there is a leak waiting to happen.
 **AI:** Agreed. Shell environment variables never enter the workspace. `WOLF_` prefix added to namespace keys away from other tools. `wolf env show` / `wolf env clear` added for discoverability and cleanup.
 **Result:** Adopted. `wolf init` no longer creates `.env`. All keys read from `process.env.WOLF_*`. Users set keys in `~/.zshrc` (Mac/Linux) or Windows User Environment Variables.
+
+---
+
+**2026-03-21 — Separated `wolf hunt` (ingest) and `wolf score` (process) into two commands**
+**Me:** `wolf hunt` was doing too much — fetching, filtering, and scoring in one blocking call. Wanted scoring to run independently, on a schedule, or triggered by an agent.
+**AI:** Ingest and scoring operate at different rates: hunt may run hourly or on-demand; scoring runs async after batch results arrive. Separating them makes each independently automatable.
+**Result:** Adopted. `wolf hunt` fetches raw jobs and saves with `score: null`. `wolf score` reads unscored jobs, extracts structured fields via AI, applies dealbreakers, then submits to Claude Batch API. Both exposed as CLI commands and MCP tools.
