@@ -1,45 +1,78 @@
-/**
- * AIClient — 所有 AI 提供商的统一函数签名。
- *
- * prompt       : 用户的消息
- * systemPrompt : 可选，设定 AI 行为的系统指令
- * 返回值        : AI 的回复文本
- */
-export type AIClient = (
-  prompt: string,
-  systemPrompt?: string,
-) => Promise<string>;
-
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+
+const DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
+const DEFAULT_OPENAI_MODEL = "gpt-4o";
 
 /**
- * 调用 Claude（Anthropic）并返回回复文本。
+ * Internal contract for all provider implementations.
+ * Update this type to have TypeScript enforce the change across all implementations.
  */
-export const anthropicClient: AIClient = async (prompt, systemPrompt) => {
-  const client = (Anthropic as any)();
+type ProviderClient = (
+  prompt: string,
+  systemPrompt?: string,
+  model?: string,
+) => Promise<string>;
+
+/**
+ * Unified AI call. Routes to the correct provider based on options.
+ * Use this in all wolf commands — do NOT call anthropicClient/openaiClient directly.
+ *
+ * @param prompt - User message
+ * @param systemPrompt - Optional system instruction
+ * @param options - provider defaults to 'anthropic'; model defaults to provider's default
+ */
+export async function aiClient(
+  prompt: string,
+  systemPrompt?: string,
+  options?: {
+    provider?: 'anthropic' | 'openai';
+    model?: string;
+  }
+): Promise<string> {
+  const provider = options?.provider ?? 'anthropic';
+  const model = options?.model;
+
+  switch (provider) {
+    case 'openai':     return openaiClient(prompt, systemPrompt, model);
+    case 'anthropic':  return anthropicClient(prompt, systemPrompt, model);
+  }
+}
+
+/**
+ * Calls Claude (Anthropic) and returns the reply text.
+ */
+export const anthropicClient: ProviderClient = async (
+  prompt,
+  systemPrompt,
+  model = DEFAULT_ANTHROPIC_MODEL,
+) => {
+  const client = new Anthropic({ apiKey: process.env.WOLF_ANTHROPIC_API_KEY });
   const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model,
     max_tokens: 1024,
     ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: "user", content: prompt }],
   });
   return response.content[0].type === "text" ? response.content[0].text : "";
-};
+}
 
 /**
- * 调用 GPT（OpenAI）并返回回复文本。
+ * Calls GPT (OpenAI) and returns the reply text.
  */
-export const openaiClient: AIClient = async (prompt, systemPrompt) => {
-  const client = (OpenAI as any)();
-  const messages: { role: string; content: string }[] = [];
-  if (systemPrompt) {
-    messages.push({ role: "system", content: systemPrompt });
-  }
+export const openaiClient: ProviderClient = async (
+  prompt,
+  systemPrompt,
+  model = DEFAULT_OPENAI_MODEL,
+) => {
+  const client = new OpenAI({ apiKey: process.env.WOLF_OPENAI_API_KEY });
+  const messages: ChatCompletionMessageParam[] = [];
+  if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
   messages.push({ role: "user", content: prompt });
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model,
     messages,
   });
   return response.choices[0].message.content ?? "";
-};
+}
