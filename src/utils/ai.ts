@@ -10,6 +10,9 @@ export type AIClient = (
   systemPrompt?: string,
 ) => Promise<string>;
 
+import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
+
 /**
  * Unified AI call. Routes to the correct provider based on options.
  * Use this in all wolf commands — do NOT call anthropicClient/openaiClient directly.
@@ -32,18 +35,31 @@ export async function aiClient(
 
 /**
  * 调用 Claude（Anthropic）并返回回复文本。
- * TODO: 使用 @anthropic-ai/sdk 实现
  */
-export const anthropicClient: AIClient = async (_prompt, _systemPrompt) => {
-  // _ 前缀表示参数未使用，避免编译器警告，完成后记得去掉
-  throw new Error("not implemented");
+export const anthropicClient: AIClient = async (prompt, systemPrompt) => {
+  const client = (Anthropic as any)();
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1024,
+    ...(systemPrompt ? { system: systemPrompt } : {}),
+    messages: [{ role: "user", content: prompt }],
+  });
+  return response.content[0].type === "text" ? response.content[0].text : "";
 };
 
 /**
  * 调用 GPT（OpenAI）并返回回复文本。
- * TODO: 使用 openai 实现
  */
-export const openaiClient: AIClient = async (_prompt, _systemPrompt) => {
-  // _ 前缀表示参数未使用，避免编译器警告，完成后记得去掉
-  throw new Error("not implemented");
+export const openaiClient: AIClient = async (prompt, systemPrompt) => {
+  const client = (OpenAI as any)();
+  const messages: { role: string; content: string }[] = [];
+  if (systemPrompt) {
+    messages.push({ role: "system", content: systemPrompt });
+  }
+  messages.push({ role: "user", content: prompt });
+  const response = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages,
+  });
+  return response.choices[0].message.content ?? "";
 };
