@@ -213,6 +213,8 @@ interface UserProfile {
   targetLocations: string[];        // 例如 ["NYC", "SF", "Remote"]
   skills: string[];                 // 例如 ["TypeScript", "React", "Python"]
   resumePath: string;               // base 简历 .tex 文件路径（联系方式 header 由本 profile 注入）
+  portfolioPath: string | null;     // portfolio PDF 路径；wolf 只读，永不修改；必须是 .pdf 文件
+  transcriptPath: string | null;    // 成绩单 PDF 路径；wolf 只读，永不修改；必须是 .pdf 文件
   targetedCompanyIds: string[];     // 用户主动盯着的公司列表；这些公司的职位在评分时获得加分
   scoringPreferences: ScoringPreferences;
 }

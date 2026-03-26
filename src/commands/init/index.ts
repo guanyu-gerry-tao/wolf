@@ -6,6 +6,35 @@ import { backupConfig, saveConfig } from '../../utils/config.js';
 import { envSet } from '../env/index.js';
 import type { AppConfig } from '../../types/index.js';
 
+/**
+ * Parses and validates a user-supplied document path.
+ *
+ * @param raw - Raw string from user input (may be empty or whitespace).
+ *   e.g. `'  resume.pdf  '` → trimmed to `'resume.pdf'`
+ *   e.g. `''` or `'   '` → returns null
+ * @param allowed - Permitted file extensions without leading dot, e.g. ['pdf'] or ['pdf', 'tex'].
+ * @returns Trimmed path, or null if the input was blank.
+ * @throws If the path has no filename (e.g. `'.pdf'`), no extension (e.g. `'resume'`),
+ *   or an extension not in the allowed list (e.g. `'resume.md'` when only pdf/tex allowed).
+ */
+export function parseDocumentPath(raw: string, allowed: string[]): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const dotIndex = trimmed.lastIndexOf('.');
+  if (dotIndex <= 0) {
+    throw new Error(
+      `File must be ${allowed.map(e => `.${e}`).join(' or ')} (got: ${trimmed})`
+    );
+  }
+  const ext = trimmed.slice(dotIndex + 1).toLowerCase();
+  if (!allowed.includes(ext)) {
+    throw new Error(
+      `File must be ${allowed.map(e => `.${e}`).join(' or ')} (got: ${trimmed})`
+    );
+  }
+  return trimmed;
+}
+
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -151,6 +180,24 @@ Please place your resume file inside resume/:
     });
   }
 
+  // ── Step 1b: Optional PDF documents (portfolio, transcript) ──────────────
+  console.log(`
+${bold('── Optional Documents (PDF only) ──')}
+${dim('These files are attached as-is — wolf will never modify them.')}
+`);
+
+  const portfolioRaw = await input({
+    message: 'Portfolio PDF path (leave blank to skip):',
+    default: '',
+  });
+  const portfolioPath = parseDocumentPath(portfolioRaw, ['pdf']);
+
+  const transcriptRaw = await input({
+    message: 'Transcript PDF path (leave blank to skip):',
+    default: '',
+  });
+  const transcriptPath = parseDocumentPath(transcriptRaw, ['pdf']);
+
   // ── Step 2: Basic profile info ────────────────────────────────────────────
   console.log(`\n${bold('── Profile ──')}`);
 
@@ -212,6 +259,8 @@ Please place your resume file inside resume/:
         targetLocations,
         skills: [],
         resumePath,
+        portfolioPath,
+        transcriptPath,
         targetedCompanyIds: [],
         scoringPreferences: {
           preferences: { minSalary: null, preferredCompanySizes: [] },

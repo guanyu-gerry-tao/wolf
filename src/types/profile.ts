@@ -70,6 +70,10 @@ export interface UserProfile {
   targetLocations: string[];       // e.g. ["NYC", "SF", "Remote"]
   skills: string[];
   resumePath: string;              // path to base .tex; contact header is injected from this profile
+  /** Path to portfolio PDF. Wolf reads this file only — never modifies it. Must be .pdf. */
+  portfolioPath: string | null;
+  /** Path to transcript PDF. Wolf reads this file only — never modifies it. Must be .pdf. */
+  transcriptPath: string | null;
   targetedCompanyIds: string[];    // companies actively watched; jobs from these get a scoring boost
   scoringPreferences: ScoringPreferences;
 }

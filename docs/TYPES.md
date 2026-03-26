@@ -210,6 +210,8 @@ interface UserProfile {
   targetLocations: string[];        // e.g. ["NYC", "SF", "Remote"]
   skills: string[];                 // e.g. ["TypeScript", "React", "Python"]
   resumePath: string;               // path to base resume .tex file (contact header is injected from this profile)
+  portfolioPath: string | null;     // path to portfolio PDF; wolf reads only, never modifies; must be .pdf
+  transcriptPath: string | null;    // path to transcript PDF; wolf reads only, never modifies; must be .pdf
   targetedCompanyIds: string[];     // companies the user is actively watching; jobs from these companies get a scoring boost
   scoringPreferences: ScoringPreferences;
 }
