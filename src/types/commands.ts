@@ -18,8 +18,13 @@ export interface AddOptions {
   title: string;
   company: string;
   jdText: string;
-  url?: string;         // original job posting URL, if available
-  profileId?: string;   // defaults to defaultProfileId
+  location: string;                              // extracted from JD by AI caller
+  remote: boolean;                               // extracted from JD by AI caller
+  url?: string;                                  // original job posting URL, if available
+  salary?: number | 'unpaid';                    // extracted from JD by AI caller, if present
+  workAuthorizationRequired?: string;            // extracted from JD by AI caller, if present
+  source?: string;                               // defaults to 'manual'; use 'browser' for extension, etc.
+  profileId?: string;                            // defaults to defaultProfileId
 }
 
 export interface AddResult {
