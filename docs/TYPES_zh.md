@@ -126,6 +126,7 @@ interface Job {
   coverLetterPdfPath: string | null;       // 求职信 PDF 路径
   screenshotPath: string | null;           // 表单填写截图路径
   outreachDraftPath: string | null;        // 外联邮件草稿路径
+  masterResumeSnapshot: string | null;     // 本次 tailor 使用的母版快照文件名，如 "master_a3f2c1.tex"
   createdAt: string;                       // ISO 8601 时间戳
   updatedAt: string;                       // ISO 8601 时间戳
 }
@@ -470,6 +471,7 @@ interface JobUpdate {
   coverLetterPdfPath?: string | null;
   screenshotPath?: string | null;
   outreachDraftPath?: string | null;
+  masterResumeSnapshot?: string | null;
 }
 ```
 

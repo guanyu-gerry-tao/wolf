@@ -300,12 +300,18 @@ CLI 解析参数
 CLI 解析参数
   → tailor({ jobId: "abc123" })
     → db.getJob(jobId)                       # 从本地数据库获取 JD
-    → profile.resumePath                     # 从 profile 获取基础 .tex 简历路径
-    → parseResume(resumePath)                # 将 .tex 解析为结构化 Resume
-    → claude.tailorResume(resume, job.desc)  # AI 改写
-    → writeFile(tailoredTexPath, result)     # 保存定制版 .tex
-    → xelatex(tailoredTexPath)              # 编译为 PDF
-    → return { tailoredTexPath, tailoredPdfPath, coverLetterMdPath, coverLetterPdfPath, changes, matchScore }
+    → loadConfig() → profile.resumePath      # 从 profile 获取简历路径
+    → snapshotResume(resumePath)             # 对文件做 hash → 复制至 data/resume/snapshots/master_<hash>.<ext>
+    → 读取 tailor_notes.md（如存在）          # 每个职位的自定义 prompt 层（见 issue #37）
+    → 若 .tex：将原始 .tex + JD 发给 Claude   # Claude 改写 bullet points，保留原有模板
+      若 .pdf：pdftoppm → PNG → Claude Vision # Claude 识别排版，生成完整新 .tex
+    → 验证返回的 .tex 合法性
+    → 解析 %WOLF_META 获取 matchScore 和 changes
+    → writeFile(data/tailored/<jobId>.tex)   # 保存定制版 .tex
+    → pdflatex(tailoredTexPath)             # 编译为 PDF（两次以解析交叉引用）
+    → pdftoppm(tailoredPdfPath)             # 首页截图，供视觉预览
+    → db.updateJob(jobId, { tailoredResumePath, tailoredResumePdfPath, screenshotPath, masterResumeSnapshot })
+    → return { tailoredTexPath, tailoredPdfPath, changes, matchScore }
   ← CLI 打印 diff 和摘要
 ```
 

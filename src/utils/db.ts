@@ -90,6 +90,7 @@ export async function initDb(workspaceDir: string): Promise<void> {
       coverLetterPdfPath TEXT,
       screenshotPath TEXT,
       outreachDraftPath TEXT,
+      masterResumeSnapshot TEXT,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL,
       UNIQUE(source, url)

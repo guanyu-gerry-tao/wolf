@@ -123,6 +123,7 @@ interface Job {
   coverLetterPdfPath: string | null;       // path to cover letter PDF
   screenshotPath: string | null;           // path to form-fill screenshot
   outreachDraftPath: string | null;        // path to outreach email draft
+  masterResumeSnapshot: string | null;     // snapshot filename used for this tailor run, e.g. "master_a3f2c1.tex"
   createdAt: string;                       // ISO 8601 timestamp
   updatedAt: string;                       // ISO 8601 timestamp
 }
@@ -485,6 +486,7 @@ interface JobUpdate {
   coverLetterPdfPath?: string | null;
   screenshotPath?: string | null;
   outreachDraftPath?: string | null;
+  masterResumeSnapshot?: string | null;
 }
 ```
 

@@ -315,12 +315,18 @@ CLI parses args
 CLI parses args
   → tailor({ jobId: "abc123" })
     → db.getJob(jobId)                       # fetch JD from local DB
-    → profile.resumePath                     # get base .tex resume path from profile
-    → parseResume(resumePath)                # parse .tex into structured Resume
-    → claude.tailorResume(resume, job.desc)  # AI rewrite
-    → writeFile(tailoredTexPath, result)     # save tailored .tex
-    → xelatex(tailoredTexPath)              # compile to PDF
-    → return { tailoredTexPath, tailoredPdfPath, coverLetterMdPath, coverLetterPdfPath, changes, matchScore }
+    → loadConfig() → profile.resumePath      # get resume path from profile
+    → snapshotResume(resumePath)             # hash file → copy to data/resume/snapshots/master_<hash>.<ext>
+    → read tailor_notes.md (if present)      # per-job prompt layer (see issue #37)
+    → if .tex: send raw .tex + JD to Claude  # Claude rewrites bullet points, preserves template
+      if .pdf: pdftoppm → PNG → Claude Vision # Claude sees layout, generates complete new .tex
+    → validate returned .tex
+    → parse %WOLF_META for matchScore + changes
+    → writeFile(data/tailored/<jobId>.tex)   # save tailored .tex
+    → pdflatex(tailoredTexPath)             # compile to PDF (two passes)
+    → pdftoppm(tailoredPdfPath)             # first-page screenshot for visual review
+    → db.updateJob(jobId, { tailoredResumePath, tailoredResumePdfPath, screenshotPath, masterResumeSnapshot })
+    → return { tailoredTexPath, tailoredPdfPath, changes, matchScore }
   ← CLI prints diff and summary
 ```
 

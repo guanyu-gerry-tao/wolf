@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { tailor } from '../commands/tailor/index.js';
 
 function notImplemented(tool: string): object {
   return { error: 'not_implemented', tool, message: `${tool} is not yet implemented.` };
@@ -96,12 +97,17 @@ Ask user if they want a cover letter generated (coverLetter: true/false).`,
         profileId: z.string().optional().describe('Profile to use; defaults to defaultProfileId in wolf.toml'),
       },
     },
-    // TODO(M2): replace with async (args) => { const result = await tailor(args); ... }
-    (args) => {
+    async (args) => {
       if (!args.jobId) {
         return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.')) }] };
       }
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_tailor')) }] };
+      try {
+        const result = await tailor(args);
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { content: [{ type: 'text', text: JSON.stringify({ error: 'tailor_failed', message }) }] };
+      }
     }
   );
 

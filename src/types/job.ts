@@ -48,6 +48,7 @@ export interface Job {
   coverLetterPdfPath: string | null;
   screenshotPath: string | null;
   outreachDraftPath: string | null;
+  masterResumeSnapshot: string | null;     // snapshot filename used for this tailor run, e.g. "master_a3f2c1.tex"
   createdAt: string;                       // ISO 8601
   updatedAt: string;                       // ISO 8601
 }
@@ -73,6 +74,7 @@ export interface JobUpdate {
   coverLetterPdfPath?: string | null;
   screenshotPath?: string | null;
   outreachDraftPath?: string | null;
+  masterResumeSnapshot?: string | null;
 }
 
 // Re-export CompanySize so callers that need it alongside Job don't need a second import

@@ -1,0 +1,21 @@
+%=============================================================
+%  WOLF RESUME FUNCTIONAL PREAMBLE
+%
+%  Included in all wolf-generated resumes (PDF-source path only).
+%  These packages are functional dependencies — Claude's generated
+%  body relies on them. Visual/layout decisions (geometry, fonts,
+%  section styles, colors) are left entirely to Claude.
+%
+%  Do NOT add geometry, titlesec, font packages, or xcolor here.
+%=============================================================
+
+\usepackage{latexsym}            % extra symbols
+\usepackage{enumitem}            % fine-grained list control
+\usepackage[hidelinks]{hyperref} % clickable links, no colored boxes
+\usepackage{fancyhdr}            % custom header/footer (used to suppress defaults)
+\usepackage[english]{babel}      % hyphenation
+\usepackage{tabularx}            % tabular with auto-width columns
+
+% Machine-readable Unicode mapping (required for ATS copy-paste from PDF)
+\input{glyphtounicode}
+\pdfgentounicode=1

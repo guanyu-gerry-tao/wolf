@@ -128,8 +128,10 @@ Consider cd-ing to a dedicated folder first, e.g.:
   // ── Step 1: Create workspace directories + prompt for resume ─────────────
   const resumeDir = path.join(process.cwd(), 'resume');
   const dataDir = path.join(process.cwd(), 'data');
+  const snapshotsDir = path.join(process.cwd(), 'data', 'resume', 'snapshots');
   await fs.mkdir(resumeDir, { recursive: true });
   await fs.mkdir(dataDir, { recursive: true });
+  await fs.mkdir(snapshotsDir, { recursive: true });
 
   console.log(`
 ${bold('✓ Created resume/ directory.')}

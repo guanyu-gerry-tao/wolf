@@ -76,6 +76,7 @@ export async function add(options: AddOptions): Promise<AddResult> {
     coverLetterPdfPath: null,
     screenshotPath: null,
     outreachDraftPath: null,
+    masterResumeSnapshot: null,
   });
 
   return { jobId };

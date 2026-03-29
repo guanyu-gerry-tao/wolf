@@ -44,6 +44,7 @@ const baseJob = (): Omit<Job, 'id' | 'createdAt' | 'updatedAt'> => ({
   coverLetterPdfPath: null,
   screenshotPath: null,
   outreachDraftPath: null,
+  masterResumeSnapshot: null,
 });
 
 // ---------------------------------------------------------------------------
