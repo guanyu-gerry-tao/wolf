@@ -314,7 +314,7 @@ export async function tailor(options: TailorOptions): Promise<TailorResult> {
     ? await snapshotAsset(styleRef, 'jpg', snapshotsDir)
     : null;
 
-  // ── 13. Update job record ──────────────────────────────────────────────────
+  // ── 14. Update job record ──────────────────────────────────────────────────
   await updateJob(job.id, {
     tailoredResumePath: tailoredTexPath,
     tailoredResumePdfPath: tailoredPdfPath,
@@ -332,6 +332,7 @@ export async function tailor(options: TailorOptions): Promise<TailorResult> {
     tailoredPdfPath,
     coverLetterMdPath,
     coverLetterPdfPath,
+    screenshotPath,
     changes,
     matchScore,
   };

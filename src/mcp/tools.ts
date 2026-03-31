@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { tailor } from '../commands/tailor/index.js';
@@ -91,7 +92,16 @@ Returns a batch ID immediately — scoring completes in the background.`,
 Use this when the user wants to customize their application for a role, or says
 "tailor my resume", "write a cover letter", "help me apply to this job".
 Requires a jobId — if not provided, suggest running wolf_hunt first to get one.
-Ask user if they want a cover letter generated (coverLetter: true/false).`,
+Ask user if they want a cover letter generated (coverLetter: true/false).
+
+After receiving the result, present it to the user as follows:
+1. Show the resume screenshot (returned as an image) so the user can preview the layout.
+2. Show the match score and list the changes Claude made, e.g. "Match score: 0.82 — Changes: ..."
+3. Show the output file paths in code blocks so the user can copy them for upload:
+   \`\`\`
+   Resume PDF:       <tailoredPdfPath>
+   Cover letter PDF: <coverLetterPdfPath>   (only if generated)
+   \`\`\``,
       inputSchema: {
         jobId: z.string().describe('Job ID from wolf_hunt results'),
         coverLetter: z.boolean().optional().describe('Whether to generate a cover letter'),
@@ -104,7 +114,18 @@ Ask user if they want a cover letter generated (coverLetter: true/false).`,
       }
       try {
         const result = await tailor(args);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        const content: { type: string; text?: string; data?: string; mimeType?: string }[] = [
+          { type: 'text', text: JSON.stringify(result) },
+        ];
+        if (result.screenshotPath) {
+          try {
+            const imgBuffer = await fs.readFile(result.screenshotPath);
+            content.push({ type: 'image', data: imgBuffer.toString('base64'), mimeType: 'image/png' });
+          } catch {
+            // screenshot unreadable — skip, text result still returned
+          }
+        }
+        return { content };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'tailor_failed', message }) }] };

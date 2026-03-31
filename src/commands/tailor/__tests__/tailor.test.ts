@@ -94,6 +94,7 @@ vi.mock('md-to-pdf', () => ({
   mdToPdf: vi.fn().mockResolvedValue({ filename: '/workspace/data/default_default/google_swe_job-123/cover_letter.pdf' }),
 }));
 
+
 // ── Imports (after mocks) ─────────────────────────────────────────────────
 
 import { tailor } from '../index.js';

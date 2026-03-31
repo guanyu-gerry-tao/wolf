@@ -60,6 +60,7 @@ export interface TailorResult {
   tailoredPdfPath: string | null;
   coverLetterMdPath: string | null;
   coverLetterPdfPath: string | null;
+  screenshotPath: string | null;
   changes: string[];
   matchScore: number;
 }
