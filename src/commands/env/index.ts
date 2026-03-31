@@ -46,10 +46,10 @@ const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 
-/** Mask all but the last 4 characters of a secret value. */
+/** Show first 4 and last 4 characters; mask the middle. */
 function mask(value: string): string {
-  if (value.length <= 4) return '****';
-  return '*'.repeat(Math.min(value.length - 4, 12)) + value.slice(-4);
+  if (value.length <= 8) return '****';
+  return value.slice(0, 4) + '****' + value.slice(-4);
 }
 
 /**
