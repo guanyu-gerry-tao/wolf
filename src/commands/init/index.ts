@@ -167,6 +167,17 @@ ${bold('If you already set them but haven\'t restarted yet:')}
     return;
   }
 
+  // ── Step 0: Confirm workspace path ───────────────────────────────────────
+  console.log(`\nwolf will create a workspace in:\n  ${bold(process.cwd())}\n`);
+  const confirmPath = await confirm({
+    message: 'Create workspace here?',
+    default: true,
+  });
+  if (!confirmPath) {
+    console.log('Cancelled. cd to your preferred directory and run wolf init again.');
+    return;
+  }
+
   // ── Step 0a: Warn if running in home directory ────────────────────────────
   if (process.cwd() === os.homedir()) {
     console.log(`
