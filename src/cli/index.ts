@@ -8,6 +8,7 @@ import { reach } from '../commands/reach/index.js';
 import { status } from '../commands/status/index.js';
 import { init } from '../commands/init/index.js';
 import { envShow, envSet, envClear } from '../commands/env/index.js';
+import { cleanJobs, cleanAll, cleanDangerousAll } from '../commands/dev/index.js';
 import { startMcpServer } from '../mcp/server.js';
 
 const program = new Command();
@@ -134,6 +135,27 @@ envCmd
   .description('Remove all WOLF_* export lines from shell RC files')
   .action(async () => { await envClear(); });
 program.addCommand(envCmd);
+
+const dev = new Command('dev').description('[DEV] Developer utilities — not for production use');
+const devClean = new Command('clean').description('Clean up test artifacts at varying levels of destruction');
+devClean
+  .option('--jobs', 'Remove job output dirs and clear DB job records (keeps templates)')
+  .option('--all', 'Above + remove API-generated templates (general_resume/, general_cl/)')
+  .option('--dangerousall', 'Wipe entire data/ directory and wolf.sqlite — leaves empty shell')
+  .action(async (opts) => {
+    const workspaceDir = process.cwd();
+    if (opts.dangerousall) {
+      await cleanDangerousAll(workspaceDir);
+    } else if (opts.all) {
+      await cleanAll(workspaceDir);
+    } else if (opts.jobs) {
+      await cleanJobs(workspaceDir);
+    } else {
+      devClean.help();
+    }
+  });
+dev.addCommand(devClean);
+program.addCommand(dev);
 
 const mcp = new Command('mcp').description('MCP server commands');
 mcp
