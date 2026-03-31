@@ -69,7 +69,7 @@ export interface UserProfile {
   targetRoles: string[];           // e.g. ["Software Engineer", "Full Stack Developer"]
   targetLocations: string[];       // e.g. ["NYC", "SF", "Remote"]
   skills: string[];
-  maxResumePages: number;          // maximum pages for tailored resume PDF; default 1; use 2 for CV
+  maxResumePages?: number;         // maximum pages for tailored resume PDF; default 1; use 2 for CV
   resumePath: string;              // path to base .tex; contact header is injected from this profile
   /** Path to portfolio PDF. Wolf reads this file only — never modifies it. Must be .pdf. */
   portfolioPath: string | null;

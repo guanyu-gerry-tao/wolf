@@ -108,24 +108,27 @@ After receiving the result, present it to the user as follows:
         profileId: z.string().optional().describe('Profile to use; defaults to defaultProfileId in wolf.toml'),
       },
     },
-    async (args) => {
+    async (args, _extra) => {
       if (!args.jobId) {
         return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.')) }] };
       }
       try {
         const result = await tailor(args);
-        const content: { type: string; text?: string; data?: string; mimeType?: string }[] = [
-          { type: 'text', text: JSON.stringify(result) },
-        ];
-        if (result.screenshotPath) {
-          try {
-            const imgBuffer = await fs.readFile(result.screenshotPath);
-            content.push({ type: 'image', data: imgBuffer.toString('base64'), mimeType: 'image/png' });
-          } catch {
-            // screenshot unreadable — skip, text result still returned
-          }
+        const textBlock = { type: 'text' as const, text: JSON.stringify(result) };
+        if (!result.screenshotPath) {
+          return { content: [textBlock] };
         }
-        return { content };
+        try {
+          const imgBuffer = await fs.readFile(result.screenshotPath);
+          return {
+            content: [
+              textBlock,
+              { type: 'image' as const, data: imgBuffer.toString('base64'), mimeType: 'image/png' as const },
+            ],
+          };
+        } catch {
+          return { content: [textBlock] };
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { content: [{ type: 'text', text: JSON.stringify({ error: 'tailor_failed', message }) }] };
