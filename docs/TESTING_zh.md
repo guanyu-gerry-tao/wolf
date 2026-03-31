@@ -286,6 +286,16 @@ wolf dev clean --all          # 上述 + 删除生成的模板
 wolf dev clean --dangerousall # 清空所有 data/ 内容（需输入 "yes" 确认）
 ```
 
+### 清理 init 中途取消的残留
+
+`wolf init` 中途取消时，`resume/` 和 `data/` 已创建，但 `wolf.toml` 未生成。可以直接删除这两个目录后重跑：
+
+```bash
+cd ~/test-wolf
+rm -rf resume/ data/
+wolf init
+```
+
 ### 完全重置测试目录（从头来过）
 
 ```bash
