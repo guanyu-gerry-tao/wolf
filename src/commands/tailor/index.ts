@@ -180,6 +180,125 @@ async function compileMdToPdf(mdPath: string): Promise<string> {
   return pdfPath;
 }
 
+/**
+ * Runs pdftoppm at 72 DPI (all pages) and returns the sorted list of PNG paths.
+ * outputPrefix is e.g. "/some/dir/p" — pdftoppm writes "p-1.png", "p-2.png", etc.
+ */
+async function pdfPageImages(pdfPath: string, outputPrefix: string): Promise<string[]> {
+  await execFileAsync('pdftoppm', ['-r', '72', '-png', pdfPath, outputPrefix]);
+  const dir = path.dirname(outputPrefix);
+  const base = path.basename(outputPrefix);
+  const files = await fs.readdir(dir);
+  return files
+    .filter(f => f.startsWith(base) && f.endsWith('.png'))
+    .sort()
+    .map(f => path.join(dir, f));
+}
+
+/** Extracts a complete LaTeX document from Claude's response (handles code blocks or raw output). */
+function extractLatex(text: string): string | null {
+  const codeBlock = text.match(/```(?:latex|tex)?\s*\n([\s\S]*?)```/);
+  const candidate = codeBlock ? codeBlock[1].trim() : text.match(/(\\documentclass[\s\S]*)/)?.[1]?.trim() ?? null;
+  if (candidate && candidate.includes('\\begin{document}')) return candidate;
+  return null;
+}
+
+function buildRefinementPrompt(currentTex: string, pageCount: number, maxPages: number): string {
+  const overLimit = pageCount > maxPages;
+  const issue = overLimit
+    ? `PAGE OVERFLOW: the resume is ${pageCount} page(s) but must fit in ${maxPages}. Remove or shorten less critical content, reduce spacing.`
+    : `ORPHAN WORD CHECK: scan every bullet point for lines where the final line contains only one word (e.g. a bullet wraps and the last line is just "latency." or "team."). Fix each occurrence by either shortening the bullet (remove a word or two) or expanding it (add a word or rephrase) so the last line has at least 2–3 words. Prefer expanding if the page has room; prefer shortening if space is tight.`;
+  return `You are reviewing a tailored LaTeX resume. The PDF above has ${pageCount} page(s) (target: ≤${maxPages}).
+
+Issue to fix:
+${issue}
+
+If the layout looks good (within page limit, no orphan lines): respond with the single word LGTM and nothing else — no explanation, no punctuation.
+
+Otherwise return the complete corrected .tex (starting with \\documentclass). Strategies:
+- Remove or shorten less relevant bullet points
+- Reduce \\vspace, itemsep, parsep, or other spacing
+- Tighten descriptions without removing JD keywords
+
+Current .tex:
+\`\`\`latex
+${currentTex}
+\`\`\`
+
+Respond with ONLY "LGTM" or ONLY the complete corrected .tex — no other text.`;
+}
+
+function buildClShortenPrompt(currentMd: string, pageCount: number): string {
+  return `The cover letter below compiled to ${pageCount} page(s) but must fit in exactly 1 page.
+
+Shorten it — remove less essential sentences, tighten phrasing, or trim a paragraph — while keeping the core message, professional tone, and key personalisation.
+
+Return only the shortened cover letter in markdown format, nothing else.
+
+Current cover letter:
+${currentMd}`;
+}
+
+/**
+ * Compile → render pages at 72 DPI → ask Claude to review layout.
+ * Loops up to MAX_ITER times. Returns final PDF path and screenshot path.
+ */
+async function refineResumeTex(
+  initialTex: string,
+  texPath: string,
+  maxPages: number,
+  client: Anthropic,
+  jobDir: string,
+): Promise<{ finalPdfPath: string; screenshotPath: string }> {
+  const MAX_ITER = 5;
+  let currentTex = initialTex;
+  let currentPdfPath = '';
+  let needsRecompile = false;
+  const checkDir = path.join(jobDir, '_check');
+
+  for (let i = 0; i < MAX_ITER; i++) {
+    await fs.writeFile(texPath, currentTex, 'utf-8');
+    currentPdfPath = await compileTex(texPath);
+    needsRecompile = false;
+
+    await fs.mkdir(checkDir, { recursive: true });
+    const pageImages = await pdfPageImages(currentPdfPath, path.join(checkDir, 'p'));
+
+    const imageBlocks = await Promise.all(
+      pageImages.map(async (imgPath) => ({
+        type: 'image' as const,
+        source: {
+          type: 'base64' as const,
+          media_type: 'image/png' as const,
+          data: (await fs.readFile(imgPath)).toString('base64'),
+        },
+      })),
+    );
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: [...imageBlocks, { type: 'text', text: buildRefinementPrompt(currentTex, pageImages.length, maxPages) }] }],
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    if (text.trimStart().startsWith('LGTM')) break;
+
+    const newTex = extractLatex(text);
+    if (!newTex) break;
+    currentTex = newTex;
+    needsRecompile = true;
+  }
+
+  if (needsRecompile) {
+    await fs.writeFile(texPath, currentTex, 'utf-8');
+    currentPdfPath = await compileTex(texPath);
+  }
+
+  const screenshotPath = await pdfToScreenshot(currentPdfPath);
+  return { finalPdfPath: currentPdfPath, screenshotPath };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -258,15 +377,12 @@ export async function tailor(options: TailorOptions): Promise<TailorResult> {
   const { matchScore, changes } = parseWolfMeta(texOutput);
   const cleanTex = texOutput.replace(/%WOLF_META\{.*\}\s*$/, '').trimEnd() + '\n';
 
-  // ── 8. Write tailored .tex ─────────────────────────────────────────────────
+  // ── 8. Refine resume: compile → check pages/orphans → revise with Claude ──
   const tailoredTexPath = path.join(jobDir, 'resume.tex');
-  await fs.writeFile(tailoredTexPath, cleanTex, 'utf-8');
-
-  // ── 9. Compile PDF ─────────────────────────────────────────────────────────
-  const tailoredPdfPath = await compileTex(tailoredTexPath);
-
-  // ── 10. Screenshot ─────────────────────────────────────────────────────────
-  const screenshotPath = await pdfToScreenshot(tailoredPdfPath);
+  const maxPages = profile.maxResumePages ?? 1;
+  const { finalPdfPath: tailoredPdfPath, screenshotPath } = await refineResumeTex(
+    cleanTex, tailoredTexPath, maxPages, client, jobDir,
+  );
 
   // ── 11. Cover letter (optional) ───────────────────────────────────────────
   let coverLetterMdPath: string | null = null;
@@ -299,6 +415,21 @@ export async function tailor(options: TailorOptions): Promise<TailorResult> {
     coverLetterMdPath = path.join(jobDir, 'cover_letter.md');
     await fs.writeFile(coverLetterMdPath, clMd, 'utf-8');
     coverLetterPdfPath = await compileMdToPdf(coverLetterMdPath);
+
+    // ── 11b. CL page check — shorten if > 1 page ────────────────────────────
+    const clCheckDir = path.join(jobDir, '_check_cl');
+    await fs.mkdir(clCheckDir, { recursive: true });
+    const clPages = await pdfPageImages(coverLetterPdfPath, path.join(clCheckDir, 'p'));
+    if (clPages.length > 1) {
+      const shortenResponse = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: buildClShortenPrompt(clMd, clPages.length) }],
+      });
+      const shortenedMd = shortenResponse.content[0].type === 'text' ? shortenResponse.content[0].text : clMd;
+      await fs.writeFile(coverLetterMdPath, shortenedMd, 'utf-8');
+      coverLetterPdfPath = await compileMdToPdf(coverLetterMdPath);
+    }
   }
 
   // ── 12. Snapshot inputs (must come after CL so all outputs are final) ──────

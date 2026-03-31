@@ -51,6 +51,9 @@ vi.mock('../../../utils/fs-helpers.js', () => ({
   styleRefPath: vi.fn(() => '/workspace/data/default_default/style_ref.jpg'),
 }));
 
+// vi.hoisted ensures this is initialised before vi.mock factories run
+const mockReaddir = vi.hoisted(() => vi.fn().mockResolvedValue(['p-1.png']));
+
 vi.mock('node:fs/promises', () => ({
   default: {
     readFile: vi.fn((filePath: string) => {
@@ -63,10 +66,14 @@ vi.mock('node:fs/promises', () => ({
       if (String(filePath).endsWith('.md')) {
         return Promise.resolve('# Jane Doe\njane@example.com | 555-1234\n\nDear Hiring Manager...');
       }
+      if (String(filePath).endsWith('.png')) {
+        return Promise.resolve(Buffer.from('fakepng'));
+      }
       return Promise.reject(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
     }),
     writeFile: vi.fn().mockResolvedValue(undefined),
     mkdir: vi.fn().mockResolvedValue(undefined),
+    readdir: mockReaddir,
   },
 }));
 
@@ -76,11 +83,23 @@ vi.mock('node:child_process', () => ({
   }),
 }));
 
-const mockCreate = vi.fn().mockResolvedValue({
-  content: [{
-    type: 'text',
-    text: '\\documentclass{article}\n\\begin{document}\nTailored content\n\\end{document}\n%WOLF_META{"matchScore":0.82,"changes":["Rewrote bullet 1","Added keyword X"]}',
-  }],
+const TEX_WITH_META = '\\documentclass{article}\n\\begin{document}\nTailored content\n\\end{document}\n%WOLF_META{"matchScore":0.82,"changes":["Rewrote bullet 1","Added keyword X"]}';
+
+// Smart mock: distinguishes refinement calls (image blocks → LGTM),
+// CL generation calls (prompt contains "cover letter writer" → CL markdown),
+// and initial tailor calls (everything else → tailored tex + WOLF_META).
+const mockCreate = vi.fn().mockImplementation((args: { messages: Array<{ role: string; content: unknown }> }) => {
+  const firstMsg = args.messages?.[0];
+  const hasImages = Array.isArray(firstMsg?.content) &&
+    (firstMsg.content as Array<{ type: string }>).some(c => c.type === 'image');
+  if (hasImages) {
+    return Promise.resolve({ content: [{ type: 'text', text: 'LGTM' }] });
+  }
+  const textContent = typeof firstMsg?.content === 'string' ? firstMsg.content : '';
+  if (textContent.includes('cover letter writer')) {
+    return Promise.resolve({ content: [{ type: 'text', text: '# Jane Doe\njane@example.com | 555-1234\n\nDear Hiring Manager...' }] });
+  }
+  return Promise.resolve({ content: [{ type: 'text', text: TEX_WITH_META }] });
 });
 
 vi.mock('@anthropic-ai/sdk', () => {
@@ -140,16 +159,22 @@ const baseJob = (): Job => ({
 describe('tailor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReaddir.mockResolvedValue(['p-1.png']); // default: 1 page
     mockGetJob.mockResolvedValue(baseJob());
     mockLoadConfig.mockResolvedValue({
       defaultProfileId: 'default',
       profiles: [{ id: 'default', label: 'Default', name: 'Jane Doe', email: 'jane@example.com', phone: '555-1234' }],
     } as never);
-    mockCreate.mockResolvedValue({
-      content: [{
-        type: 'text',
-        text: '\\documentclass{article}\n\\begin{document}\nTailored\n\\end{document}\n%WOLF_META{"matchScore":0.82,"changes":["Rewrote bullet 1","Added keyword X"]}',
-      }],
+    mockCreate.mockImplementation((args: { messages: Array<{ role: string; content: unknown }> }) => {
+      const firstMsg = args.messages?.[0];
+      const hasImages = Array.isArray(firstMsg?.content) &&
+        (firstMsg.content as Array<{ type: string }>).some(c => c.type === 'image');
+      if (hasImages) return Promise.resolve({ content: [{ type: 'text', text: 'LGTM' }] });
+      const text = typeof firstMsg?.content === 'string' ? firstMsg.content : '';
+      if (text.includes('cover letter writer')) {
+        return Promise.resolve({ content: [{ type: 'text', text: '# Jane Doe\njane@example.com | 555-1234\n\nDear Hiring Manager...' }] });
+      }
+      return Promise.resolve({ content: [{ type: 'text', text: TEX_WITH_META }] });
     });
   });
 
@@ -214,39 +239,68 @@ describe('tailor', () => {
   });
 
   it('returns coverLetterMdPath and coverLetterPdfPath when coverLetter is true', async () => {
-    // First call returns resume tex; second call returns CL markdown
-    mockCreate
-      .mockResolvedValueOnce({
-        content: [{
-          type: 'text',
-          text: '\\documentclass{article}\n\\begin{document}\nTailored\n\\end{document}\n%WOLF_META{"matchScore":0.9,"changes":[]}',
-        }],
-      })
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: '# Jane Doe\njane@example.com | 555-1234\n\nDear Hiring Manager...' }],
-      });
-
     const result = await tailor({ jobId: 'job-123', coverLetter: true });
     expect(result.coverLetterMdPath).toContain('cover_letter.md');
     expect(result.coverLetterPdfPath).toContain('cover_letter.pdf');
   });
 
   it('calls updateJob with coverLetterPath when coverLetter is true', async () => {
-    mockCreate
-      .mockResolvedValueOnce({
-        content: [{
-          type: 'text',
-          text: '\\documentclass{article}\n\\begin{document}\nTailored\n\\end{document}\n%WOLF_META{"matchScore":0.9,"changes":[]}',
-        }],
-      })
-      .mockResolvedValueOnce({
-        content: [{ type: 'text', text: '# Jane Doe\nDear Hiring Manager...' }],
-      });
-
     await tailor({ jobId: 'job-123', coverLetter: true });
     expect(mockUpdateJob).toHaveBeenCalledWith('job-123', expect.objectContaining({
       coverLetterPath: expect.stringContaining('cover_letter.md'),
       coverLetterPdfPath: expect.stringContaining('cover_letter.pdf'),
     }));
+  });
+
+  describe('refinement loop (page count control)', () => {
+    // Helper: builds a mockCreate implementation with image-call tracking
+    function makeRefinementMock(onImageCall: (callNumber: number) => { content: [{ type: 'text'; text: string }] }) {
+      let imageCallCount = 0;
+      return (args: { messages: Array<{ role: string; content: unknown }> }) => {
+        const firstMsg = args.messages?.[0];
+        const hasImages = Array.isArray(firstMsg?.content) &&
+          (firstMsg.content as Array<{ type: string }>).some(c => c.type === 'image');
+        if (hasImages) return Promise.resolve(onImageCall(++imageCallCount));
+        const text = typeof firstMsg?.content === 'string' ? firstMsg.content : '';
+        if (text.includes('cover letter writer')) {
+          return Promise.resolve({ content: [{ type: 'text', text: '# Jane Doe\nDear Hiring Manager...' }] });
+        }
+        return Promise.resolve({ content: [{ type: 'text', text: TEX_WITH_META }] });
+      };
+    }
+
+    it('asks Claude to revise when PDF overflows maxResumePages, then accepts LGTM', async () => {
+      // First check: 2 pages (overflow) → Claude revises; second check: 1 page → LGTM
+      mockReaddir
+        .mockResolvedValueOnce(['p-1.png', 'p-2.png'])
+        .mockResolvedValue(['p-1.png']);
+
+      let refinementCalls = 0;
+      mockCreate.mockImplementation(makeRefinementMock((n) => {
+        refinementCalls = n;
+        if (n === 1) {
+          // overflow: return condensed tex
+          return { content: [{ type: 'text', text: '\\documentclass{article}\n\\begin{document}\nShortened\n\\end{document}' }] };
+        }
+        return { content: [{ type: 'text', text: 'LGTM' }] };
+      }));
+
+      await tailor({ jobId: 'job-123' });
+      expect(refinementCalls).toBe(2);
+    });
+
+    it('stops after MAX_ITER (5) refinement calls even if Claude never returns LGTM', async () => {
+      // Always overflow — Claude always returns revised tex, never LGTM
+      mockReaddir.mockResolvedValue(['p-1.png', 'p-2.png']);
+
+      let refinementCalls = 0;
+      mockCreate.mockImplementation(makeRefinementMock((n) => {
+        refinementCalls = n;
+        return { content: [{ type: 'text', text: '\\documentclass{article}\n\\begin{document}\nRevised\n\\end{document}' }] };
+      }));
+
+      await tailor({ jobId: 'job-123' });
+      expect(refinementCalls).toBe(5);
+    });
   });
 });
