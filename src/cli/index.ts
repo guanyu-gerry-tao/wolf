@@ -10,6 +10,7 @@ import { status } from '../commands/status/index.js';
 import { init } from '../commands/init/index.js';
 import { envShow, envSet, envClear } from '../commands/env/index.js';
 import { cleanJobs, cleanAll, cleanDangerousAll } from '../commands/dev/index.js';
+import { templategen } from '../commands/templategen/index.js';
 import { startMcpServer } from '../mcp/server.js';
 
 const program = new Command();
@@ -44,6 +45,21 @@ program
       url: opts.url,
       location: opts.location,
       remote: opts.remote,
+      profileId: opts.profile,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+program
+  .command('templategen')
+  .description('Generate a resume or cover letter LaTeX template from resume.txt')
+  .option('--type <type>', 'Template type: resume or cl (default: resume)')
+  .option('--prompt <prompt>', 'Additional instructions for Claude')
+  .option('-p, --profile <id>', 'Profile to use')
+  .action(async (opts) => {
+    const result = await templategen({
+      type: opts.type ?? 'resume',
+      prompt: opts.prompt,
       profileId: opts.profile,
     });
     console.log(JSON.stringify(result, null, 2));
