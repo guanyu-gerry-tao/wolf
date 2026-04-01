@@ -1,9 +1,11 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { tailor } from '../commands/tailor/index.js';
 import { templategen } from '../commands/templategen/index.js';
 import { setupWorkspace } from '../commands/init/index.js';
+import { resumeTxtPath, profileDir } from '../utils/fs-helpers.js';
 
 function notImplemented(tool: string): object {
   return { error: 'not_implemented', tool, message: `${tool} is not yet implemented.` };
@@ -189,7 +191,7 @@ Requires a jobId. If send is not specified, default to false and show draft firs
       description: `Generate a general-purpose resume or cover letter LaTeX template.
 Use this when the user wants to create or regenerate their resume template, or says
 "generate my resume", "create a template", "my resume looks wrong, redo it".
-Requires resume.txt to exist in data/resume/. Optionally uses style_ref.jpg for visual style.
+Requires resume_pool.md to exist in data/resume/. Optionally uses style_ref.jpg for visual style.
 If the user is unhappy with the result, call again with a prompt describing the changes.
 Supports type: 'resume' (default) or 'cl' for cover letter templates.`,
       inputSchema: {
@@ -236,20 +238,22 @@ Once you have all fields confirmed by the user, call this tool once with the com
         skills: z.array(z.string()).optional().describe('Key skills'),
         linkedinUrl: z.string().optional().describe('LinkedIn profile URL'),
         githubUrl: z.string().optional().describe('GitHub profile URL'),
+        resumeText: z.string().optional().describe('Resume content collected from user: summary, education, experience, projects, skills. Format with # SECTION headers.'),
       },
     },
     async (args, _extra) => {
       try {
-        await setupWorkspace(process.cwd(), args);
+        const { resumePoolPath: txtPath } = await setupWorkspace(process.cwd(), args);
         return {
           content: [{
             type: 'text' as const,
             text: JSON.stringify({
               success: true,
-              message: 'wolf workspace configured. wolf.toml written, data/ directory created.',
+              message: 'wolf workspace configured.',
+              resumePoolPath: txtPath,
               next_steps: [
                 'Run `wolf env set` in your terminal to configure API keys (WOLF_ANTHROPIC_API_KEY etc.)',
-                'Run wolf_templategen to generate your resume template from resume.txt',
+                args.resumeText ? 'Run wolf_templategen to generate your resume template.' : `Edit resume content at: ${txtPath} — then run wolf_templategen.`,
               ],
             }),
           }],
@@ -257,6 +261,50 @@ Once you have all fields confirmed by the user, call this tool once with the com
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'setup_failed', message }) }] };
+      }
+    }
+  );
+
+  server.registerTool(
+    'wolf_update_resume',
+    {
+      description: `Update the user's resume content pool (resume_pool.md) for a profile.
+Use this when the user wants to add or update their resume content, or says
+"update my resume", "add a new job to my resume", "my resume is outdated".
+
+Before calling, collect the full updated resume content from the user.
+Prompt them to provide: summary, education, experience, projects, and skills.
+You may update only specific sections — tell the user which sections you're updating.
+
+After calling, offer to run wolf_templategen to regenerate the resume template.`,
+      inputSchema: {
+        resumeText: z.string().describe('Full resume content. Use # SECTION headers (# SUMMARY, # EDUCATION, # EXPERIENCE, # PROJECTS, # SKILLS). Lines starting with // are treated as comments and ignored.'),
+        profileId: z.string().optional().describe('Profile to update; defaults to defaultProfileId in wolf.toml'),
+      },
+    },
+    async (args) => {
+      try {
+        const { loadConfig } = await import('../utils/config.js');
+        const config = await loadConfig();
+        const profileId = args.profileId ?? config.defaultProfileId;
+        const profile = config.profiles.find(p => p.id === profileId);
+        if (!profile) {
+          return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'profile_not_found', profileId }) }] };
+        }
+        const profDir = profileDir(process.cwd(), profile.id, profile.label);
+        await fs.mkdir(profDir, { recursive: true });
+        const txtPath = resumeTxtPath(process.cwd(), profile.id, profile.label);
+        await fs.writeFile(txtPath, args.resumeText, 'utf-8');
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify({
+            success: true,
+            message: `resume_pool.md updated at ${txtPath}`,
+            next_step: 'Run wolf_templategen to regenerate your resume template.',
+          }) }],
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'update_resume_failed', message }) }] };
       }
     }
   );
@@ -277,7 +325,8 @@ Returns what's missing and what the next step should be.`,
         const config = await loadConfig();
         const profile = config.profiles?.[0];
         const hasProfile = !!profile?.name && !!profile?.email;
-        const hasResume = !!profile?.resumePath;
+        const txtPath = profile ? resumeTxtPath(process.cwd(), profile.id, profile.label) : null;
+        const hasResume = txtPath ? await fs.access(txtPath).then(() => true).catch(() => false) : false;
 
         const result = {
           profile: hasProfile ? 'ok' : 'missing',
@@ -290,7 +339,7 @@ Returns what's missing and what the next step should be.`,
           next_step: !hasProfile
             ? 'Run `wolf init` in your workspace to set up your profile.'
             : !hasResume
-              ? 'Add your resume path to wolf.toml, or re-run `wolf init`.'
+              ? 'Add your resume content to resume_pool.md, or re-run `wolf init`.'
               : !process.env['WOLF_ANTHROPIC_API_KEY']
                 ? 'Run `wolf env set` to configure your API keys.'
                 : 'Wolf is ready. Try `wolf_hunt` to find jobs.',
