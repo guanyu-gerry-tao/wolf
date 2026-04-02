@@ -137,6 +137,27 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 
 ---
 
+**2026-04-02 — jobs/evaluations 数据库拆分**
+**我：** jobs 表把客观的 JD 事实（职位名、公司、原始 JD、结构化字段）和主观的 profile 相关数据（评分、过滤决定、选择状态、申请状态）混在一起。JD 的事实不会变；评估结果完全取决于用哪个 profile 来评分。
+**AI：** 认同。提议拆分为两张表：`jobs`（不可变的 JD 缓存，与 profile 无关）和 `evaluations`（profile 相关：score、filterDecision、filterReason、scoreJustification、selected、status、tailoredResumePath）。同一职位被两个 profile 评分时，产生两条 evaluations 记录，但只有一条 jobs 记录。
+**结果：** 采用。`jobs` 只存客观事实。`evaluations` 存所有主观和 profile 关联状态。外键：`evaluations.jobId → jobs.id`，`evaluations.profileId → profiles.id`。
+
+---
+
+**2026-04-02 — 多 Profile：可扩展但暂缓实现**
+**我：** 重新审视 2026-03-18 的多 profile 决策。完整的多 profile 支持暂不在范围内，但架构不应阻碍日后扩展。
+**AI：** jobs/evaluations 拆分已处理了核心需求。对于涉及 evaluations 的命令（`wolf score`、`wolf tailor`、`wolf list`），可选 `--profile <profileId>` 参数用于定位对应的 evaluation 记录。不传该参数时，wolf 从 `wolf.toml` 读取 `default_profile` 字段。日后支持多 profile 无需其他改动。
+**结果：** 采用。多 profile 实现暂缓。`wolf.toml` 新增 `default_profile` 字段（由 `wolf init` 设置为 `"default"`）。所有涉及 evaluations 的命令接受可选的 `--profile` 参数。2026-03-18 条目的范围相应缩减。
+
+---
+
+**2026-04-02 — 配置拆分为两个 TOML：`wolf.toml`（工作区级别）+ `profile.toml`（per-profile）**
+**我：** 全局工作区设置和每个 profile 的设置应该分开存放。单一的 `wolf.toml` 把不同作用域的内容混在一起。
+**AI：** `wolf.toml` 放在工作区根目录，存储工作区级别的设置（数据源、`default_profile`、数据库路径）。每个 profile 文件夹（`data/<profileId>_<label>/`）下有各自的 `profile.toml`，存储 per-profile 设置（姓名、邮箱、简历路径、评分偏好、移民身份、portfolioPath、transcriptPath）。
+**结果：** 采用。`wolf.toml` 是工作区入口；所有 profile 相关数据存在 profile 文件夹下的 `profile.toml` 中。需要 profile 数据的命令先读 `wolf.toml` 确定当前 profile ID，再加载对应的 `profile.toml`。
+
+---
+
 **2026-03-25 — 在 `UserProfile` 中新增 `portfolioPath` 和 `transcriptPath`；只读，仅支持 PDF**
 **我：** Portfolio 和 transcript 应像 `resumePath` 一样按 profile 独立配置，但 wolf 永远不应修改这些文件。
 **AI：** 两个字段沿用与 `resumePath` 相同的 per-profile 模式（存储在 `UserProfile`，通过 `wolf init` 配置）。两条约束在规范层面强制执行，并在 init 时校验：(1) 只读——wolf 可以附加或引用这些文件，但绝不允许写入；(2) 仅支持 PDF——不接受 `.tex` 或其他格式。
