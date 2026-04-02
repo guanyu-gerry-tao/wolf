@@ -134,3 +134,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** `wolf add` 之后，AI 应该能立即对该职位评分并将结果呈现给用户，而不是等待异步 batch。
 **AI：** Batch API 的存在是为了批量评分省钱。对于用户主动触发的单条职位，同步调用 Haiku 才是正确选择：几秒钟而非几分钟/几小时，且单条评分的绝对费用差异可以忽略不计。
 **结果：** 采用。`ScoreOptions.single: true` 跳过 Batch API，同步调用 Haiku。批量评分默认仍走 batch。
+
+---
+
+**2026-03-25 — 在 `UserProfile` 中新增 `portfolioPath` 和 `transcriptPath`；只读，仅支持 PDF**
+**我：** Portfolio 和 transcript 应像 `resumePath` 一样按 profile 独立配置，但 wolf 永远不应修改这些文件。
+**AI：** 两个字段沿用与 `resumePath` 相同的 per-profile 模式（存储在 `UserProfile`，通过 `wolf init` 配置）。两条约束在规范层面强制执行，并在 init 时校验：(1) 只读——wolf 可以附加或引用这些文件，但绝不允许写入；(2) 仅支持 PDF——不接受 `.tex` 或其他格式。
+**结果：** 采用。`portfolioPath: string | null` 和 `transcriptPath: string | null` 添加至 `UserProfile`。`wolf init` 新增提示（可跳过，校验 `.pdf` 后缀）。与 `resumePath` 不同，这两个字段没有定制化处理流程，也永远不会有。

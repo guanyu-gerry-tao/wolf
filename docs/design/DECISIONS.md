@@ -134,3 +134,10 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **Me:** After `wolf add`, the AI should be able to immediately score the job and present results to the user — not wait for an async batch.
 **AI:** Batch API exists for cost savings on bulk jobs. For a single user-initiated job, synchronous Haiku is the right call: seconds instead of minutes/hours, and the marginal cost difference is negligible for one job.
 **Result:** Adopted. `ScoreOptions.single: true` skips the Batch API and calls Haiku synchronously. Default remains batch for bulk scoring.
+
+---
+
+**2026-03-25 — Added `portfolioPath` and `transcriptPath` to `UserProfile`; read-only, PDF only**
+**Me:** Portfolio and transcript should be tracked per-profile like `resumePath`, but wolf should never modify them.
+**AI:** Both fields follow the same per-profile pattern as `resumePath` (stored in `UserProfile`, configurable in `wolf init`). Key constraints enforced by convention and validated at init time: (1) read-only — wolf may attach or reference these files but must never write to them; (2) PDF only — no `.tex` or other formats accepted.
+**Result:** Adopted. `portfolioPath: string | null` and `transcriptPath: string | null` added to `UserProfile`. `wolf init` prompts for both (skippable, validated for `.pdf` extension). Unlike `resumePath`, these fields have no tailoring pipeline and will never gain one.

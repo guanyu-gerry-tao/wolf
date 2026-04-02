@@ -126,6 +126,9 @@ interface Job {
   coverLetterPdfPath: string | null;       // 求职信 PDF 路径
   screenshotPath: string | null;           // 表单填写截图路径
   outreachDraftPath: string | null;        // 外联邮件草稿路径
+  resumeSnapshot: string | null;           // tailor 时使用的 resume.txt 快照，如 "resume_a3f2c1.txt"
+  styleSnapshot: string | null;            // tailor 时使用的 style_ref.jpg 快照，如 "style_b4e1d2.jpg"（无参考图则为 null）
+  texSnapshot: string | null;              // tailor 时使用的 resume.tex 快照，如 "resume_c5f3e4.tex"
   createdAt: string;                       // ISO 8601 时间戳
   updatedAt: string;                       // ISO 8601 时间戳
 }
@@ -213,6 +216,8 @@ interface UserProfile {
   targetLocations: string[];        // 例如 ["NYC", "SF", "Remote"]
   skills: string[];                 // 例如 ["TypeScript", "React", "Python"]
   resumePath: string;               // base 简历 .tex 文件路径（联系方式 header 由本 profile 注入）
+  portfolioPath: string | null;     // portfolio PDF 路径；wolf 只读，永不修改；必须是 .pdf 文件
+  transcriptPath: string | null;    // 成绩单 PDF 路径；wolf 只读，永不修改；必须是 .pdf 文件
   targetedCompanyIds: string[];     // 用户主动盯着的公司列表；这些公司的职位在评分时获得加分
   scoringPreferences: ScoringPreferences;
 }
@@ -333,26 +338,44 @@ interface HuntResult {
 
 ---
 
+### `templategen`
+
+`wolf_templategen` 根据用户的全量内容池（`resume.txt`）和可选的视觉参考图（`style_ref.jpg`），生成通用版 LaTeX 简历（或求职信模板），保存为 `data/resume/resume.tex` 并编译供审阅。用户可多次调用（附加 `prompt`）来细化效果。
+
+```typescript
+interface TemplategenOptions {
+  type: 'resume' | 'cl';   // 模板类型：简历或求职信
+  prompt?: string;          // 可选的用户额外指令，如"让页眉更简洁"
+  profileId?: string;       // 默认用 defaultProfileId
+}
+
+interface TemplategenResult {
+  texPath: string;          // data/resume/resume.tex 的绝对路径
+  pdfPath: string;          // 编译后 PDF 的绝对路径（供审阅）
+  screenshotPath: string;   // 首页 PNG 预览的绝对路径
+  texSnapshot: string;      // 快照文件名，如 "resume_c5f3e4.tex"
+}
+```
+
+---
+
 ### `tailor`
 
-`wolf tailor` 读取某个职位的 JD，用 Claude 改写你的简历要点，使其与 JD 匹配。同时可选生成求职信。每个职位都会得到自己专属的定制输出——base 简历永远不会被修改。
+`wolf tailor` 读取某个职位的 JD，从 `resume.txt` 中选取最相关的经历，填入 `resume.tex` 模板结构，生成针对该 JD 的定制简历。需要先运行 `wolf_templategen`。每个职位都有自己专属的定制输出——通用模板永远不会被修改。
 
 ```typescript
 interface TailorOptions {
   jobId: string;               // 要定制的职位 ID
-  profileId?: string;          // 用哪个 profile 注入联系方式；默认用 defaultProfileId
-  resume?: string;             // 指定使用的 .tex 简历路径；默认使用所选 profile 的 resumePath
+  profileId?: string;          // 默认用 defaultProfileId
   coverLetter?: boolean;       // 是否同时生成求职信（默认 true）
   diff?: boolean;              // 显示修改前后对比
 }
 ```
 
-`resume?` 也支持"仅生成求职信"模式：传入一份已定制的简历路径并设置 `coverLetter: true`，即可跳过重新定制简历。
-
 ```typescript
 interface TailorResult {
-  tailoredTexPath: string | null;     // 输出 .tex 文件路径；如果未重新定制简历则为 null
-  tailoredPdfPath: string | null;     // 编译后的简历 PDF 路径；如果未重新定制简历则为 null
+  tailoredTexPath: string | null;     // 输出 .tex 文件路径
+  tailoredPdfPath: string | null;     // 编译后的简历 PDF 路径
   coverLetterMdPath: string | null;   // 求职信 .md 路径
   coverLetterPdfPath: string | null;  // 求职信 PDF 路径
   changes: string[];                  // 主要改动摘要
@@ -468,6 +491,9 @@ interface JobUpdate {
   coverLetterPdfPath?: string | null;
   screenshotPath?: string | null;
   outreachDraftPath?: string | null;
+  resumeSnapshot?: string | null;
+  styleSnapshot?: string | null;
+  texSnapshot?: string | null;
 }
 ```
 
@@ -517,6 +543,9 @@ interface JobProvider {
 | MCP Tool | 输入类型 | 输出类型 |
 |---|---|---|
 | `wolf_hunt` | `HuntOptions` | `HuntResult` |
+| `wolf_add` | `AddOptions` | `AddResult` |
+| `wolf_score` | `ScoreOptions` | `ScoreResult` |
+| `wolf_templategen` | `TemplategenOptions` | `TemplategenResult` |
 | `wolf_tailor` | `TailorOptions` | `TailorResult` |
 | `wolf_fill` | `FillOptions` | `FillResult` |
 | `wolf_reach` | `ReachOptions` | `ReachResult` |

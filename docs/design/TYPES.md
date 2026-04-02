@@ -123,6 +123,9 @@ interface Job {
   coverLetterPdfPath: string | null;       // path to cover letter PDF
   screenshotPath: string | null;           // path to form-fill screenshot
   outreachDraftPath: string | null;        // path to outreach email draft
+  resumeSnapshot: string | null;           // resume.txt snapshot used at tailor time, e.g. "resume_a3f2c1.txt"
+  styleSnapshot: string | null;            // style_ref.jpg snapshot used at tailor time, e.g. "style_b4e1d2.jpg" (null if no ref image)
+  texSnapshot: string | null;              // resume.tex snapshot used at tailor time, e.g. "resume_c5f3e4.tex"
   createdAt: string;                       // ISO 8601 timestamp
   updatedAt: string;                       // ISO 8601 timestamp
 }
@@ -210,6 +213,8 @@ interface UserProfile {
   targetLocations: string[];        // e.g. ["NYC", "SF", "Remote"]
   skills: string[];                 // e.g. ["TypeScript", "React", "Python"]
   resumePath: string;               // path to base resume .tex file (contact header is injected from this profile)
+  portfolioPath: string | null;     // path to portfolio PDF; wolf reads only, never modifies; must be .pdf
+  transcriptPath: string | null;    // path to transcript PDF; wolf reads only, never modifies; must be .pdf
   targetedCompanyIds: string[];     // companies the user is actively watching; jobs from these companies get a scoring boost
   scoringPreferences: ScoringPreferences;
 }
@@ -348,26 +353,44 @@ interface ScoreResult {
 
 ---
 
+### `templategen`
+
+`wolf_templategen` generates a general-purpose LaTeX resume (or cover letter template) from the user's full content pool (`resume.txt`) and optional visual reference (`style_ref.jpg`). The result is stored as `data/resume/resume.tex` and compiled for review. Users may call this multiple times with an additional `prompt` to refine the result.
+
+```typescript
+interface TemplategenOptions {
+  type: 'resume' | 'cl';   // template type: resume or cover letter
+  prompt?: string;          // optional user instructions for Claude, e.g. "make the header more minimal"
+  profileId?: string;       // defaults to defaultProfileId
+}
+
+interface TemplategenResult {
+  texPath: string;          // absolute path to data/resume/resume.tex
+  pdfPath: string;          // absolute path to compiled PDF for review
+  screenshotPath: string;   // absolute path to first-page PNG preview
+  texSnapshot: string;      // snapshot filename, e.g. "resume_c5f3e4.tex"
+}
+```
+
+---
+
 ### `tailor`
 
-`wolf tailor` takes a job ID, reads the JD, and uses Claude to rewrite your resume's bullet points to match. It also optionally generates a cover letter. Every job gets its own tailored output — the base resume is never modified.
+`wolf tailor` takes a job ID and uses Claude to select the most relevant experiences from `resume.txt` and fit them into the `resume.tex` template structure, tailored to the JD. Requires `wolf_templategen` to have been run first. Every job gets its own tailored output — the base template is never modified.
 
 ```typescript
 interface TailorOptions {
   jobId: string;               // ID of the job to tailor for
-  profileId?: string;          // which profile to use for contact injection; defaults to defaultProfileId
-  resume?: string;             // path to a specific .tex resume; defaults to the selected profile's resumePath
+  profileId?: string;          // defaults to defaultProfileId
   coverLetter?: boolean;       // also generate cover letter (default true)
   diff?: boolean;              // show before/after comparison
 }
 ```
 
-`resume?` also enables cover-letter-only mode: pass an existing tailored resume path and set `coverLetter: true` to skip re-tailoring the resume.
-
 ```typescript
 interface TailorResult {
-  tailoredTexPath: string | null;     // path to output .tex file; null if resume was not re-tailored
-  tailoredPdfPath: string | null;     // path to compiled resume PDF; null if resume was not re-tailored
+  tailoredTexPath: string | null;     // path to output .tex file
+  tailoredPdfPath: string | null;     // path to compiled resume PDF
   coverLetterMdPath: string | null;   // path to cover letter .md
   coverLetterPdfPath: string | null;  // path to cover letter PDF
   changes: string[];                  // summary of key changes made
@@ -483,6 +506,9 @@ interface JobUpdate {
   coverLetterPdfPath?: string | null;
   screenshotPath?: string | null;
   outreachDraftPath?: string | null;
+  resumeSnapshot?: string | null;
+  styleSnapshot?: string | null;
+  texSnapshot?: string | null;
 }
 ```
 
@@ -532,7 +558,9 @@ Each MCP tool maps directly to a command:
 | MCP Tool | Input Type | Output Type |
 |---|---|---|
 | `wolf_hunt` | `HuntOptions` | `HuntResult` |
+| `wolf_add` | `AddOptions` | `AddResult` |
 | `wolf_score` | `ScoreOptions` | `ScoreResult` |
+| `wolf_templategen` | `TemplategenOptions` | `TemplategenResult` |
 | `wolf_tailor` | `TailorOptions` | `TailorResult` |
 | `wolf_fill` | `FillOptions` | `FillResult` |
 | `wolf_reach` | `ReachOptions` | `ReachResult` |
