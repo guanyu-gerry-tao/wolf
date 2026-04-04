@@ -49,5 +49,8 @@ Thumbs.db
 # data files
 data/*
 
+# Local resume samples for parser development (never commit)
+samples/*
+
 # Always keep .gitkeep files (must be last)
 !**/.gitkeep

@@ -14,12 +14,12 @@
 
 ### CLI skeleton
 - [x] Set up `commander.js` CLI entry point (`wolf`)
-- [x] Register subcommands: `wolf hunt`, `wolf score`, `wolf tailor`, `wolf fill`, `wolf reach`, `wolf status` (stubs ok)
+- [x] Register subcommands: `wolf hunt`, `wolf score`, `wolf list`, `wolf select`, `wolf tailor`, `wolf cover-letter`, `wolf fill`, `wolf reach`, `wolf env` (stubs ok)
 
 ### MCP skeleton
 - [x] MCP server entry point (`wolf mcp serve`)
-- [x] Register MCP tools: `wolf_hunt`, `wolf_score`, `wolf_tailor`, `wolf_fill`, `wolf_reach` (stubs ok)
-- [x] Typed input/output schemas defined for all 5 tools
+- [x] Register MCP tools: `wolf_hunt`, `wolf_add`, `wolf_score`, `wolf_list`, `wolf_select`, `wolf_tailor`, `wolf_cover_letter`, `wolf_fill`, `wolf_reach`, `wolf_status` (stubs ok)
+- [x] Typed input/output schemas defined for all tools
 - [x] Verify connection from Claude Desktop / OpenClaw
 
 ---
@@ -40,18 +40,23 @@
 - [ ] No CLI equivalent — AI caller (Claude/OpenClaw) is responsible for extracting structure from user input (screenshot, pasted text, URL)
 
 ### `wolf score` / `wolf_score`
-- [ ] Read unscored jobs (`score: null`) from DB
+- [ ] Read unscored jobs (`score: null` OR `status: score_error`) from DB
 - [ ] AI field extraction — Claude API extracts structured fields (sponsorship, tech stack, remote, salary) from raw JD text
 - [ ] Apply dealbreakers (hard filters) — disqualified jobs saved as `status: filtered`
 - [ ] Claude API (Batch) — async scoring of remaining jobs against user profile (0.0–1.0)
 - [ ] Hybrid scoring: algorithm scores structured dimensions (location, salary, work auth); Claude scores `roleMatch` only
-- [ ] `--single` flag — skip Batch API, score one job synchronously via Haiku (for AI-orchestrated flows after `wolf_add`)
-- [ ] Filter by `min_score` from config; tag jobs `new` / `reviewed` / `applied` / `rejected`
+- [ ] `--jobid` flag — skip Batch API, score one job synchronously via Haiku (for AI-orchestrated flows after `wolf_add`)
 - [ ] Wire up MCP tool (replace stub)
 
-### `wolf status`
-- [ ] List all tracked jobs with status and score
-- [ ] Filter by `--status`, `--score`, `--date`
+### `wolf list` / `wolf_list`
+- [ ] `--jobs` mode: filter by score, status, date, company; return table sorted by score
+- [ ] `--companies` mode: return all distinct companies with IDs
+- [ ] Wire up MCP tool (replace stub)
+
+### `wolf select` / `wolf_select`
+- [ ] Interactive TUI (CLI): browse scored jobs, toggle `selected` field
+- [ ] MCP: accept `{ jobIds, action: "select" | "unselect" }`, update DB
+- [ ] Wire up MCP tool (replace stub)
 
 ---
 
@@ -62,9 +67,15 @@
 - [ ] Parse resume from `.tex` source file
 - [ ] Claude API prompt — rewrite bullet points to match JD keywords
 - [ ] Output tailored resume as new `.tex` file + compile to PDF via `xelatex`
-- [ ] Generate cover letter as `.md` file + convert to PDF via `md-to-pdf`
+- [ ] `--cover-letter` flag — trigger cover letter generation after tailoring completes
 - [ ] Print match score and key changes summary
 - [ ] `--diff` flag — show before/after comparison
+- [ ] Wire up MCP tool (replace stub)
+
+### `wolf cover-letter` / `wolf_cover_letter`
+- [ ] Generate cover letter for selected jobs with no existing CL
+- [ ] Check JD / companies table for company description; omit "why this company" section if not found
+- [ ] Save as `.md` + convert to PDF via `md-to-pdf`; record path in `evaluations.coverLetterPath`
 - [ ] Wire up MCP tool (replace stub)
 
 ---

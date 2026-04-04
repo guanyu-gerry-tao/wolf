@@ -12,7 +12,7 @@ AI-powered job hunting CLI + MCP server. Finds roles, tailors resumes, fills for
 
 Goal: wolf is runnable as both a CLI and an MCP server, all subcommands registered (stubs ok).
 
-See [docs/MILESTONES.md](docs/MILESTONES.md) for full milestone plan.
+See [docs/overview/MILESTONES.md](docs/overview/MILESTONES.md) for full milestone plan.
 
 ## Project structure (planned)
 
@@ -95,7 +95,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 ## Workflow rules
 
 - Do NOT commit or push without explicit user approval. Always show changes and wait for confirmation first.
-- When a significant design decision is made during conversation, ask the user: "Should we record this in DECISIONS.md?" (This rule itself is recorded in DECISIONS.md — 2026-03-20.)
+- When a significant design decision is made during conversation, ask the user: "Should we record this in DECISIONS.md?" (This rule itself is recorded in docs/design/DECISIONS.md — 2026-03-20.)
 
 ## Documentation rules
 

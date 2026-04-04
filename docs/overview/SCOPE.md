@@ -26,7 +26,7 @@ Find job listings from multiple sources and save them locally.
 - **Browser-assisted** extraction via BrowserMCP (AI-driven page navigation)
 - **Manual entry** — paste a JD or URL directly (`wolf hunt --manual`)
 
-### Job Scoring (`wolf hunt`)
+### Job Scoring (`wolf score`)
 
 AI-powered relevance scoring using Claude API.
 
@@ -43,13 +43,14 @@ Rewrite resume bullet points to better match a specific JD.
 - Output a new tailored `.tex` file + compile to PDF via `xelatex`
 - Show diff and match score
 
-### Cover Letter Generation (`wolf tailor --cover-letter`)
+### Cover Letter Generation (`wolf cover-letter`)
 
 Generate a targeted cover letter for a specific job.
 
+- Standalone command; also triggered by `wolf tailor --cover-letter` or automatically during form filling
 - AI-drafted via Claude API, based on JD + user profile + tailored resume
+- Adapts content based on available company description; omits "why this company" section rather than hallucinating if no description is found
 - Output as `.md` file + convert to PDF via `md-to-pdf`
-- Tone and length configurable
 
 ### User Profile (`wolf init`)
 
@@ -61,7 +62,7 @@ Collect and store personal information needed for applications and outreach.
 - **Target roles and locations**
 - **Skills and experience summary**
 - **Contact info** (name, email, phone, LinkedIn URL)
-- Stored locally in `wolf.toml` — never uploaded unless you initiate an API call
+- Stored locally in `wolf.toml` (workspace-level) and `profile.toml` (per-profile, inside the profile folder) — never uploaded unless you initiate an API call
 - Used by `wolf fill` (form filling), `wolf reach` (email drafting), and `wolf tailor` (resume context)
 
 ### Form Filling (`wolf fill`)
@@ -82,12 +83,14 @@ Find hiring contacts and send personalized cold emails.
 - AI-drafted personalized emails via Claude API
 - Send via Gmail API with explicit `--send` flag + confirmation
 
-### Job Tracking (`wolf status`)
+### Job Listing & Selection (`wolf list`, `wolf select`)
 
-Track application status locally.
+Browse and select jobs locally.
 
-- Status lifecycle: `new` → `reviewed` → `applied` / `rejected`
-- Filter by status, score, date
+- `wolf list --jobs` — filter and display scored jobs (by score, status, date, company)
+- `wolf list --companies` — list all tracked companies
+- `wolf select` — interactive TUI to mark jobs for application
+- Status values: `raw`, `scored`, `filtered`, `score_error`, `tailor_error`, `applied`
 - All data in local SQLite — inspectable, portable, no cloud dependency
 
 ### Dual Interface & External Orchestration

@@ -5,35 +5,126 @@
 wolf is a dual-interface application: it runs as both a **CLI tool** (for human users) and an **MCP server** (for AI agents like OpenClaw). Both interfaces share the same core command logic, ensuring consistent behavior regardless of how wolf is invoked.
 
 ```
-                ┌─────────────────────────────────────────────┐
-                │                 Consumers                   │
-                │                                             │
-                │   Human (terminal)      AI Agent (OpenClaw) │
-                └──────┬──────────────────────────┬───────────┘
-                       │                          │
-                       v                          v
-                ┌─────────────┐          ┌────────────────┐
-                │  CLI Layer  │          │   MCP Layer    │
-                │ commander.js│          │   MCP SDK      │
-                └──────┬──────┘          └───────┬────────┘
-                       │                         │
-                       └────────┬────────────────┘
-                                │
-                                v
-                ┌──────────────────────────────┐
-                │       Commands (Core)        │
-                │  hunt / tailor / fill / reach │
-                │           status             │
-                └──────┬───────────────┬───────┘
-                       │               │
-              ┌────────┴───┐     ┌─────┴──────────┐
-              v            v     v                 v
-        ┌──────────┐ ┌────────┐ ┌──────────┐ ┌─────────┐
-        │ External │ │ AI     │ │ Browser  │ │ Local   │
-        │ Services │ │ Layer  │ │ Layer    │ │ Storage │
-        │ External │ │ Claude │ │Playwright│ │ SQLite  │
-        │ Gmail    │ │  API   │ │          │ │         │
-        └──────────┘ └────────┘ └──────────┘ └─────────┘
+        Human (terminal)          AI Agent (OpenClaw)
+               │                          │
+               v                          v
+        ┌─────────────┐          ┌────────────────┐
+        │  CLI Layer  │          │   MCP Layer    │   Presentation
+        │ commander.js│          │   MCP SDK      │
+        └──────┬──────┘          └───────┬────────┘
+               └────────────┬────────────┘
+                            │
+                            v
+               ┌────────────────────────┐
+               │       Commands         │   Commands
+               │  tailor / hunt / score │
+               │  fill / reach / ...    │
+               └────────────┬───────────┘
+                            │
+                            v
+               ┌────────────────────────┐
+               │       Workflows        │   Workflows
+               │  tailor pipeline       │
+               │  fitToOnePage          │
+               │  score pipeline        │
+               └────────────┬───────────┘
+                            │
+                            v
+               ┌────────────────────────┐
+               │       Services         │   Services
+               │  compile / rewrite     │
+               │  scoring / email       │
+               └────────────┬───────────┘
+                            │
+                            v
+        ┌──────────┬─────────────┬──────────┬─────────┐
+        │  Claude  │   SQLite    │ xelatex  │  Gmail  │   Utils + External
+        │   API    │             │ pdfinfo  │   API   │
+        └──────────┴─────────────┴──────────┴─────────┘
+```
+
+## Layered Architecture
+
+wolf is structured in five layers. Each layer may only depend on the layers below it — never sideways or upward.
+
+```
+┌──────────────────────────────────────────────────────┐
+│  Presentation  src/cli/  src/mcp/                    │
+│  Parse args, format output. No logic.                │
+├──────────────────────────────────────────────────────┤
+│  Commands      src/commands/                         │
+│  Entry points. Fetch from DB, call workflow,         │
+│  handle errors, return typed result.                 │
+├──────────────────────────────────────────────────────┤
+│  Workflows     src/workflows/                        │
+│  Multi-step pipelines. Orchestrate services.         │
+│  No I/O, no DB, no CLI/MCP awareness.                │
+├──────────────────────────────────────────────────────┤
+│  Services      src/services/                         │
+│  Single-responsibility I/O units. One thing well.    │
+│  Thin wrappers around external calls.                │
+├──────────────────────────────────────────────────────┤
+│  Utils         src/utils/                            │
+│  Primitives. No business semantics.                  │
+│  AI client, DB client, latex runner, logger.         │
+└──────────────────────────────────────────────────────┘
+```
+
+### Layer responsibilities
+
+| Layer | Directory | Does | Does NOT |
+|---|---|---|---|
+| **Utils** | `src/utils/` | Wrap external tools/SDKs (Anthropic, SQLite, xelatex, pdfinfo) | Contain any business logic or domain concepts |
+| **Services** | `src/services/` | Perform one operation (parse resume, compile tex, score one job) | Orchestrate multi-step flows or chain other services |
+| **Workflows** | `src/workflows/` | Orchestrate multi-step pipelines (fitToOnePage, tailor pipeline) | Know about DB, CLI options, or MCP schemas |
+| **Commands** | `src/commands/` | Wire options → workflow; read/write DB; handle errors | Contain business logic — delegate everything to workflows |
+| **Presentation** | `src/cli/` `src/mcp/` | Parse input, format output | Contain any logic beyond argument mapping |
+
+### Planned structure
+
+```
+src/
+├── cli/              # Presentation — commander.js
+├── mcp/              # Presentation — MCP SDK
+├── commands/         # Commands — one folder per subcommand
+├── workflows/        # Workflows — multi-step pipelines
+│   ├── tailor.ts         # full tailor pipeline (parse → rewrite → compile → compress)
+│   ├── fitToOnePage.ts   # binary search over layout params
+│   ├── score.ts          # extract → dealbreaker → batch/single score
+│   └── hunt.ts           # fetch → dedup → save
+├── services/         # Services — single-responsibility units
+│   ├── resume.ts         # parseResumeTex(), writeResumeTex()
+│   ├── compile.ts        # compileTex(params), getPageCount()
+│   ├── rewrite.ts        # rewriteBullets(resume, jd, profile)
+│   ├── scoring.ts        # extractFields(), applyDealbreakers(), scoreWithClaude()
+│   └── email.ts          # draftEmail(), sendEmail()
+├── utils/            # Utils — primitives
+│   ├── ai.ts             # Anthropic SDK client + retry
+│   ├── db.ts             # SQLite CRUD
+│   ├── latex.ts          # xelatex runner, pdfinfo
+│   ├── config.ts         # wolf.toml read/write
+│   ├── env.ts            # WOLF_* env vars
+│   └── logger.ts         # structured logging
+└── types/            # Shared types (cross-cutting, not a layer)
+```
+
+### Example: tailor flow across layers
+
+```
+CLI parses --job abc123
+  → [Command] tailor({ jobId })
+      → db.getJob(jobId)               # Utils: SQLite
+      → db.getProfile(profileId)       # Utils: SQLite
+      → [Workflow] runTailorPipeline(resume, jd, profile)
+          → [Service] parseResumeTex(texPath)     # parse .tex → Resume struct
+          → [Service] rewriteBullets(resume, jd)  # call Claude
+          → [Service] writeResumeTex(result)      # write tailored .tex
+          → [Workflow] fitToOnePage(texPath)       # binary search → compile loop
+              → [Service] compileTex(params)       # xelatex
+              → [Service] getPageCount(pdfPath)    # pdfinfo
+      → db.updateEvaluation(jobId, { tailoredResumePath, matchScore })
+      → return { tailoredTexPath, tailoredPdfPath, matchScore, changes }
+  → CLI formats and prints summary
 ```
 
 ## Design Principles
@@ -81,7 +172,7 @@ src/mcp/
 - Map incoming tool calls to the corresponding function in `src/commands/`
 - Return structured JSON results (no terminal formatting)
 
-The MCP layer registers 6 tools (`wolf_hunt`, `wolf_add`, `wolf_score`, `wolf_tailor`, `wolf_fill`, `wolf_reach`, `wolf_status`). `wolf_add` is MCP-only — it has no CLI equivalent, because its caller (an AI agent) already holds the structured content and wolf only needs to store it. Input/output schemas are defined in [TYPES.md § MCP Tool Schemas](TYPES.md#mcp-tool-schemas).
+The MCP layer registers tools: `wolf_hunt`, `wolf_add`, `wolf_score`, `wolf_list`, `wolf_select`, `wolf_tailor`, `wolf_cover_letter`, `wolf_fill`, `wolf_reach`, `wolf_status`. `wolf_add` is MCP-only — its caller (an AI agent) extracts structure from user input; wolf only stores it. Input/output schemas are defined in `src/mcp/tools.ts`.
 
 ### 3. Commands Layer (`src/commands/`)
 
@@ -92,10 +183,12 @@ src/commands/
 ├── hunt/             # Job ingestion — fetch raw jobs from providers, save to DB
 ├── add/              # Single job ingestion — store AI-structured job from MCP caller
 ├── score/            # Job processing — AI extraction, dealbreaker filtering, scoring
-├── tailor/           # Resume tailoring
+├── tailor/           # Resume tailoring — resume.tex + resume.txt + JD → tailored PDF
+├── list/             # Job listing — filter and display jobs or companies
+├── select/           # Job selection — toggle selected flag in DB
+├── cover-letter/     # Cover letter generation — draft, save, convert to PDF
 ├── fill/             # Form auto-fill
 ├── reach/            # HR contact finding and outreach
-├── status/           # Job tracking dashboard
 ├── env/              # API key management (set/show/clear)
 └── init/             # Setup wizard
 ```
@@ -146,7 +239,7 @@ The types layer defines shared data structures across all layers — the single 
 - `AppConfig` — user configuration, loaded from `wolf.toml` in the workspace root.
 - Per-command Options/Result pairs.
 
-Full definitions in [TYPES.md](TYPES.md).
+Full definitions in `src/types/`.
 
 ### 5. Utils (`src/utils/`)
 
@@ -166,7 +259,7 @@ Job data can come from **many different channels**. The `hunt` command uses a **
 
 **Why:** Different platforms have wildly different accessibility and each user may have different data sources available.
 
-`JobProvider` interface requires only `name` and `hunt()`. Definition in [TYPES.md § Provider Interface](TYPES.md#provider-interface).
+`JobProvider` interface requires only `name` and `hunt()`. Definition in `src/types/commands.ts`.
 
 **Built-in providers (planned):**
 
@@ -245,7 +338,6 @@ AI batch jobs (scoring, and future batch tailoring) are tracked in a shared `bat
 | `status` | string | `"pending"`, `"completed"`, `"failed"` |
 
 **Poll triggers:**
-- `wolf status` — polls all pending batches before displaying results
 - `wolf score --poll` — explicit poll without submitting a new batch
 
 Each `type` registers a handler in `batch.ts`. When a batch completes, the handler writes results back to the `jobs` table. Commands never touch `batchId` directly — batch lifecycle is fully managed by `utils/batch.ts`.
@@ -301,7 +393,7 @@ User shares job with AI (screenshot / pasted text / URL)
 ```
 CLI parses args
   → score({ profileId })
-    → db.getJobs({ score: null })             # fetch all unscored jobs
+    → db.getJobs({ score: null, orStatus: 'score_error' })  # fetch unscored + previously errored jobs
     → ai.extractFields(jobs)                  # Claude: extract sponsorship, techStack, remote, salary from JD text
     → applyDealbreakers(jobs, profile)        # hard filter — disqualified → status: filtered
     → ai.submitBatch(remaining, profile)      # submit to Claude Batch API (async, returns immediately)
@@ -309,18 +401,43 @@ CLI parses args
   ← CLI prints batch summary; scoring completes in background
 ```
 
+### `wolf_templategen` (generate general-purpose resume template)
+
+```
+wolf_templategen({ type: "resume", prompt?: "..." })
+  → read data/resume/resume.txt         # full content pool (all experiences, projects, skills)
+  → check data/resume/style_ref.jpg     # optional visual reference image
+  → call Claude Vision (txt + image)    # generate content-filled resume.tex
+  → write data/resume/resume.tex        # active general-purpose template
+  → pdflatex(resume.tex)               # compile to PDF (two passes)
+  → pdftoppm(resume.pdf)               # first-page screenshot for review
+  → snapshotAsset(txt) + snapshotAsset(jpg) + snapshotAsset(tex)  # version all three assets
+  → return { texPath, pdfPath, screenshotPath, texSnapshot }
+← AI presents screenshot for user review; user may call again with additional prompt
+```
+
 ### `wolf tailor --job <job_id>`
 
 ```
 CLI parses args
   → tailor({ jobId: "abc123" })
-    → db.getJob(jobId)                       # fetch JD from local DB
-    → profile.resumePath                     # get base .tex resume path from profile
-    → parseResume(resumePath)                # parse .tex into structured Resume
-    → claude.tailorResume(resume, job.desc)  # AI rewrite
-    → writeFile(tailoredTexPath, result)     # save tailored .tex
-    → xelatex(tailoredTexPath)              # compile to PDF
-    → return { tailoredTexPath, tailoredPdfPath, coverLetterMdPath, coverLetterPdfPath, changes, matchScore }
+    → db.getJob(jobId)                        # fetch JD from local DB
+    → verify data/resume/resume.txt exists    # full content pool
+    → verify data/resume/resume.tex exists    # general-purpose template (run wolf_templategen first if missing)
+    → read tailor_notes.md (if present)       # per-job prompt layer (see issue #37)
+    → call Claude:
+        resume.tex (structure) + resume.txt (all content) + JD
+        → select most relevant experiences/projects from txt
+        → fill into tex structure with JD-tuned bullets
+    → validate returned .tex
+    → parse %WOLF_META for matchScore + changes
+    → writeFile(data/tailored/<jobId>.tex)    # save tailored .tex
+    → pdflatex(tailoredTexPath)              # compile to PDF (two passes)
+    → pdftoppm(tailoredPdfPath)             # first-page screenshot for visual review
+    → snapshotAsset(txt) + snapshotAsset(tex) + snapshotAsset(jpg if exists)
+    → db.updateJob(jobId, { tailoredResumePath, tailoredResumePdfPath, screenshotPath,
+                            resumeSnapshot, styleSnapshot, texSnapshot })
+    → return { tailoredTexPath, tailoredPdfPath, changes, matchScore }
   ← CLI prints diff and summary
 ```
 
@@ -355,15 +472,21 @@ This design aligns with how AI agents work: Claude Code's working context is the
 
 ```
 <workspace>/
-├── wolf.toml         # User config: profiles, providers, scoring prefs (TOML, human-editable)
-├── .gitignore        # Auto-generated by wolf init
-├── resume/           # User's resume files (user-managed)
-├── credentials/      # OAuth tokens (Gmail) — gitignored
-└── data/             # Generated files — gitignored
-    ├── wolf.sqlite   # Job listings, statuses, scores
-    ├── tailored/     # Generated tailored resumes (.tex + .pdf)
-    ├── screenshots/  # Form fill audit screenshots
-    └── outreach/     # Draft outreach emails
+├── wolf.toml           # User config: profiles, providers, scoring prefs (TOML, human-editable)
+├── .gitignore          # Auto-generated by wolf init
+├── credentials/        # OAuth tokens (Gmail) — gitignored
+└── data/               # Generated files — gitignored
+    ├── wolf.sqlite     # Job listings, statuses, scores
+    └── <profileId>_<profileLabel>/      # One directory per profile (e.g. default_default/)
+        ├── profile.toml                 # Per-profile settings: name, email, resume path, scoring prefs, immigration status
+        ├── resume_pool.md               # Full resume content pool (AI-written / user-edited)
+        └── <company>_<title>_<jobId>/   # One directory per tailor run
+            ├── resume.tex               # Tailored resume source
+            ├── resume.pdf               # Compiled PDF
+            ├── resume_p1.jpg            # Screenshot page 1
+            ├── resume_p2.jpg            # Screenshot page 2 (if exists)
+            ├── cover_letter.md          # Cover letter draft
+            └── cover_letter.pdf         # Cover letter PDF (if md-to-pdf installed)
 ```
 
 > API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env set` to configure them in `~/.zshrc`.

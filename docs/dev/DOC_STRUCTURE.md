@@ -15,7 +15,6 @@
 | File | Purpose |
 |---|---|
 | `CLAUDE.md` | Project structure, current milestone, common commands. Auto-read by Claude Code. |
-| `docs/TYPES.md` | All shared types with descriptions. AI knows the data structures when writing code. |
 
 ## For project definition
 
