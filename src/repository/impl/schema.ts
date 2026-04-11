@@ -7,7 +7,7 @@
  * All CREATE TABLE statements live in ./initializeSchema.ts.
  * Repositories import table references from here.
  */
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { CompanySize } from '../../types/company.js';
 import type { JobError, JobSource, JobStatus, Salary } from '../../types/job.js';
 import type { Sponsorship } from '../../types/sponsorship.js';
@@ -45,7 +45,7 @@ export const jobs = sqliteTable('jobs', {
   salary: text('salary', { mode: 'json' }).$type<Salary>(),
   workAuthorizationRequired: text('work_authorization_required').$type<Sponsorship>().notNull(),
   clearanceRequired: integer('clearance_required', { mode: 'boolean' }).notNull(),
-  score: integer('score'),
+  score: real('score'),
   scoreJustification: text('score_justification'),
   status: text('status').$type<JobStatus>().notNull(),
   error: text('error').$type<JobError>(),
