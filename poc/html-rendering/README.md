@@ -19,17 +19,20 @@ resume.md + snippets
                     ──► MUST NOT set font-size / line-height / page margin
       ↓
    shell.html (hand-written, stable)
-      ├── owns: --font-size, --line-height, --margin-in CSS variables
+      ├── owns: --font-size, --line-height, --margin-in, --section-gap vars
       ├── owns: @page margin rule
       ├── owns: widows / orphans / hyphens baseline typography CSS
       └── loads: Google Fonts (Inter)
       ↓
-   fit() function  ──►  pure TS, injects `:root { --font-size: ...; ... }`
-                         style overrides, uses Playwright to render + measure
-                         scrollHeight, loops
-      ├─ success → returns PDF bytes + final params + iteration trace
-      └─ failure → throws CannotFitError (Phase 3 application layer
-                    catches this and re-prompts Claude to shorten)
+   fit() function  ──►  pure TS, injects `:root { ... }` style overrides,
+                         uses Playwright to measure scrollHeight. Two paths:
+      ├── shrink path — fontSize → lineHeight → marginIn floors
+      │                 + binary-search refine on last-changed attribute
+      └── expand path — sectionGap → fontSize ceilings
+      ↓
+      ├─ success          → PDF bytes + final params + iteration trace
+      ├─ CannotFitError   → content too long; Phase 3 asks Claude to shorten
+      └─ CannotFillError  → content too sparse; Phase 3 asks Claude to add more
 ```
 
 ## Shell / Claude contract
@@ -112,6 +115,90 @@ Spike passes iff:
 - Visual inspection shows no widows in any successful output
 
 Any failure downgrades the verdict — see `VERDICT.md`.
+
+## Failure signaling & Phase 3 retry loop
+
+> **This section is the architectural contract between fit() and the
+> Phase 3 `tailorApplicationService`. Do not delete — it's the only place
+> this is written down.**
+
+**Claude never sees the PDF or any PNG.** The retry loop operates entirely
+on text and numbers. fit() throws one of two typed errors when it can't
+produce a one-page result, and each error carries enough information for
+the application layer to generate a natural-language instruction for Claude
+to fix on the next round.
+
+### The two error types
+
+| Error | Meaning | Root cause |
+|---|---|---|
+| `CannotFitError` | Content too **long** — even at floor params (fontSize 9.5pt, lineHeight 1.1, margin 0.3in) it overflows one page | Claude generated too much content |
+| `CannotFillError` | Content too **short** — even at ceiling params (sectionGap 2em + fontSize 14pt) it can't reach 95% of the page | Claude generated too little content |
+
+Both errors extend `Error` and carry a `lastAttempt: FitResult`, which
+contains the final `trace` with `scrollHeight` and `pageHeightPx` recorded
+for every iteration.
+
+### Deriving feedback from the trace
+
+The last trace entry has `scrollHeight` (actual content height) and
+`pageHeightPx` (target one-page height). Two subtractions give the overflow
+or underflow in pixels, which translate directly to an approximate number
+of bullets to remove or add.
+
+```typescript
+// Phase 3 pseudocode — src/application/impl/tailorApplicationService.ts
+try {
+  const result = await fit(page);
+  return result.pdf;
+} catch (e) {
+  const last = e.lastAttempt.trace[e.lastAttempt.trace.length - 1];
+  const AVG_BULLET_PX = 33;  // ~1.5 visual lines @ 22px/line at 11pt
+
+  if (e instanceof CannotFitError) {
+    const overflowPx = last.scrollHeight - last.pageHeightPx * 0.98;
+    const bullets = Math.ceil(overflowPx / AVG_BULLET_PX);
+    feedback =
+      `Current resume overflows by approximately ${bullets} bullets. ` +
+      `Remove the ${bullets} weakest accomplishments — prefer trimming ` +
+      `older or less role-relevant entries first.`;
+  } else if (e instanceof CannotFillError) {
+    const underflowPx = last.pageHeightPx * 0.95 - last.scrollHeight;
+    const bullets = Math.ceil(underflowPx / AVG_BULLET_PX);
+    feedback =
+      `Current resume has room for approximately ${bullets} more bullets. ` +
+      `Add ${bullets} accomplishments to the strongest experiences — ` +
+      `prefer quantified outcomes tied to the job description.`;
+  }
+  // Prepend `feedback` to the Claude prompt and retry (bounded).
+}
+```
+
+### Why AI never looks at images
+
+The feedback above is **entirely textual and numerical**. No image analysis,
+no vision model, no OCR. Claude acts on "remove 3 bullets" far more
+reliably than on "look at this PDF and figure out what's wrong." Consequences:
+
+- **Production wolf doesn't need poppler-utils.** The `pdftoppm` PNG
+  rendering in this POC's `render.ts` driver exists purely for human /
+  developer review during spike iteration. Phase 3
+  `tailorApplicationService` never calls `pdftoppm`, never produces PNGs,
+  never ships an image-analysis step.
+- **The retry loop is deterministic.** Same content → same overflow
+  measurement → same feedback → same Claude prompt. No vision-model noise.
+- **Errors compose cleanly.** The application layer can escalate: if after
+  N retries the feedback still has the same sign, surface "couldn't fit
+  this job's content in a one-pager" to the user and stop — no infinite
+  tight-loop on Claude-the-model.
+
+### Optional convenience (not yet implemented)
+
+The `CannotFitError` / `CannotFillError` classes could expose helper getters
+like `overflowPx` / `underflowPx` / `estimatedExcessBullets` so the
+application layer doesn't need to reach into `lastAttempt.trace` manually.
+Left for Phase 3 to add when the actual `tailorApplicationService` is
+written.
 
 ## Research foundations
 
