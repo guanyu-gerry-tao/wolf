@@ -8,9 +8,9 @@ AI-powered job hunting CLI + MCP server. Finds roles, tailors resumes, fills for
 
 ## Current milestone
 
-**Milestone 1 — Scaffolding & Skeleton** (in progress)
+**Milestone 1 — Scaffolding & Skeleton** ✅ complete
 
-Goal: wolf is runnable as both a CLI and an MCP server, all subcommands registered (stubs ok).
+**Next: Milestone 2 — Hunter** (application layer + hunt/score commands)
 
 See [docs/overview/MILESTONES.md](docs/overview/MILESTONES.md) for full milestone plan.
 

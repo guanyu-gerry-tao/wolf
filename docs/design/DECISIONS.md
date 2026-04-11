@@ -153,8 +153,8 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 
 **2026-04-02 — Two-TOML config split: `wolf.toml` (workspace) + `profile.toml` (per-profile)**
 **Me:** Global workspace settings and per-profile settings should live in separate files. A single `wolf.toml` conflates things that change at different scopes.
-**AI:** `wolf.toml` at the workspace root holds workspace-level settings (providers, `default_profile`, DB path). Each profile folder (`data/<profileId>_<label>/`) holds its own `profile.toml` with per-profile settings (name, email, resume path, scoring prefs, immigration status, portfolioPath, transcriptPath).
-**Result:** Adopted. `wolf.toml` is the workspace entry point; all profile-specific data lives in `profile.toml` inside the profile's folder. Commands that need profile data read `wolf.toml` to find the active profile ID, then load the corresponding `profile.toml`.
+**AI:** `wolf.toml` at the workspace root holds workspace-level settings (providers, `defaultProfileId`, hunt/reach config). Each profile folder (`profiles/<id>/`) holds its own `profile.toml` with per-profile settings (name, email, scoring prefs, immigration status, etc.).
+**Result:** Adopted. `wolf.toml` is the workspace entry point; all profile-specific data lives in `profiles/<id>/profile.toml`. Commands that need profile data read `wolf.toml` to find the active profile ID, then `FileProfileRepository` loads the corresponding `profile.toml`.
 
 ---
 
@@ -169,3 +169,31 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **Me:** Portfolio and transcript should be tracked per-profile like `resumePath`, but wolf should never modify them.
 **AI:** Both fields follow the same per-profile pattern as `resumePath` (stored in `UserProfile`, configurable in `wolf init`). Key constraints enforced by convention and validated at init time: (1) read-only — wolf may attach or reference these files but must never write to them; (2) PDF only — no `.tex` or other formats accepted.
 **Result:** Adopted. `portfolioPath: string | null` and `transcriptPath: string | null` added to `UserProfile`. `wolf init` prompts for both (skippable, validated for `.pdf` extension). Unlike `resumePath`, these fields have no tailoring pipeline and will never gain one.
+
+---
+
+**2026-04-11 — Layered DDD architecture replacing flat utility-based structure**
+**Me:** The flat architecture (commands calling utils directly) made testing hard and layers unclear. Proposed a DDD-style refactor before M2 work begins.
+**AI:** Proposed six layers: Types → Repository → Service → Application → Commands → Presentation. Each layer depends only downward. `AppContext` acts as the manual DI container — the single construction point for all concrete implementations. No DI framework needed.
+**Result:** Adopted. Implemented in PRs #62, #63. Old `src/utils/db.ts` replaced by `src/repository/` layer. New `src/service/` layer added. `src/application/` reserved for use-case orchestration (M2+). All old issues referencing the flat architecture closed as `not_planned`.
+
+---
+
+**2026-04-11 — AppContext as manual DI container**
+**Me:** Asked how dependency injection should work without a framework.
+**AI:** Manual constructor injection via a single `AppContext` object in `src/cli/appContext.ts`. All concrete implementations (repositories, services) are instantiated there and passed down. Swapping real for mock = changing one file. TypeScript `implements` enforces interface compliance at compile time.
+**Result:** Adopted. `AppContext` is the only place that `new`s concrete classes. Commands and application services receive dependencies via constructor, never instantiate them.
+
+---
+
+**2026-04-11 — `profiles/<id>/` at workspace root, not inside `data/`**
+**Me:** The earlier design put profiles inside `data/<profileId>_<label>/`. But `data/` is gitignored (generated artifacts). Profile content (resume pool, personal config) should be committable for multi-machine sync.
+**AI:** Split workspace into two top-level directories: `profiles/` (user-authored, committable) and `data/` (generated artifacts, gitignored). `profiles/<id>/profile.toml` + `profiles/<id>/resume_pool.md` sit at workspace root, not inside `data/`.
+**Result:** Adopted. `FileProfileRepository` reads `profiles/<id>/profile.toml` and `profiles/<id>/resume_pool.md`. `data/` contains only `wolf.sqlite` and generated PDFs/screenshots.
+
+---
+
+**2026-04-11 — Zod for runtime validation of TOML files**
+**Me:** wolf.toml and profile.toml are user-edited files. Without runtime validation, missing or wrong-type fields cause silent runtime errors or cryptic crashes.
+**AI:** Zod schemas (`AppConfigSchema`, `UserProfileSchema`) defined in `src/utils/schemas.ts`. Both `config.ts` (wolf.toml) and `FileProfileRepository` (profile.toml) call `.parse()` at load time. Missing fields or wrong types throw immediately with a clear Zod error.
+**Result:** Adopted. Schemas defined in `src/utils/schemas.ts`. Config and repository load paths both validate at parse time, not at first use.

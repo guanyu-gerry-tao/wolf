@@ -153,8 +153,8 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 
 **2026-04-02 — 配置拆分为两个 TOML：`wolf.toml`（工作区级别）+ `profile.toml`（per-profile）**
 **我：** 全局工作区设置和每个 profile 的设置应该分开存放。单一的 `wolf.toml` 把不同作用域的内容混在一起。
-**AI：** `wolf.toml` 放在工作区根目录，存储工作区级别的设置（数据源、`default_profile`、数据库路径）。每个 profile 文件夹（`data/<profileId>_<label>/`）下有各自的 `profile.toml`，存储 per-profile 设置（姓名、邮箱、简历路径、评分偏好、移民身份、portfolioPath、transcriptPath）。
-**结果：** 采用。`wolf.toml` 是工作区入口；所有 profile 相关数据存在 profile 文件夹下的 `profile.toml` 中。需要 profile 数据的命令先读 `wolf.toml` 确定当前 profile ID，再加载对应的 `profile.toml`。
+**AI：** `wolf.toml` 放在工作区根目录，存储工作区级别的设置（数据源、`defaultProfileId`、hunt/reach 配置）。每个 profile 文件夹（`profiles/<id>/`）下有各自的 `profile.toml`，存储 per-profile 设置（姓名、邮箱、评分偏好、移民身份等）。
+**结果：** 采用。`wolf.toml` 是工作区入口；所有 profile 相关数据存在 `profiles/<id>/profile.toml` 中。需要 profile 数据的命令先读 `wolf.toml` 确定当前 profile ID，再由 `FileProfileRepository` 加载对应的 `profile.toml`。
 
 ---
 
@@ -169,3 +169,31 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** Portfolio 和 transcript 应像 `resumePath` 一样按 profile 独立配置，但 wolf 永远不应修改这些文件。
 **AI：** 两个字段沿用与 `resumePath` 相同的 per-profile 模式（存储在 `UserProfile`，通过 `wolf init` 配置）。两条约束在规范层面强制执行，并在 init 时校验：(1) 只读——wolf 可以附加或引用这些文件，但绝不允许写入；(2) 仅支持 PDF——不接受 `.tex` 或其他格式。
 **结果：** 采用。`portfolioPath: string | null` 和 `transcriptPath: string | null` 添加至 `UserProfile`。`wolf init` 新增提示（可跳过，校验 `.pdf` 后缀）。与 `resumePath` 不同，这两个字段没有定制化处理流程，也永远不会有。
+
+---
+
+**2026-04-11 — 分层 DDD 架构替代基于工具函数的扁平结构**
+**我：** 扁平架构（命令层直接调用工具函数）导致测试困难，层次不清晰。提议在 M2 开始前先进行 DDD 风格重构。
+**AI：** 提出六层结构：Types → Repository → Service → Application → Commands → Presentation。每层只向下依赖。`AppContext` 作为手动 DI 容器——所有具体实现的唯一构建点。无需 DI 框架。
+**结果：** 采用。在 PR #62、#63 中落地。原 `src/utils/db.ts` 被 `src/repository/` 层替代。新增 `src/service/` 层。`src/application/` 留作用例编排（M2+）。所有引用旧扁平架构的 issue 已关闭（not_planned）。
+
+---
+
+**2026-04-11 — 手动 DI 容器 AppContext**
+**我：** 问在不引入 DI 框架的情况下如何处理依赖注入。
+**AI：** 通过 `src/cli/appContext.ts` 中的单一 `AppContext` 对象进行手动构造函数注入。所有具体实现（repository、service）都在那里实例化并向下传递。替换真实为 mock = 修改一个文件，其他全不变。TypeScript 的 `implements` 在编译时保证接口合规。
+**结果：** 采用。`AppContext` 是唯一 `new` 具体类的地方。命令层和应用层通过构造函数接收依赖，永远不自行实例化。
+
+---
+
+**2026-04-11 — `profiles/<id>/` 放在工作区根目录，而非 `data/` 内**
+**我：** 早期设计将 profile 放在 `data/<profileId>_<label>/` 内。但 `data/` 是 gitignored（生成产物）。Profile 内容（简历内容池、个人配置）应该可以提交，以便多机同步。
+**AI：** 将工作区拆成两个顶层目录：`profiles/`（用户编写，可提交）和 `data/`（生成产物，gitignored）。`profiles/<id>/profile.toml` + `profiles/<id>/resume_pool.md` 放在工作区根目录，而非 `data/` 内。
+**结果：** 采用。`FileProfileRepository` 读取 `profiles/<id>/profile.toml` 和 `profiles/<id>/resume_pool.md`。`data/` 只存放 `wolf.sqlite` 和生成的 PDF/截图。
+
+---
+
+**2026-04-11 — 使用 Zod 对 TOML 文件进行运行时校验**
+**我：** wolf.toml 和 profile.toml 是用户手动编辑的文件。没有运行时校验，缺少字段或类型错误会导致静默运行时错误或难以定位的崩溃。
+**AI：** 在 `src/utils/schemas.ts` 中定义 Zod schema（`AppConfigSchema`、`UserProfileSchema`）。`config.ts`（wolf.toml）和 `FileProfileRepository`（profile.toml）在加载时均调用 `.parse()`。字段缺失或类型错误会立即抛出清晰的 Zod 错误。
+**结果：** 采用。Schema 定义在 `src/utils/schemas.ts`。配置和 repository 加载路径在解析时校验，而不是等到首次使用时才出错。
