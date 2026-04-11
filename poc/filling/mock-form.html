@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mock Job Application — wolf POC</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 40px;
+    }
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+    .job-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 16px 0 4px;
+    }
+    .job-meta {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 32px;
+    }
+    hr { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 20px;
+    }
+    .field { margin-bottom: 20px; }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    label .required { color: #e53e3e; margin-left: 2px; }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="url"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 15px;
+      color: #333;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+    }
+    textarea { resize: vertical; min-height: 100px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .file-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px dashed #d1d5db;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #555;
+      background: #fafafa;
+    }
+    .file-label:hover { border-color: #4f46e5; background: #f5f3ff; }
+    input[type="file"] { display: none; }
+    #resume-name { font-size: 13px; color: #4f46e5; margin-top: 6px; }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s;
+    }
+    .submit-btn:hover { background: #4338ca; }
+    #result {
+      display: none;
+      margin-top: 24px;
+      padding: 16px;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #166534;
+    }
+    #result h3 { margin-bottom: 10px; }
+    #result pre {
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #333;
+      background: #fff;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #d1fae5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Acme Corp</div>
+    <div class="job-title">Senior Software Engineer</div>
+    <div class="job-meta">San Francisco, CA &nbsp;·&nbsp; Full-time &nbsp;·&nbsp; Engineering</div>
+
+    <hr />
+    <div class="section-title">Your Information</div>
+
+    <form id="application-form" novalidate>
+      <div class="row">
+        <div class="field">
+          <label for="first-name">First Name <span class="required">*</span></label>
+          <input type="text" id="first-name" name="firstName"
+                 aria-label="First Name" placeholder="Jane" required />
+        </div>
+        <div class="field">
+          <label for="last-name">Last Name <span class="required">*</span></label>
+          <input type="text" id="last-name" name="lastName"
+                 aria-label="Last Name" placeholder="Smith" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="email">Email Address <span class="required">*</span></label>
+        <input type="email" id="email" name="email"
+               aria-label="Email Address" placeholder="jane@example.com" required />
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone"
+               aria-label="Phone Number" placeholder="+1 555-0100" />
+      </div>
+
+      <div class="field">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location"
+               aria-label="Location" placeholder="City, State" />
+      </div>
+
+      <hr />
+      <div class="section-title">Online Presence</div>
+
+      <div class="field">
+        <label for="linkedin">LinkedIn URL</label>
+        <input type="url" id="linkedin" name="linkedIn"
+               aria-label="LinkedIn URL" placeholder="https://linkedin.com/in/..." />
+      </div>
+
+      <div class="field">
+        <label for="github">GitHub URL</label>
+        <input type="url" id="github" name="github"
+               aria-label="GitHub URL" placeholder="https://github.com/..." />
+      </div>
+
+      <hr />
+      <div class="section-title">Documents</div>
+
+      <div class="field">
+        <label>Resume <span class="required">*</span></label>
+        <label class="file-label" for="resume">
+          📎 Click to upload resume (PDF)
+        </label>
+        <input type="file" id="resume" name="resume"
+               aria-label="Resume" accept=".pdf,.doc,.docx" />
+        <div id="resume-name"></div>
+      </div>
+
+      <hr />
+      <div class="section-title">Work Authorization</div>
+
+      <div class="field">
+        <label for="work-auth">Are you authorized to work in the US? <span class="required">*</span></label>
+        <select id="work-auth" name="workAuthorized" aria-label="Are you authorized to work in the US?">
+          <option value="">Select...</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="sponsorship">Will you now or in the future require sponsorship?</label>
+        <select id="sponsorship" name="requireSponsorship"
+                aria-label="Will you now or in the future require sponsorship?">
+          <option value="">Select...</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <hr />
+      <div class="section-title">Additional</div>
+
+      <div class="field">
+        <label for="cover-letter">Cover Letter</label>
+        <textarea id="cover-letter" name="coverLetter"
+                  aria-label="Cover Letter"
+                  placeholder="Tell us why you're a great fit..."></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn">Submit Application</button>
+    </form>
+
+    <!-- Result panel — shows submitted data instead of actually submitting -->
+    <div id="result">
+      <h3>✅ Mock submission received (not a real application)</h3>
+      <pre id="result-data"></pre>
+    </div>
+  </div>
+
+  <script>
+    // Show filename when resume is selected
+    document.getElementById('resume').addEventListener('change', function () {
+      const name = this.files[0]?.name ?? '';
+      document.getElementById('resume-name').textContent = name ? `Selected: ${name}` : '';
+    });
+
+    // Intercept submit — show data instead of posting anywhere
+    document.getElementById('application-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const data = {};
+      new FormData(this).forEach((val, key) => {
+        if (val instanceof File) data[key] = val.name || '(no file)';
+        else data[key] = val;
+      });
+      document.getElementById('result-data').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!--
+  Test 1 — widow / short-last-line handling.
+  36 bullets in a single flat list, smoothly increasing in length from
+  ~4 words to ~38 words. 3 bullets at each of 12 length steps.
+  Rendered WITHOUT fit() at default params — so we see line-break widow
+  behavior across the full length spectrum in one continuous gradient.
+-->
+<style>
+  h1 { margin: 0 0 0.2em 0; }
+  .note { color: #555; font-size: 0.9em; margin-bottom: 0.6em; }
+  ul { margin: 0.2em 0 0.3em 1.2em; padding: 0; }
+  li { margin-bottom: 0.2em; }
+</style>
+
+<h1>Widow / short-last-line spectrum</h1>
+<div class="note">Bullets grow smoothly from ~4 to ~38 words. Three bullets per length step.</div>
+
+<ul>
+  <!-- ~4 words -->
+  <li>Wrote internal deployment scripts.</li>
+  <li>Built the CI pipeline.</li>
+  <li>Shipped a React library.</li>
+
+  <!-- ~7 words -->
+  <li>Reviewed pull requests from eight internal engineers.</li>
+  <li>Improved the team's build performance by fifty percent.</li>
+  <li>Refactored the legacy authentication flow for safety.</li>
+
+  <!-- ~10 words -->
+  <li>Led weekly team engineering discussions on infrastructure and architecture decisions.</li>
+  <li>Onboarded three new engineers and wrote the onboarding guide for them.</li>
+  <li>Built an internal dashboard used by the platform team every morning.</li>
+
+  <!-- ~13 words -->
+  <li>Shipped a React component library that is now consumed by six internal product teams.</li>
+  <li>Implemented a custom rate limiter in Redis that throttles eighty million daily requests safely.</li>
+  <li>Built an OpenTelemetry tracing pipeline that cut mean time to resolution by thirty percent.</li>
+
+  <!-- ~16 words -->
+  <li>Designed the database sharding strategy that unblocked a ten-times scale-up for the payments service last year.</li>
+  <li>Migrated the deployment system from Jenkins to GitHub Actions across four services and two production environments.</li>
+  <li>Authored the engineering onboarding guide that cut new-hire ramp-up time by roughly forty percent over six months.</li>
+
+  <!-- ~19 words -->
+  <li>Led the redesign of the distributed cache layer in Go, reducing p99 latency by forty percent during the Black Friday traffic window.</li>
+  <li>Built a lightweight feature flag SDK used by twenty product teams across four business units throughout the entire 2025 planning cycle.</li>
+  <li>Debugged a subtle memory leak in the inference service that had affected peak Black Friday traffic for several days last year.</li>
+
+  <!-- Edge-case cluster: more ~19–21 word bullets to stress-test text-wrap: pretty
+       at the boundary where last-line short-line widows are most likely -->
+  <li>Automated the nightly deployment pipeline that previously required manual intervention from on-call engineers every single day for several months.</li>
+  <li>Refactored the authentication middleware to support SSO, OAuth, and legacy session cookies across every internal service with zero customer downtime.</li>
+  <li>Designed a cold-storage tier for the analytics database that cut monthly storage costs by nearly forty percent without impacting query latency.</li>
+  <li>Led the team effort to migrate our monitoring stack from StatsD and Graphite to Prometheus and Grafana within a single quarter.</li>
+  <li>Built a zero-downtime schema migration tool in Go that has been used for over three hundred production database migrations this year.</li>
+
+  <!-- ~22 words -->
+  <li>Designed and implemented a GraphQL federation gateway serving fifty-plus internal services with automatic schema versioning, retry logic, and circuit breakers across four availability zones.</li>
+  <li>Shipped the company's first multi-tenant webhook delivery pipeline, handling over fifty million events per day with exactly-once semantics and per-tenant rate limiting on the edge.</li>
+  <li>Built an internal feature flag service used by thirty-plus product teams, including a staged rollout UI, full audit logs, and fine-grained permission controls for experiments.</li>
+
+  <!-- ~25 words -->
+  <li>Owned the migration from REST to gRPC for internal service communication, reducing average request payload size by thirty-five percent and improving tail latency by twenty-two percent overall across the fleet.</li>
+  <li>Implemented a custom BERT variant for low-resource language classification on a corpus of twelve Southeast Asian languages, improving macro-F1 by eight points over the published baseline for the benchmark.</li>
+  <li>Built a web-based annotation tool used by forty-plus volunteer annotators across three timezones and four language groups to label a multilingual dataset over the course of roughly six months.</li>
+
+  <!-- ~28 words -->
+  <li>Migrated a legacy jQuery codebase of roughly eighteen thousand lines to modern TypeScript and React with zero reported user regressions in the six months following deployment, and added Playwright visual regression testing.</li>
+  <li>Led the incident response for a multi-hour payments outage caused by a subtle race condition in a third-party SDK, wrote the public postmortem, and drove fourteen action items across three teams afterwards.</li>
+  <li>Designed the transition from a self-managed Kubernetes cluster on bare metal to a fully managed cloud-native platform on GKE, reducing operational overhead by fifty percent and enabling per-team autoscaling for the first time.</li>
+
+  <!-- ~31 words -->
+  <li>Built the real-time fraud detection pipeline for the payments product, processing every transaction through a combination of rule-based filters and machine learning scoring within a one-hundred millisecond budget while maintaining ninety-nine percent recall across all known fraud patterns.</li>
+  <li>Wrote and maintained the team's internal performance benchmark suite covering throughput, latency, and resource usage across five services, catching several subtle regressions before they reached production and providing the data that justified two major infrastructure investments last quarter.</li>
+  <li>Implemented a data lineage tracking system for the analytics pipeline that automatically traces every downstream metric and dashboard back to its source events, reducing the time required to answer regulatory audit questions from several days down to under an hour.</li>
+
+  <!-- ~34 words -->
+  <li>Coordinated the cross-team migration of three legacy services from an aging Postgres 9.6 cluster to a highly available Postgres 15 setup with zero downtime, using logical replication and a gradual dual-write cutover strategy that kept both systems consistent throughout the transition period.</li>
+  <li>Led a team of five backend engineers on a complete rewrite of the company's billing infrastructure, replacing a brittle Ruby monolith with a distributed microservices architecture written in Go, reducing incident rate by seventy percent year over year while keeping the migration transparent to customers.</li>
+  <li>Designed and shipped a cross-region replicated key-value store on top of FoundationDB that now serves as the authoritative data source for user preferences across six product surfaces, handling roughly two hundred thousand reads per second at peak with single-digit millisecond p99 latency consistently throughout.</li>
+
+  <!-- ~38 words -->
+  <li>Built an end-to-end machine learning inference serving platform in Python and Rust that now hosts over forty production models across computer vision, natural language understanding, and time series forecasting, with automated canary rollouts and per-model traffic splitting for safe gradual deployment of new model versions to real users in production.</li>
+  <li>Authored the internal engineering handbook chapter on distributed tracing, service meshes, and observability best practices, which has been cited as required reading for all new backend engineers at the company and was subsequently adapted into a company-wide training course attended by more than two hundred engineers during the last planning cycle.</li>
+  <li>Led the cross-organization migration from a legacy service-oriented architecture to a unified Kubernetes-based platform with centralized tracing, logging, and metrics across thirty distinct services, completing the transition in fourteen months without any customer-facing incidents during the entire cutover period across all four production regions globally and twenty-plus internal products.</li>
+</ul>

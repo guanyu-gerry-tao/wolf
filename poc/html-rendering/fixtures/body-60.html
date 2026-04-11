@@ -1,0 +1,69 @@
+<!-- Density level 60 — should succeed via section-gap expansion (raw ~650px) -->
+<style>
+  h1 { margin: 0 0 0.15em 0; }
+  .contact { color: #555; font-size: 0.9em; }
+  h2 {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #222;
+    margin: 0.85em 0 0.3em 0;
+    padding-bottom: 0.1em;
+    font-size: 1.08em;
+  }
+  .item { margin-bottom: 0.45em; }
+  .item-header { display: flex; justify-content: space-between; font-weight: 600; }
+  ul { margin: 0.2em 0 0.3em 1.2em; padding: 0; }
+  li { margin-bottom: 0.12em; }
+</style>
+
+<h1>Alex Rivera</h1>
+<div class="contact">alex.rivera@example.edu · +1 (555) 014-7200 · linkedin.com/in/alexrivera</div>
+
+<h2>Experience</h2>
+<div class="item">
+  <div class="item-header"><span>Software Engineer Intern, Example Corp</span><span>May 2025 – Aug 2025</span></div>
+  <ul>
+    <li>Built a distributed cache layer in Go, reducing p99 latency by 40% across the payments service.</li>
+    <li>Designed and shipped a GraphQL federation gateway serving 50+ internal services.</li>
+    <li>Led the migration from REST to gRPC for internal service communication, cutting tail latency by 22%.</li>
+  </ul>
+</div>
+<div class="item">
+  <div class="item-header"><span>Teaching Assistant, Algorithms (CS5800)</span><span>Jan 2025 – Apr 2025</span></div>
+  <ul>
+    <li>Ran weekly office hours for 120 graduate students and graded three midterm exams for the course.</li>
+    <li>Authored three new problem sets on advanced dynamic programming and randomized algorithms.</li>
+  </ul>
+</div>
+<div class="item">
+  <div class="item-header"><span>Research Assistant, University NLP Lab</span><span>Sep 2024 – Dec 2024</span></div>
+  <ul>
+    <li>Implemented a BERT variant for low-resource language classification, published at an ACL workshop.</li>
+    <li>Built a web-based annotation tool used by 40+ volunteers across three timezones.</li>
+  </ul>
+</div>
+
+<h2>Projects</h2>
+<div class="item">
+  <div class="item-header"><span>wolf — AI job hunting CLI</span><span>2026</span></div>
+  <ul>
+    <li>Node.js / TypeScript CLI that finds, scores, and tailors job applications using Claude.</li>
+  </ul>
+</div>
+<div class="item">
+  <div class="item-header"><span>bellhop — incident response playbook runner</span><span>2025</span></div>
+  <ul>
+    <li>Open-source Go tool that executes incident runbooks and posts live updates to Slack.</li>
+  </ul>
+</div>
+
+<h2>Education</h2>
+<div class="item">
+  <div class="item-header"><span>Northeastern University — MS Computer Science</span><span>2024 – 2026</span></div>
+</div>
+<div class="item">
+  <div class="item-header"><span>State University — BS Computer Science</span><span>2019 – 2023</span></div>
+</div>
+
+<h2>Skills</h2>
+<div>TypeScript, Go, Python, Rust, React, Node.js, gRPC, GraphQL, PostgreSQL, Docker, Playwright, Kubernetes, Terraform, AWS, GCP</div>
