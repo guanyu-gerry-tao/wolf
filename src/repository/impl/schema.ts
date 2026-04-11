@@ -1,0 +1,76 @@
+/**
+ * schema.ts — Drizzle ORM table definitions.
+ *
+ * Single source of truth for the database schema.
+ * TypeScript row types are inferred from here.
+ *
+ * All CREATE TABLE statements live in ./initializeSchema.ts.
+ * Repositories import table references from here.
+ */
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import type { CompanySize } from '../../types/company.js';
+import type { JobError, JobSource, JobStatus, Salary } from '../../types/job.js';
+import type { Sponsorship } from '../../types/sponsorship.js';
+
+// ---------------------------------------------------------------------------
+// companies
+// ---------------------------------------------------------------------------
+
+export const companies = sqliteTable('companies', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  domain: text('domain'),
+  linkedinUrl: text('linkedin_url'),
+  size: text('size').$type<CompanySize>(),
+  industry: text('industry'),
+  headquartersLocation: text('headquarters_location'),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// jobs
+// ---------------------------------------------------------------------------
+
+export const jobs = sqliteTable('jobs', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  companyId: text('company_id').notNull(),
+  url: text('url').notNull(),
+  source: text('source').$type<JobSource>().notNull(),
+  description: text('description').notNull(),
+  location: text('location').notNull(),
+  remote: integer('remote', { mode: 'boolean' }).notNull(),
+  salary: text('salary', { mode: 'json' }).$type<Salary>(),
+  workAuthorizationRequired: text('work_authorization_required').$type<Sponsorship>().notNull(),
+  clearanceRequired: integer('clearance_required', { mode: 'boolean' }).notNull(),
+  score: integer('score'),
+  scoreJustification: text('score_justification'),
+  status: text('status').$type<JobStatus>().notNull(),
+  error: text('error').$type<JobError>(),
+  appliedProfileId: text('applied_profile_id'),
+  tailoredResumeTexPath: text('tailored_resume_tex_path'),
+  tailoredResumePdfPath: text('tailored_resume_pdf_path'),
+  coverLetterMDPath: text('cover_letter_md_path'),
+  coverLetterPdfPath: text('cover_letter_pdf_path'),
+  screenshotPath: text('screenshot_path'),
+  outreachDraftPath: text('outreach_draft_path'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// batches
+// ---------------------------------------------------------------------------
+
+export const batches = sqliteTable('batches', {
+  id: text('id').primaryKey(),
+  batchId: text('batch_id').notNull(),
+  type: text('type').notNull(),
+  aiProvider: text('ai_provider').notNull(),
+  profileId: text('profile_id').notNull(),
+  status: text('status').notNull(),
+  submittedAt: text('submitted_at').notNull(),
+  completedAt: text('completed_at'),
+});
