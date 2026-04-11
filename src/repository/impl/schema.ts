@@ -12,6 +12,10 @@ import type { CompanySize } from '../../types/company.js';
 import type { JobError, JobSource, JobStatus, Salary } from '../../types/job.js';
 import type { Sponsorship } from '../../types/sponsorship.js';
 
+type BatchType = 'score' | 'tailor';
+type BatchAiProvider = 'anthropic' | 'openai';
+type BatchStatus = 'pending' | 'completed' | 'failed';
+
 // ---------------------------------------------------------------------------
 // companies
 // ---------------------------------------------------------------------------
@@ -65,12 +69,12 @@ export const jobs = sqliteTable('jobs', {
 // ---------------------------------------------------------------------------
 
 export const batches = sqliteTable('batches', {
-  id: text('id').primaryKey(),
-  batchId: text('batch_id').notNull(),
-  type: text('type').notNull(),
-  aiProvider: text('ai_provider').notNull(),
+  id: text('id').primaryKey(),                // wolf internal UUID
+  batchId: text('batch_id').notNull(),        // external ID returned by the AI provider (Anthropic / OpenAI)
+  type: text('type').$type<BatchType>().notNull(),
+  aiProvider: text('ai_provider').$type<BatchAiProvider>().notNull(),
   profileId: text('profile_id').notNull(),
-  status: text('status').notNull(),
+  status: text('status').$type<BatchStatus>().notNull(),
   submittedAt: text('submitted_at').notNull(),
   completedAt: text('completed_at'),
 });
