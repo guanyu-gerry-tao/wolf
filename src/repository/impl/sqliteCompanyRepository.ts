@@ -67,17 +67,17 @@ export class SqliteCompanyRepository implements CompanyRepository {
       conditions.push(eq(companies.industry, q.industry));
     }
 
-    let queryBuilder = this.db
-      .select()
-      .from(companies)
-      .where(and(...conditions));
+    const rows = await (q.limit !== undefined
+      ? this.db
+          .select()
+          .from(companies)
+          .where(and(...conditions))
+          .limit(q.limit)
+      : this.db
+          .select()
+          .from(companies)
+          .where(and(...conditions)));
 
-    if (q.limit !== undefined) {
-      // @ts-ignore — drizzle's builder returns a different type after .limit()
-      queryBuilder = (queryBuilder as any).limit(q.limit);
-    }
-
-    const rows = await queryBuilder;
     return rows.map(rowToCompany);
   }
 }

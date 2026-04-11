@@ -67,17 +67,17 @@ export class SqliteJobRepository implements JobRepository {
       conditions.push(eq(jobs.source, q.source));
     }
 
-    let queryBuilder = this.db
-      .select()
-      .from(jobs)
-      .where(and(...conditions));
+    const rows = await (q.limit !== undefined
+      ? this.db
+          .select()
+          .from(jobs)
+          .where(and(...conditions))
+          .limit(q.limit)
+      : this.db
+          .select()
+          .from(jobs)
+          .where(and(...conditions)));
 
-    if (q.limit !== undefined) {
-      // @ts-ignore — drizzle's builder returns a different type after .limit(), cast to any
-      queryBuilder = (queryBuilder as any).limit(q.limit);
-    }
-
-    const rows = await queryBuilder;
     return rows.map(rowToJob);
   }
 
