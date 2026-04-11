@@ -17,12 +17,9 @@ import type { FillOptions, FillResult } from '../../types/index.js';
  * @throws If the job URL is missing or Playwright cannot load the page.
  */
 export async function fill(_options: FillOptions): Promise<FillResult> {
-  // TODO: fetch job URL from SQLite
-  // TODO: launch Playwright browser
-  // TODO: detect form fields on the page
-  // TODO: map fields to profile data
-  // TODO: if not dryRun, fill and submit the form
-  // TODO: take screenshot for audit trail
-  // TODO: update job status in SQLite
+  // TODO(M4): const ctx = createAppContext();
+  // TODO(M4): return ctx.fillApp.runPipeline(options);
+  // TODO(M4): fillApp loads Job + tailored paths, calls browserService (Playwright),
+  //           persists status + screenshotPath via jobRepository
   throw new Error('Not implemented');
 }

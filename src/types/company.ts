@@ -2,7 +2,11 @@
  * Numeric company size tier — designed to be comparable.
  * 1 = startup (<50), 2 = small (50–500), 3 = mid (500–5000), 4 = bigtech (5000+)
  */
-export type CompanySize = 1 | 2 | 3 | 4;
+export type CompanySize = 
+  | "startup" // <50 employees
+  | "small"   // 50–500 employees
+  | "mid"     // 500–5000 employees
+  | "big"; // 5000+ employees
 
 /**
  * A company is a first-class entity stored separately from jobs.
@@ -26,7 +30,6 @@ export interface CompanyQuery {
   size?: CompanySize | CompanySize[];
   industry?: string;
   limit?: number;
-  offset?: number;
 }
 
 export interface CompanyUpdate {

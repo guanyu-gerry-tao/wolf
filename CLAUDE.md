@@ -14,26 +14,46 @@ Goal: wolf is runnable as both a CLI and an MCP server, all subcommands register
 
 See [docs/overview/MILESTONES.md](docs/overview/MILESTONES.md) for full milestone plan.
 
-## Project structure (planned)
+## Project structure
 
 ```
 wolf/
 ├── src/
-│   ├── cli/          # commander.js CLI entry point and subcommands
-│   ├── mcp/          # MCP server entry point and tool definitions
-│   ├── commands/
-│   │   ├── hunt/     # Provider system, scorer, dedup
-│   │   ├── tailor/   # Resume parser, Claude prompt, diff
-│   │   ├── fill/     # Playwright, form detection, submit
-│   │   ├── reach/    # Contact finder, email drafter, Gmail sender
-│   │   └── status/   # Job list, filters
-│   ├── types/        # Shared types: Job, Resume, AppConfig
-│   └── utils/        # Shared helpers
-├── data/             # Local DB and runtime data (gitignored)
-├── docs/             # Project documentation
-├── CLAUDE.md         # This file
+│   ├── cli/              # CLI entry + AppContext (DI container)
+│   │   ├── index.ts          # commander.js setup, parses args, calls AppContext
+│   │   └── appContext.ts     # manual DI — wires repo + service + application
+│   ├── mcp/              # MCP entry — paused for this milestone
+│   ├── commands/         # Thin wrappers between CLI and application layer
+│   │   ├── hunt/
+│   │   ├── tailor/
+│   │   ├── fill/
+│   │   ├── reach/
+│   │   ├── score/
+│   │   └── status/
+│   ├── application/      # Application services — use-case orchestration
+│   │   ├── <name>.ts         # interface
+│   │   ├── impl/             # real + mock implementations
+│   │   └── model/            # DTOs returned by application services
+│   ├── service/          # Domain services — single-responsibility business ops
+│   │   ├── <name>.ts         # interface
+│   │   ├── impl/             # real + mock implementations
+│   │   └── model/            # DTOs returned by domain services
+│   ├── repository/       # Data access — SQLite + workspace file I/O
+│   │   ├── <name>.ts         # interface
+│   │   └── impl/             # concrete backends
+│   ├── errors/           # Typed custom error classes
+│   ├── types/            # Shared domain types (Job, Company, UserProfile, ...)
+│   └── utils/            # Cross-cutting helpers (logger, config, env) — not a layer
+├── data/                 # Local DB and runtime data (gitignored)
+├── docs/
 └── package.json
 ```
+
+**Layer dependency direction:** `CLI/Commands → Application → Service → Repository → Types`. Each layer may only depend on the layers below it.
+
+**DI entry point:** `src/cli/appContext.ts` constructs all implementations and provides them to commands. Swap real for mock by changing that one file — nothing else.
+
+**MCP is paused.** When reactivated, it will sit next to `src/cli/`, also call `createAppContext()`, and delegate to the same application layer.
 
 ## Tech stack
 

@@ -17,12 +17,12 @@ import type { TailorOptions, TailorResult } from '../../types/index.js';
  * @throws If the job does not exist, resume file is missing, or Claude API fails.
  */
 export async function tailor(_options: TailorOptions): Promise<TailorResult> {
-  // TODO: fetch job from SQLite
-  // TODO: load resume .tex from profile.resumePath
-  // TODO: parse .tex into structured Resume
-  // TODO: call Claude API to rewrite bullet points
-  // TODO: write tailored .tex, compile to PDF via xelatex
-  // TODO: generate cover letter .md, compile to PDF via md-to-pdf
-  // TODO: update job record with tailored paths
+  // TODO(M3): const ctx = createAppContext();
+  // TODO(M3): const result = await ctx.tailorApp.runPipeline(options.jobId, options.profileId);
+  // TODO(M3): application service handles the full pipeline:
+  //           - load Job + UserProfile via repositories
+  //           - call rewriteService → renderService → fitToOnePage loop
+  //           - persist tailored paths + matchScore via jobRepository
+  // TODO(M3): return result to CLI for display
   throw new Error('Not implemented');
 }
