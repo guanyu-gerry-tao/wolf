@@ -18,10 +18,9 @@ import type { ScoreOptions, ScoreResult } from '../../types/index.js';
  * @throws If ANTHROPIC_API_KEY is not set or no unscored jobs are found.
  */
 export async function score(_options: ScoreOptions): Promise<ScoreResult> {
-  // TODO(M2): read jobs with score: null from SQLite
-  // TODO(M2): AI field extraction (sponsorship, techStack, remote, salary) via Claude
-  // TODO(M2): apply dealbreakers — save disqualified as { status: 'filtered' }
-  // TODO(M2): submit remaining to Claude Batch API
-  // TODO(M2): return { batchId, pending, filtered }
+  // TODO(M2): const ctx = createAppContext();
+  // TODO(M2): return ctx.scoreApp.runPipeline(options);
+  // TODO(M2): scoreApp loads unscored jobs via jobRepository,
+  //           calls scoringService (real or mock), persists back
   throw new Error('Not implemented');
 }

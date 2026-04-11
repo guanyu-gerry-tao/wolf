@@ -17,9 +17,9 @@ import type { HuntOptions, HuntResult } from '../../types/index.js';
  * @throws If no providers are enabled.
  */
 export async function hunt(_options: HuntOptions): Promise<HuntResult> {
-  // TODO(M2): load enabled providers from config
-  // TODO(M2): run each provider, collect raw job objects
-  // TODO(M2): deduplicate results across providers
-  // TODO(M2): save to SQLite with { status: 'raw', score: null }
+  // TODO(M2): const ctx = createAppContext();
+  // TODO(M2): return ctx.huntApp.runPipeline(options);
+  // TODO(M2): huntApp composes provider services and dedup logic,
+  //           persists via jobRepository
   throw new Error('Not implemented');
 }
