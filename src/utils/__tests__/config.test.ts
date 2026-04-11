@@ -26,47 +26,18 @@ describe('config utils', () => {
       const { saveConfig, loadConfig } = await import('../config.js');
 
       const config = {
-        profiles: [{
-          id: 'default',
-          label: 'Default',
-          name: 'Test User',
-          alternateName: [],
-          email: 'test@example.com',
-          alternateEmail: [],
-          phone: '555-0000',
-          alternatePhone: [],
-          linkedinUrl: null,
-          githubUrl: null,
-          websiteUrl: null,
-          immigrationStatus: 'US citizen',
-          currentCity: null,
-          willingToRelocate: true,
-          workAuthTimeline: null,
-          targetRoles: ['Software Engineer'],
-          targetLocations: ['Remote'],
-          skills: [],
-          resumePath: 'resume/cv.tex',
-          targetedCompanyIds: [],
-          scoringPreferences: {
-            preferences: { minSalary: null, preferredCompanySizes: [] },
-            weights: { workAuth: 0.2, roleMatch: 0.35, location: 0.2, remote: 0.1, salary: 0.1, companySize: 0.05 },
-            dealbreakers: { sponsorship: null, remote: null },
-          },
-        }],
         defaultProfileId: 'default',
-        providers: { linkedin: { enabled: true } },
         hunt: { minScore: 0.5, maxResults: 50 },
-        tailor: { defaultTemplatePath: null, defaultCoverLetterTone: 'professional' },
+        tailor: { defaultCoverLetterTone: 'professional' },
         reach: { defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
-      } as any;
+      };
 
       await saveConfig(config);
 
       const loaded = await loadConfig();
       expect(loaded.defaultProfileId).toBe('default');
-      expect(loaded.profiles[0]!.name).toBe('Test User');
-      expect(loaded.profiles[0]!.email).toBe('test@example.com');
       expect(loaded.hunt.minScore).toBe(0.5);
+      expect(loaded.tailor.defaultCoverLetterTone).toBe('professional');
     });
 
     it('throws if wolf.toml does not exist', async () => {
@@ -78,7 +49,7 @@ describe('config utils', () => {
   describe('backupConfig', () => {
     it('copies wolf.toml to wolf.toml.backup1', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      await saveConfig({ profiles: [], defaultProfileId: '', providers: {}, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultTemplatePath: null, defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } } as any);
+      await saveConfig({ defaultProfileId: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } });
 
       await backupConfig();
 
@@ -88,7 +59,7 @@ describe('config utils', () => {
 
     it('rotates backups: backup1 becomes backup2 on second call', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { profiles: [], defaultProfileId: '', providers: {}, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultTemplatePath: null, defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } } as any;
+      const stub = { defaultProfileId: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } };
 
       await saveConfig(stub);
       await backupConfig(); // creates backup1
@@ -104,7 +75,7 @@ describe('config utils', () => {
 
     it('keeps at most 5 backups', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { profiles: [], defaultProfileId: '', providers: {}, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultTemplatePath: null, defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } } as any;
+      const stub = { defaultProfileId: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } };
 
       for (let i = 0; i < 6; i++) {
         await saveConfig(stub);

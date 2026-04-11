@@ -21,11 +21,14 @@ import { initializeSchema } from '../repository/impl/initializeSchema.js';
 import { SqliteJobRepository } from '../repository/impl/sqliteJobRepository.js';
 import { SqliteCompanyRepository } from '../repository/impl/sqliteCompanyRepository.js';
 import { SqliteBatchRepository } from '../repository/impl/sqliteBatchRepository.js';
+import { FileProfileRepository } from '../repository/impl/fileProfileRepository.js';
+import { InMemoryProfileRepository } from '../repository/impl/inMemoryProfileRepository.js';
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 
 import type { JobRepository } from '../repository/job.js';
 import type { CompanyRepository } from '../repository/company.js';
 import type { BatchRepository } from '../repository/batch.js';
+import type { ProfileRepository } from '../repository/profile.js';
 import type { BatchService } from '../service/batch.js';
 import type { JobProviderService } from '../service/jobProvider.js';
 
@@ -34,6 +37,7 @@ export interface AppContext {
   jobRepository: JobRepository;
   companyRepository: CompanyRepository;
   batchRepository: BatchRepository;
+  profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
   jobProviders: JobProviderService[];
@@ -41,11 +45,12 @@ export interface AppContext {
 }
 
 /**
- * Wires repositories and services around an open SQLite connection.
+ * Wires SQLite-backed repositories and services around an open SQLite connection.
  * Extracted so both createAppContext() and createTestAppContext() share the
- * same construction logic, differing only in which SQLite instance they open.
+ * same construction logic, differing only in which SQLite instance and which
+ * ProfileRepository implementation they use.
  */
-function wireContext(sqlite: BetterSqlite3.Database): AppContext {
+function wireContext(sqlite: BetterSqlite3.Database, profileRepository: ProfileRepository): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
 
@@ -59,6 +64,7 @@ function wireContext(sqlite: BetterSqlite3.Database): AppContext {
     jobRepository: jobRepo,
     companyRepository: companyRepo,
     batchRepository: batchRepo,
+    profileRepository,
     batchService,
     jobProviders: [], // loading provider config from wolf.toml is M3+ work
   };
@@ -79,8 +85,9 @@ export function createAppContext(): AppContext {
 
   const dbPath = path.join(dataDir, 'wolf.sqlite');
   const sqlite = new BetterSqlite3(dbPath);
+  const profileRepository = new FileProfileRepository(workspaceDir);
 
-  return wireContext(sqlite);
+  return wireContext(sqlite, profileRepository);
 }
 
 /**
@@ -92,5 +99,6 @@ export function createAppContext(): AppContext {
  */
 export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
-  return wireContext(sqlite);
+  const profileRepository = new InMemoryProfileRepository();
+  return wireContext(sqlite, profileRepository);
 }
