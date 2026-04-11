@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'smol-toml';
 import type { ProfileRepository } from '../profile.js';
-import type { AppConfig, UserProfile } from '../../types/index.js';
-import { UserProfileSchema } from '../../utils/schemas.js';
+import type { UserProfile } from '../../types/index.js';
+import { AppConfigSchema, UserProfileSchema } from '../../utils/schemas.js';
 
 export class FileProfileRepository implements ProfileRepository {
   constructor(private readonly workspaceDir: string) {}
@@ -32,7 +32,7 @@ export class FileProfileRepository implements ProfileRepository {
     } catch {
       throw new Error('wolf.toml not found. Run wolf init to set up your workspace.');
     }
-    const config = parse(raw) as unknown as AppConfig;
+    const config = AppConfigSchema.parse(parse(raw));
     const defaultId = config.defaultProfileId;
     if (!defaultId) {
       throw new Error('wolf.toml is missing defaultProfileId. Run wolf init to repair your config.');
