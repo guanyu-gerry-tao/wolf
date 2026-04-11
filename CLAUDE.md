@@ -97,6 +97,12 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - Do NOT commit or push without explicit user approval. Always show changes and wait for confirmation first.
 - When a significant design decision is made during conversation, ask the user: "Should we record this in DECISIONS.md?" (This rule itself is recorded in docs/design/DECISIONS.md — 2026-03-20.)
 
+## Implementation plans
+
+- Plans (from `superpowers:writing-plans` or similar) go in `docs/plans/`
+- `docs/plans/` is gitignored except for `.gitkeep` — plans are personal working docs, not shared
+- Naming convention: `YYYY-MM-DD-<feature-name>.md`
+
 ## Documentation rules
 
 - All markdown documents (except `CLAUDE.md` and `README.md`) MUST have a Chinese version with `_zh` suffix (e.g., `ARCHITECTURE.md` → `ARCHITECTURE_zh.md`)
