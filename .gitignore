@@ -37,8 +37,10 @@ npm-debug.log*
 Thumbs.db
 
 # Editor
-.vscode/settings.json
+.vscode/*
+!.vscode/settings.json
 .idea/
+*.code-workspace
 
 # TypeScript
 *.tsbuildinfo
