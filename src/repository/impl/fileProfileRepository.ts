@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parse } from 'smol-toml';
 import type { ProfileRepository } from '../profile.js';
 import type { AppConfig, UserProfile } from '../../types/index.js';
+import { UserProfileSchema } from '../../utils/schemas.js';
 
 export class FileProfileRepository implements ProfileRepository {
   constructor(private readonly workspaceDir: string) {}
@@ -19,7 +20,8 @@ export class FileProfileRepository implements ProfileRepository {
     } catch {
       return null;
     }
-    return parse(raw) as unknown as UserProfile;
+    const parsed = parse(raw);
+    return UserProfileSchema.parse(parsed);
   }
 
   async getDefault(): Promise<UserProfile> {

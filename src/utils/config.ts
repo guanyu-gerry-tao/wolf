@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse, stringify } from 'smol-toml';
 import type { AppConfig } from '../types/index.js';
+import { AppConfigSchema } from './schemas.js';
 
 /** Returns the path to wolf.toml in the current working directory. Evaluated lazily so tests can control cwd. */
 const configPath = () => path.join(process.cwd(), 'wolf.toml');
@@ -19,7 +20,8 @@ export async function loadConfig(): Promise<AppConfig> {
   } catch {
     throw new Error('wolf.toml not found. Run wolf init to set up your workspace.');
   }
-  return parse(raw) as unknown as AppConfig;
+  const parsed = parse(raw);
+  return AppConfigSchema.parse(parsed);
 }
 
 /**
