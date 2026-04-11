@@ -52,5 +52,8 @@ data/*
 # Local resume samples for parser development (never commit)
 samples/*
 
+# Implementation plans (personal working docs, not shared)
+docs/plans/*
+
 # Always keep .gitkeep files (must be last)
 !**/.gitkeep
