@@ -116,6 +116,11 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 
 - Do NOT commit or push without explicit user approval. Always show changes and wait for confirmation first.
 - When a significant design decision is made during conversation, ask the user: "Should we record this in DECISIONS.md?" (This rule itself is recorded in docs/design/DECISIONS.md — 2026-03-20.)
+- **Docs travel with code.** Any PR that changes layers, directories, interfaces, or architectural decisions must include the corresponding doc updates in the same PR. Use this mapping:
+  - Layer / directory / data flow changed → `ARCHITECTURE.md` + `ARCHITECTURE_zh.md`
+  - Architectural decision made → `DECISIONS.md` + `DECISIONS_zh.md`
+  - Milestone status changed → `CLAUDE.md`
+  - Testing conventions changed → `TESTING.md` + `TESTING_zh.md`
 
 ## Implementation plans
 
