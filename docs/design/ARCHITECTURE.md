@@ -45,7 +45,7 @@ wolf is a dual-interface application: it runs as both a **CLI tool** (for human 
 
 ## Layered Architecture
 
-wolf is structured in five layers. Each layer may only depend on the layers below it — never sideways or upward.
+wolf is structured in six layers. Each layer may only depend on the layers below it — never sideways or upward.
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -53,59 +53,95 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 │  Parse args, format output. No logic.                │
 ├──────────────────────────────────────────────────────┤
 │  Commands      src/commands/                         │
-│  Entry points. Fetch from DB, call workflow,         │
-│  handle errors, return typed result.                 │
+│  Thin wrappers — map CLI/MCP input to Application.   │
+│  No business logic.                                  │
 ├──────────────────────────────────────────────────────┤
-│  Workflows     src/workflows/                        │
-│  Multi-step pipelines. Orchestrate services.         │
+│  Application   src/application/                      │
+│  Use-case orchestration. Multi-step pipelines.       │
 │  No I/O, no DB, no CLI/MCP awareness.                │
 ├──────────────────────────────────────────────────────┤
-│  Services      src/services/                         │
-│  Single-responsibility I/O units. One thing well.    │
-│  Thin wrappers around external calls.                │
+│  Service       src/service/                          │
+│  Single-responsibility domain operations.            │
+│  AI calls, external APIs, rendering.                 │
 ├──────────────────────────────────────────────────────┤
-│  Utils         src/utils/                            │
-│  Primitives. No business semantics.                  │
-│  AI client, DB client, latex runner, logger.         │
+│  Repository    src/repository/                       │
+│  Data access — SQLite (Drizzle) + workspace files.   │
+│  Interface per entity; impl/ for concrete backends.  │
+├──────────────────────────────────────────────────────┤
+│  Types         src/types/                            │
+│  Shared domain types. No logic.                      │
 └──────────────────────────────────────────────────────┘
+
+Utils (src/utils/) — cross-cutting helpers. Not a layer.
+AppContext (src/cli/appContext.ts) — manual DI container.
 ```
+
+**Layer dependency direction:** `CLI/Commands → Application → Service → Repository → Types`
 
 ### Layer responsibilities
 
 | Layer | Directory | Does | Does NOT |
 |---|---|---|---|
-| **Utils** | `src/utils/` | Wrap external tools/SDKs (Anthropic, SQLite, xelatex, pdfinfo) | Contain any business logic or domain concepts |
-| **Services** | `src/services/` | Perform one operation (parse resume, compile tex, score one job) | Orchestrate multi-step flows or chain other services |
-| **Workflows** | `src/workflows/` | Orchestrate multi-step pipelines (fitToOnePage, tailor pipeline) | Know about DB, CLI options, or MCP schemas |
-| **Commands** | `src/commands/` | Wire options → workflow; read/write DB; handle errors | Contain business logic — delegate everything to workflows |
+| **Types** | `src/types/` | Define domain types (`Job`, `Company`, `UserProfile`, `AppConfig`) | Contain any logic |
+| **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.toml`, `resume_pool.md`) | Contain business logic or call other layers |
+| **Service** | `src/service/` | Single-responsibility operations (AI calls, external API fetch, batch submit) | Orchestrate multi-step flows or access DB directly |
+| **Application** | `src/application/` | Orchestrate use-cases (hunt pipeline, score pipeline, tailor pipeline) | Know about CLI options, MCP schemas, or file formats |
+| **Commands** | `src/commands/` | Map typed options → Application call; format errors | Contain business logic — delegate everything to Application |
 | **Presentation** | `src/cli/` `src/mcp/` | Parse input, format output | Contain any logic beyond argument mapping |
 
-### Planned structure
+### Dependency injection — AppContext
+
+All concrete implementations are constructed in `src/cli/appContext.ts`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
+
+```typescript
+// src/cli/appContext.ts
+export interface AppContext {
+  jobRepository: JobRepository;
+  companyRepository: CompanyRepository;
+  batchRepository: BatchRepository;
+  profileRepository: ProfileRepository;
+  batchService: BatchService;
+  jobProviderService: JobProviderService;
+}
+```
+
+### Directory structure
 
 ```
 src/
 ├── cli/              # Presentation — commander.js
-├── mcp/              # Presentation — MCP SDK
-├── commands/         # Commands — one folder per subcommand
-├── workflows/        # Workflows — multi-step pipelines
-│   ├── tailor.ts         # full tailor pipeline (parse → rewrite → compile → compress)
-│   ├── fitToOnePage.ts   # binary search over layout params
-│   ├── score.ts          # extract → dealbreaker → batch/single score
-│   └── hunt.ts           # fetch → dedup → save
-├── services/         # Services — single-responsibility units
-│   ├── resume.ts         # parseResumeTex(), writeResumeTex()
-│   ├── compile.ts        # compileTex(params), getPageCount()
-│   ├── rewrite.ts        # rewriteBullets(resume, jd, profile)
-│   ├── scoring.ts        # extractFields(), applyDealbreakers(), scoreWithClaude()
-│   └── email.ts          # draftEmail(), sendEmail()
-├── utils/            # Utils — primitives
-│   ├── ai.ts             # Anthropic SDK client + retry
-│   ├── db.ts             # SQLite CRUD
-│   ├── latex.ts          # xelatex runner, pdfinfo
-│   ├── config.ts         # wolf.toml read/write
-│   ├── env.ts            # WOLF_* env vars
-│   └── logger.ts         # structured logging
-└── types/            # Shared types (cross-cutting, not a layer)
+│   ├── index.ts          # CLI entry point
+│   └── appContext.ts     # Manual DI — wires all repos + services
+├── mcp/              # Presentation — MCP SDK (paused, same AppContext)
+├── commands/         # Thin wrappers — one folder per subcommand
+├── application/      # Use-case orchestration (interfaces + impl/ + model/)
+├── service/          # Domain services (interfaces + impl/ + model/)
+│   ├── batch.ts          # BatchService interface
+│   ├── jobProvider.ts    # JobProviderService interface
+│   └── impl/
+│       ├── apiProviderService.ts   # Real HTTP provider
+│       └── batchServiceImpl.ts    # Batch API stub (M3+)
+├── repository/       # Data access (interfaces + impl/)
+│   ├── job.ts            # JobRepository interface
+│   ├── company.ts        # CompanyRepository interface
+│   ├── batch.ts          # BatchRepository interface
+│   ├── profile.ts        # ProfileRepository interface
+│   └── impl/
+│       ├── drizzleDb.ts          # DrizzleDb type alias
+│       ├── schema.ts             # Drizzle table definitions
+│       ├── initializeSchema.ts   # CREATE TABLE IF NOT EXISTS (one place only)
+│       ├── sqliteJobRepository.ts
+│       ├── sqliteCompanyRepository.ts
+│       ├── sqliteBatchRepository.ts
+│       └── fileProfileRepository.ts  # Reads profiles/<id>/ on disk
+├── errors/           # Typed custom error classes
+├── types/            # Shared domain types (cross-cutting, not a layer)
+└── utils/            # Cross-cutting helpers (logger, config, env, ai) — not a layer
+    ├── ai.ts             # Anthropic SDK client
+    ├── config.ts         # wolf.toml read (AppConfigSchema.parse)
+    ├── env.ts            # WOLF_* env vars
+    ├── logger.ts         # structured logging
+    └── schemas.ts        # Zod schemas for TOML validation
 ```
 
 ### Example: tailor flow across layers
@@ -113,16 +149,13 @@ src/
 ```
 CLI parses --job abc123
   → [Command] tailor({ jobId })
-      → db.getJob(jobId)               # Utils: SQLite
-      → db.getProfile(profileId)       # Utils: SQLite
-      → [Workflow] runTailorPipeline(resume, jd, profile)
-          → [Service] parseResumeTex(texPath)     # parse .tex → Resume struct
-          → [Service] rewriteBullets(resume, jd)  # call Claude
-          → [Service] writeResumeTex(result)      # write tailored .tex
-          → [Workflow] fitToOnePage(texPath)       # binary search → compile loop
-              → [Service] compileTex(params)       # xelatex
-              → [Service] getPageCount(pdfPath)    # pdfinfo
-      → db.updateEvaluation(jobId, { tailoredResumePath, matchScore })
+      → ctx.jobRepository.get(jobId)
+      → ctx.profileRepository.getDefault()
+      → [Application] TailorApplicationService.tailor(job, profile)
+          → [Service] RewriteService.rewriteBullets(resume, jd)   # Claude API
+          → [Service] RenderService.compile(texPath)               # xelatex
+          → [Service] RenderService.fitToOnePage(texPath)          # binary search loop
+      → ctx.jobRepository.update(jobId, { tailoredResumePath, matchScore })
       → return { tailoredTexPath, tailoredPdfPath, matchScore, changes }
   → CLI formats and prints summary
 ```
@@ -234,9 +267,8 @@ The types layer defines shared data structures across all layers — the single 
 
 - `Company` — a first-class entity, stored separately from jobs. Multiple jobs share one company record. `Job.companyId` is a foreign key to `Company.id`. The `reach` command uses `Company.domain` to infer email patterns.
 - `Job` — job listing data, the core object persisted to SQLite.
-- `Resume` — parsed resume structure.
-- `UserProfile` — full identity used during applications. wolf supports **multiple profiles** (e.g. different immigration statuses, name variants for ATS workarounds). `AppConfig.profiles` is an array; `defaultProfileId` sets the default; `Job.appliedProfileId` records which profile was used.
-- `AppConfig` — user configuration, loaded from `wolf.toml` in the workspace root.
+- `UserProfile` — per-profile identity (name, email, immigration status, scoring weights, target roles/locations). Loaded from `profiles/<id>/profile.toml` by `FileProfileRepository`. Validated at parse time by `UserProfileSchema` (zod).
+- `AppConfig` — workspace-level config, loaded from `wolf.toml`. Contains `defaultProfileId` and provider/hunt/reach settings. Validated at parse time by `AppConfigSchema` (zod). Does **not** embed profile data.
 - Per-command Options/Result pairs.
 
 Full definitions in `src/types/`.
@@ -323,24 +355,28 @@ This design means:
 - Each provider can have its own strategy (email vs manual vs BrowserMCP vs any source)
 - Providers are **independent** — if one source fails, others still work
 
-### 7. Batch Infrastructure (`src/utils/batch.ts`)
+### 7. Batch Infrastructure
 
 AI batch jobs (scoring, and future batch tailoring) are tracked in a shared `batches` table in SQLite. This keeps batch management generic and decoupled from any specific command.
 
-**`batches` table (planned schema):**
+**Interfaces:**
+- `BatchRepository` (`src/repository/batch.ts`) — save, getPending, markComplete, markFailed
+- `BatchService` (`src/service/batch.ts`) — submit, pollAll
+
+**`batches` table schema (`src/repository/impl/schema.ts`):**
 
 | Field | Type | Notes |
 |---|---|---|
-| `batchId` | string | Provider-assigned batch ID |
-| `type` | string | `"score"`, `"tailor"`, etc. |
-| `aiProvider` | string | `"anthropic"` or `"openai"` |
-| `submittedAt` | string | ISO 8601 timestamp |
-| `status` | string | `"pending"`, `"completed"`, `"failed"` |
+| `batchId` | text | Provider-assigned batch ID |
+| `type` | text | `"score"`, `"tailor"`, etc. |
+| `aiProvider` | text | `"anthropic"` or `"openai"` |
+| `submittedAt` | text | ISO 8601 timestamp |
+| `status` | text | `"pending"`, `"completed"`, `"failed"` |
 
 **Poll triggers:**
 - `wolf score --poll` — explicit poll without submitting a new batch
 
-Each `type` registers a handler in `batch.ts`. When a batch completes, the handler writes results back to the `jobs` table. Commands never touch `batchId` directly — batch lifecycle is fully managed by `utils/batch.ts`.
+`BatchService.pollAll()` fetches completed batches and calls registered result handlers. Commands never touch `batchId` directly — batch lifecycle is fully managed through `BatchService` and `BatchRepository`.
 
 ### 8. External Service Integrations
 
@@ -472,22 +508,29 @@ This design aligns with how AI agents work: Claude Code's working context is the
 
 ```
 <workspace>/
-├── wolf.toml           # User config: profiles, providers, scoring prefs (TOML, human-editable)
+├── wolf.toml           # Workspace-level config: defaultProfileId, providers, hunt, reach
+├── profiles/           # Per-profile content — committable (not gitignored)
+│   └── <profileId>/    # e.g. profiles/default/
+│       ├── profile.toml    # Personal data + scoring prefs (validated by UserProfileSchema)
+│       └── resume_pool.md  # Full resume content pool (AI-written / user-edited)
 ├── .gitignore          # Auto-generated by wolf init
 ├── credentials/        # OAuth tokens (Gmail) — gitignored
-└── data/               # Generated files — gitignored
-    ├── wolf.sqlite     # Job listings, statuses, scores
-    └── <profileId>_<profileLabel>/      # One directory per profile (e.g. default_default/)
-        ├── profile.toml                 # Per-profile settings: name, email, resume path, scoring prefs, immigration status
-        ├── resume_pool.md               # Full resume content pool (AI-written / user-edited)
-        └── <company>_<title>_<jobId>/   # One directory per tailor run
-            ├── resume.tex               # Tailored resume source
-            ├── resume.pdf               # Compiled PDF
-            ├── resume_p1.jpg            # Screenshot page 1
-            ├── resume_p2.jpg            # Screenshot page 2 (if exists)
-            ├── cover_letter.md          # Cover letter draft
-            └── cover_letter.pdf         # Cover letter PDF (if md-to-pdf installed)
+└── data/               # Generated artifacts — gitignored
+    ├── wolf.sqlite      # Job listings, statuses, scores (Drizzle + better-sqlite3)
+    └── <company>_<title>_<jobId>/   # One directory per tailor run
+        ├── resume.tex               # Tailored resume source
+        ├── resume.pdf               # Compiled PDF
+        ├── resume_p1.jpg            # Screenshot page 1
+        ├── resume_p2.jpg            # Screenshot page 2 (if exists)
+        ├── cover_letter.md          # Cover letter draft
+        └── cover_letter.pdf         # Cover letter PDF (if md-to-pdf installed)
 ```
+
+> API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env show` / `wolf env clear` to manage.
+
+**`profiles/` vs `data/`:**
+- `profiles/` contains user-authored content (profile config, resume pool). Safe to commit to a private git repo for multi-machine sync.
+- `data/` contains generated artifacts (SQLite binary, compiled PDFs, screenshots). Gitignored.
 
 > API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env set` to configure them in `~/.zshrc`.
 
