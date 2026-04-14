@@ -7,6 +7,7 @@
  *   3. initializeSchema — creates tables if not exist
  *   4. Construct repositories (each receives DrizzleDb only)
  *   5. Construct services (each receives repository interfaces only)
+ *   6. Construct application services (receive repositories + services)
  *
  * Swap any implementation by changing this file only.
  * No service or repository knows about this file.
@@ -24,6 +25,9 @@ import { SqliteBatchRepository } from '../repository/impl/sqliteBatchRepository.
 import { FileProfileRepository } from '../repository/impl/fileProfileRepository.js';
 import { InMemoryProfileRepository } from '../repository/impl/inMemoryProfileRepository.js';
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
+import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
+import { RewriteServiceImpl } from '../service/impl/rewriteServiceImpl.js';
+import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationService.js';
 
 import type { JobRepository } from '../repository/job.js';
 import type { CompanyRepository } from '../repository/company.js';
@@ -31,6 +35,9 @@ import type { BatchRepository } from '../repository/batch.js';
 import type { ProfileRepository } from '../repository/profile.js';
 import type { BatchService } from '../service/batch.js';
 import type { JobProviderService } from '../service/jobProvider.js';
+import type { RenderService } from '../service/render.js';
+import type { RewriteService } from '../service/rewrite.js';
+import type { TailorApplicationService } from '../application/tailor.js';
 
 export interface AppContext {
   // repositories
@@ -41,16 +48,23 @@ export interface AppContext {
   // services
   batchService: BatchService;
   jobProviders: JobProviderService[];
-  // application services — TODO: add as M3+ implementations land
+  renderService: RenderService;
+  rewriteService: RewriteService;
+  // application services
+  tailorApp: TailorApplicationService;
 }
 
 /**
- * Wires SQLite-backed repositories and services around an open SQLite connection.
- * Extracted so both createAppContext() and createTestAppContext() share the
- * same construction logic, differing only in which SQLite instance and which
- * ProfileRepository implementation they use.
+ * Wires repositories, services, and application services around an open SQLite connection.
+ * Extracted so both createAppContext() and createTestAppContext() share the same
+ * construction logic, differing only in their SQLite instance, ProfileRepository,
+ * and workspaceDir.
  */
-function wireContext(sqlite: BetterSqlite3.Database, profileRepository: ProfileRepository): AppContext {
+function wireContext(
+  sqlite: BetterSqlite3.Database,
+  profileRepository: ProfileRepository,
+  workspaceDir: string,
+): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
 
@@ -59,6 +73,11 @@ function wireContext(sqlite: BetterSqlite3.Database, profileRepository: ProfileR
   const batchRepo = new SqliteBatchRepository(db);
 
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
+  const renderService = new RenderServiceImpl();
+  const rewriteService = new RewriteServiceImpl();
+  const tailorApp = new TailorApplicationServiceImpl(
+    jobRepo, profileRepository, renderService, rewriteService, workspaceDir,
+  );
 
   return {
     jobRepository: jobRepo,
@@ -66,7 +85,10 @@ function wireContext(sqlite: BetterSqlite3.Database, profileRepository: ProfileR
     batchRepository: batchRepo,
     profileRepository,
     batchService,
-    jobProviders: [], // loading provider config from wolf.toml is M3+ work
+    jobProviders: [],
+    renderService,
+    rewriteService,
+    tailorApp,
   };
 }
 
@@ -87,7 +109,7 @@ export function createAppContext(): AppContext {
   const sqlite = new BetterSqlite3(dbPath);
   const profileRepository = new FileProfileRepository(workspaceDir);
 
-  return wireContext(sqlite, profileRepository);
+  return wireContext(sqlite, profileRepository, workspaceDir);
 }
 
 /**
@@ -100,5 +122,5 @@ export function createAppContext(): AppContext {
 export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
   const profileRepository = new InMemoryProfileRepository();
-  return wireContext(sqlite, profileRepository);
+  return wireContext(sqlite, profileRepository, '/tmp/wolf-test');
 }

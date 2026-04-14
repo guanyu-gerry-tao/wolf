@@ -197,3 +197,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** wolf.toml 和 profile.toml 是用户手动编辑的文件。没有运行时校验，缺少字段或类型错误会导致静默运行时错误或难以定位的崩溃。
 **AI：** 在 `src/utils/schemas.ts` 中定义 Zod schema（`AppConfigSchema`、`UserProfileSchema`）。`config.ts`（wolf.toml）和 `FileProfileRepository`（profile.toml）在加载时均调用 `.parse()`。字段缺失或类型错误会立即抛出清晰的 Zod 错误。
 **结果：** 采用。Schema 定义在 `src/utils/schemas.ts`。配置和 repository 加载路径在解析时校验，而不是等到首次使用时才出错。
+
+---
+
+**2026-04-12 — M3 简历渲染方案：HTML 而非 LaTeX**
+**我：** POC 已验证 HTML → PDF via Playwright 的方案。与 LaTeX 相比，不需要 xelatex 系统依赖，HTML/CSS 迭代也更快。
+**AI：** 验证通过。`fit()` 二分搜索算法（从 POC 移植到 `RenderService`）以确定性方式处理单页压缩。Claude 输出 HTML body，shell 和 CSS 是静态文件。用户无需安装 xelatex。
+**结果：** M3 采用。`RenderServiceImpl` 封装 Playwright + `fit.ts`。简历 body 为 HTML；shell 为 `src/service/impl/render/shell.html`。M3 范围内移除 LaTeX 路径。

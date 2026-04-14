@@ -197,3 +197,10 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **Me:** wolf.toml and profile.toml are user-edited files. Without runtime validation, missing or wrong-type fields cause silent runtime errors or cryptic crashes.
 **AI:** Zod schemas (`AppConfigSchema`, `UserProfileSchema`) defined in `src/utils/schemas.ts`. Both `config.ts` (wolf.toml) and `FileProfileRepository` (profile.toml) call `.parse()` at load time. Missing fields or wrong types throw immediately with a clear Zod error.
 **Result:** Adopted. Schemas defined in `src/utils/schemas.ts`. Config and repository load paths both validate at parse time, not at first use.
+
+---
+
+**2026-04-12 — HTML rendering over LaTeX for M3 resume output**
+**Me:** The POC validated HTML → PDF via Playwright. Compared to LaTeX, it removes the xelatex system dependency and the HTML/CSS approach is faster to iterate on.
+**AI:** Validated. The `fit()` binary search algorithm (ported from POC to `RenderService`) handles single-page compression deterministically. Claude outputs the HTML body; the shell and CSS are static. No xelatex dependency for users.
+**Result:** Adopted for M3. `RenderServiceImpl` wraps Playwright + `fit.ts`. Resume body is HTML; shell is `src/service/impl/render/shell.html`. LaTeX path is removed from M3 scope.
