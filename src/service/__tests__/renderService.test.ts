@@ -28,7 +28,7 @@ import { fit } from '../impl/render/fit.js';
 
 const FAKE_PDF = Buffer.from('fake-pdf-bytes');
 
-describe('RenderServiceImpl', () => {
+describe('RenderService', () => {
   beforeEach(() => vi.clearAllMocks());
 
   // Happy path: fit succeeds and returns a PDF buffer.

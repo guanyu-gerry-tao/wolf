@@ -1,5 +1,5 @@
 import { aiClient } from '../../utils/ai.js';
-import type { RewriteService } from '../rewrite.js';
+import type { ResumeRewriteService } from '../resumeRewriteService.js';
 import type { UserProfile } from '../../types/index.js';
 
 const SYSTEM_PROMPT = `You are a professional resume writer. Your job is to tailor a resume to a specific job description.
@@ -57,7 +57,7 @@ Rules:
 - Skills section: comma-separated list, no bullets
 - Output raw HTML only — no markdown fences, no explanation text`;
 
-export class RewriteServiceImpl implements RewriteService {
+export class ResumeRewriteServiceImpl implements ResumeRewriteService {
   async tailorResumeToHtml(
     resumePool: string,
     jdText: string,
@@ -87,7 +87,7 @@ Produce the tailored resume HTML body now.`;
     });
 
     const trimmed = text.trim();
-    if (!trimmed) throw new Error('RewriteService: Claude returned an empty response');
+    if (!trimmed) throw new Error('ResumeRewriteService: Claude returned an empty response');
     return trimmed;
   }
 }

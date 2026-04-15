@@ -19,25 +19,25 @@ import BetterSqlite3 from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 
 import { initializeSchema } from '../repository/impl/initializeSchema.js';
-import { SqliteJobRepository } from '../repository/impl/sqliteJobRepository.js';
-import { SqliteCompanyRepository } from '../repository/impl/sqliteCompanyRepository.js';
-import { SqliteBatchRepository } from '../repository/impl/sqliteBatchRepository.js';
-import { FileProfileRepository } from '../repository/impl/fileProfileRepository.js';
-import { InMemoryProfileRepository } from '../repository/impl/inMemoryProfileRepository.js';
+import { SqliteJobRepositoryImpl } from '../repository/impl/sqliteJobRepositoryImpl.js';
+import { SqliteCompanyRepositoryImpl } from '../repository/impl/sqliteCompanyRepositoryImpl.js';
+import { SqliteBatchRepositoryImpl } from '../repository/impl/sqliteBatchRepositoryImpl.js';
+import { FileProfileRepositoryImpl } from '../repository/impl/fileProfileRepositoryImpl.js';
+import { InMemoryProfileRepositoryImpl } from '../repository/impl/inMemoryProfileRepositoryImpl.js';
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
-import { RewriteServiceImpl } from '../service/impl/rewriteServiceImpl.js';
-import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationService.js';
+import { ResumeRewriteServiceImpl } from '../service/impl/resumeRewriteServiceImpl.js';
+import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 
-import type { JobRepository } from '../repository/job.js';
-import type { CompanyRepository } from '../repository/company.js';
-import type { BatchRepository } from '../repository/batch.js';
-import type { ProfileRepository } from '../repository/profile.js';
-import type { BatchService } from '../service/batch.js';
-import type { JobProviderService } from '../service/jobProvider.js';
-import type { RenderService } from '../service/render.js';
-import type { RewriteService } from '../service/rewrite.js';
-import type { TailorApplicationService } from '../application/tailor.js';
+import type { JobRepository } from '../repository/jobRepository.js';
+import type { CompanyRepository } from '../repository/companyRepository.js';
+import type { BatchRepository } from '../repository/batchRepository.js';
+import type { ProfileRepository } from '../repository/profileRepository.js';
+import type { BatchService } from '../service/batchService.js';
+import type { JobProvider } from '../service/jobProvider.js';
+import type { RenderService } from '../service/renderService.js';
+import type { ResumeRewriteService } from '../service/resumeRewriteService.js';
+import type { TailorApplicationService } from '../application/tailorApplicationService.js';
 
 export interface AppContext {
   // repositories
@@ -47,9 +47,9 @@ export interface AppContext {
   profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
-  jobProviders: JobProviderService[];
+  jobProviders: JobProvider[];
   renderService: RenderService;
-  rewriteService: RewriteService;
+  rewriteService: ResumeRewriteService;
   // application services
   tailorApp: TailorApplicationService;
 }
@@ -68,13 +68,13 @@ function wireContext(
   const db = drizzle(sqlite);
   initializeSchema(db);
 
-  const jobRepo = new SqliteJobRepository(db);
-  const companyRepo = new SqliteCompanyRepository(db);
-  const batchRepo = new SqliteBatchRepository(db);
+  const jobRepo = new SqliteJobRepositoryImpl(db);
+  const companyRepo = new SqliteCompanyRepositoryImpl(db);
+  const batchRepo = new SqliteBatchRepositoryImpl(db);
 
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
   const renderService = new RenderServiceImpl();
-  const rewriteService = new RewriteServiceImpl();
+  const rewriteService = new ResumeRewriteServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
     jobRepo, profileRepository, renderService, rewriteService, workspaceDir,
   );
@@ -107,7 +107,7 @@ export function createAppContext(): AppContext {
 
   const dbPath = path.join(dataDir, 'wolf.sqlite');
   const sqlite = new BetterSqlite3(dbPath);
-  const profileRepository = new FileProfileRepository(workspaceDir);
+  const profileRepository = new FileProfileRepositoryImpl(workspaceDir);
 
   return wireContext(sqlite, profileRepository, workspaceDir);
 }
@@ -121,6 +121,6 @@ export function createAppContext(): AppContext {
  */
 export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
-  const profileRepository = new InMemoryProfileRepository();
+  const profileRepository = new InMemoryProfileRepositoryImpl();
   return wireContext(sqlite, profileRepository, '/tmp/wolf-test');
 }

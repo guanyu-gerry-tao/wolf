@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'smol-toml';
-import type { ProfileRepository } from '../profile.js';
+import type { ProfileRepository } from '../profileRepository.js';
 import type { UserProfile } from '../../types/index.js';
 import { AppConfigSchema, UserProfileSchema } from '../../utils/schemas.js';
 
-export class FileProfileRepository implements ProfileRepository {
+export class FileProfileRepositoryImpl implements ProfileRepository {
   constructor(private readonly workspaceDir: string) {}
 
   private profileDir(id: string): string {

@@ -4,7 +4,7 @@ export interface TailorApplicationService {
   /**
    * Tailor a resume for a specific job.
    * 1. Load Job + UserProfile from repositories
-   * 2. Call RewriteService to produce tailored HTML body
+   * 2. Call ResumeRewriteService to produce tailored HTML body
    * 3. Call RenderService to produce one-page PDF
    * 4. Write PDF to data/<company>_<title>_<jobId>/resume.pdf
    * 5. Update job record with tailoredResumePdfPath

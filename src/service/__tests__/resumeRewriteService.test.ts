@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RewriteServiceImpl } from '../impl/rewriteServiceImpl.js';
+import { ResumeRewriteServiceImpl } from '../impl/resumeRewriteServiceImpl.js';
 import type { UserProfile } from '../../types/index.js';
 
 // Mock aiClient so tests never make real API calls.
@@ -32,7 +32,7 @@ TypeScript, Go, PostgreSQL`;
 
 const JD_TEXT = 'We are looking for a backend engineer with Go and TypeScript experience.';
 
-describe('RewriteServiceImpl', () => {
+describe('ResumeRewriteServiceImpl', () => {
   beforeEach(() => vi.clearAllMocks());
 
   // Happy path: Claude returns valid HTML — check that prompt contains the right inputs.
@@ -40,7 +40,7 @@ describe('RewriteServiceImpl', () => {
     const htmlBody = '<h2>EXPERIENCE</h2><div class="item"><div class="item-header"><span>SWE, Acme</span><span>2022–Present</span></div><ul><li>Built things in Go.</li></ul></div>';
     vi.mocked(aiClient).mockResolvedValue(htmlBody);
 
-    const svc = new RewriteServiceImpl();
+    const svc = new ResumeRewriteServiceImpl();
     const result = await svc.tailorResumeToHtml(RESUME_POOL, JD_TEXT, PROFILE);
 
     expect(result).toBe(htmlBody);
@@ -56,7 +56,7 @@ describe('RewriteServiceImpl', () => {
   // Whitespace trimming: Claude sometimes pads output — the service must strip it.
   it('trims the returned HTML body', async () => {
     vi.mocked(aiClient).mockResolvedValue('  <h2>EXPERIENCE</h2>  \n');
-    const svc = new RewriteServiceImpl();
+    const svc = new ResumeRewriteServiceImpl();
     const result = await svc.tailorResumeToHtml(RESUME_POOL, JD_TEXT, PROFILE);
     expect(result).toBe('<h2>EXPERIENCE</h2>');
   });
@@ -64,7 +64,7 @@ describe('RewriteServiceImpl', () => {
   // Guard against empty response — Claude can return '' on refusal or error.
   it('throws if aiClient returns empty string', async () => {
     vi.mocked(aiClient).mockResolvedValue('');
-    const svc = new RewriteServiceImpl();
+    const svc = new ResumeRewriteServiceImpl();
     await expect(svc.tailorResumeToHtml(RESUME_POOL, JD_TEXT, PROFILE)).rejects.toThrow('empty');
   });
 });

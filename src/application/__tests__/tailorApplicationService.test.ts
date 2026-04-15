@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TailorApplicationServiceImpl } from '../impl/tailorApplicationService.js';
-import type { JobRepository } from '../../repository/job.js';
-import type { ProfileRepository } from '../../repository/profile.js';
-import type { RenderService } from '../../service/render.js';
-import type { RewriteService } from '../../service/rewrite.js';
+import { TailorApplicationServiceImpl } from '../impl/tailorApplicationServiceImpl.js';
+import type { JobRepository } from '../../repository/jobRepository.js';
+import type { ProfileRepository } from '../../repository/profileRepository.js';
+import type { RenderService } from '../../service/renderService.js';
+import type { ResumeRewriteService } from '../../service/resumeRewriteService.js';
 import type { Job } from '../../types/job.js';
 import type { UserProfile } from '../../types/index.js';
 
@@ -66,11 +66,11 @@ function makeRenderSvc(): RenderService {
   return { renderResumePdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf')) };
 }
 
-function makeRewriteSvc(): RewriteService {
+function makeRewriteSvc(): ResumeRewriteService {
   return { tailorResumeToHtml: vi.fn().mockResolvedValue('<h2>EXPERIENCE</h2>') };
 }
 
-describe('TailorApplicationServiceImpl', () => {
+describe('TailorApplicationService', () => {
   beforeEach(() => vi.clearAllMocks());
 
   // Happy path: successful tailor writes PDF and updates job record.
@@ -96,7 +96,7 @@ describe('TailorApplicationServiceImpl', () => {
     await expect(svc.tailor('missing-job')).rejects.toThrow('Job not found');
   });
 
-  // Verify the correct inputs are passed down to RewriteService.
+  // Verify the correct inputs are passed down to ResumeRewriteService.
   it('calls rewriteService with resume pool and JD text', async () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(

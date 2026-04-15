@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fit } from './render/fit.js';
-import type { RenderService } from '../render.js';
+import type { RenderService } from '../renderService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHELL_PATH = path.join(__dirname, 'render', 'shell.html');

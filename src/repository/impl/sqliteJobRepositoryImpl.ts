@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
-import type { JobRepository } from '../job.js';
+import type { JobRepository } from '../jobRepository.js';
 import type { Job, JobQuery, JobStatus, JobUpdate } from '../../types/job.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { jobs } from './schema.js';
@@ -18,7 +18,7 @@ const ALL_STATUSES: JobStatus[] = [
   'error',
 ];
 
-export class SqliteJobRepository implements JobRepository {
+export class SqliteJobRepositoryImpl implements JobRepository {
   constructor(private readonly db: DrizzleDb) {}
 
   async get(id: string): Promise<Job | null> {

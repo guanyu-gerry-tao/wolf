@@ -1,6 +1,6 @@
 import type { UserProfile } from '../types/index.js';
 
-export interface RewriteService {
+export interface ResumeRewriteService {
   /**
    * Select and rewrite resume content to match a job description.
    * @param resumePool - Full resume content pool from resume_pool.md

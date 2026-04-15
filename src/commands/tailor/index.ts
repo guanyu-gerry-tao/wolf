@@ -3,7 +3,7 @@ import { createAppContext, type AppContext } from '../../cli/appContext.js';
 
 /**
  * Tailors a resume for a specific job using the full pipeline:
- * RewriteService → RenderService → one-page PDF.
+ * ResumeRewriteService → RenderService → one-page PDF.
  *
  * @param options - Must include `jobId`; profileId defaults to defaultProfileId.
  * @param ctx - AppContext for dependency injection; defaults to real SQLite-backed context.

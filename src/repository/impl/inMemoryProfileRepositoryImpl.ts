@@ -1,4 +1,4 @@
-import type { ProfileRepository } from '../profile.js';
+import type { ProfileRepository } from '../profileRepository.js';
 import type { UserProfile } from '../../types/index.js';
 
 const MOCK_PROFILE: UserProfile = {
@@ -17,7 +17,7 @@ const MOCK_PROFILE: UserProfile = {
   scoringNotes: null,
 };
 
-export class InMemoryProfileRepository implements ProfileRepository {
+export class InMemoryProfileRepositoryImpl implements ProfileRepository {
   async get(id: string): Promise<UserProfile | null> {
     return id === MOCK_PROFILE.id ? MOCK_PROFILE : null;
   }

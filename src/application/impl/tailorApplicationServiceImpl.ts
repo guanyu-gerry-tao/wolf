@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
-import type { TailorApplicationService } from '../tailor.js';
+import type { TailorApplicationService } from '../tailorApplicationService.js';
 import type { TailorResult } from '../../types/index.js';
-import type { JobRepository } from '../../repository/job.js';
-import type { ProfileRepository } from '../../repository/profile.js';
-import type { RenderService } from '../../service/render.js';
-import type { RewriteService } from '../../service/rewrite.js';
+import type { JobRepository } from '../../repository/jobRepository.js';
+import type { ProfileRepository } from '../../repository/profileRepository.js';
+import type { RenderService } from '../../service/renderService.js';
+import type { ResumeRewriteService } from '../../service/resumeRewriteService.js';
 
 // Strip characters unsafe for directory names, collapse repeated underscores, cap length.
 function sanitize(s: string): string {
@@ -17,7 +17,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly jobRepository: JobRepository,
     private readonly profileRepository: ProfileRepository,
     private readonly renderService: RenderService,
-    private readonly rewriteService: RewriteService,
+    private readonly rewriteService: ResumeRewriteService,
     private readonly workspaceDir: string,
   ) {}
 
