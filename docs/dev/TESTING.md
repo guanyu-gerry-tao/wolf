@@ -63,7 +63,7 @@ wolf init   # run a second time
 
 ---
 
-## UC-01.1 · `wolf init` (MCP)
+## UC-01.1.2 · `wolf init` (MCP)
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 

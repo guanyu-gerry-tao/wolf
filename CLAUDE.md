@@ -112,6 +112,11 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
 
+### Comment style
+
+- **Tests:** Write thorough English comments. Every `describe`, `it`, helper function, and non-obvious assertion should have a comment explaining *what scenario is being tested and why*. A reader should understand the test's intent without reading the implementation.
+- **Implementation:** Add single-line English comments before logical blocks to explain intent. Do not add comments after a line of code — always on the line above. Keep it concise; explain *why*, not *what*.
+
 ## Workflow rules
 
 - Do NOT commit or push without explicit user approval. Always show changes and wait for confirmation first.

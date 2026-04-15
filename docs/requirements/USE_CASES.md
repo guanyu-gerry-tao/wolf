@@ -14,9 +14,9 @@ Actor is "User" (human via CLI) or "Agent" (AI orchestrator via MCP) unless spec
    - c - Configure the MCP plugin using the copyable config block from the README, which includes `cwd` set to the workspace folder created in step a.
 - 3 - User completes the above steps; the MCP server is now configured to start with the correct working directory.
 
-NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
+NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.1.2.
 
-## UC-01 · Run Initial Setup (`wolf init`)
+## UC-01.1.1 · Run Initial Setup (`wolf init` — CLI)
 
 **Actor:** User
 **Precondition:** wolf is installed; no `wolf.toml` exists in the workspace.
@@ -35,7 +35,7 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
    - 6.2 - If not set → print setup instructions; continue (key is not required to complete init).
 - 7 - wolf prints a summary of all `WOLF_*` keys (set / not set), lists available CLI commands, suggests running `--help` for details, and exits.
 
-## UC-01.1 · Run Initial Setup (MCP)
+## UC-01.1.2 · Run Initial Setup (MCP)
 
 **Actor:** AI Agent (e.g. OpenClaw, Claude Code, or Claude Chat)
 **Precondition:** wolf is installed; no `wolf.toml` exists in the workspace; AI has the wolf MCP plugin installed.
@@ -49,7 +49,7 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
 - 6 - AI confirms setup is complete.
    - 6.1 - If API keys are not configured → AI informs the user they need to set their API key, explains how to register and obtain one, and provides a copyable code block (e.g. `export WOLF_ANTHROPIC_API_KEY=your_key_here`), instructing the user to add it to `~/.zshrc` and then run `source ~/.zshrc` or restart the terminal.
 
-## UC-02.1 · Hunt for Jobs (`wolf hunt`)
+## UC-02.1.1 · Hunt for Jobs (`wolf hunt`)
 
 **Actor:** User or Agent
 **Precondition:** `wolf.toml` exists; at least one provider is configured.
@@ -59,22 +59,63 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
    - 2.1 - If no providers are configured → print setup hint and exit. (hint TBD)
 - 3 - For each provider, wolf fetches job listings via the `JobProvider` interface.
    - 3.1 - If a provider returns an error → log the error, skip that provider, continue with others.
-- 4 - wolf deduplicates results (same URL, or same title + company).
-- 5 - wolf saves new jobs to SQLite with `status: raw`, `score: null`.
+- 4 - wolf deduplicates by URL (normalized, query params stripped). A job whose URL already exists in the DB is skipped — multi-source duplicates (same job on LinkedIn and Handshake) are intentionally kept as separate records and resolved at fill time.
+- 5 - wolf saves new jobs to SQLite with `status: new`, `score: null`.
 - 6 - wolf prints a summary: N fetched, M duplicates skipped, K new jobs saved.
 - 7 - `CLI` hints at next steps (e.g. "Run `wolf score` to evaluate these jobs against your profile.").
 
-## UC-02.2 - Hunt for Jobs (MCP)
+## UC-02.1.2 - Hunt for Jobs (MCP)
 
 **Actor:** AI Agent (e.g. OpenClaw)
 **Precondition:** wolf is installed; `wolf.toml` exists with at least one provider configured.
 
 - 1 - User asks the AI: "Can you find me some jobs?" or "Lets go hunting jobs!" or "Use wolf to find me some jobs!"
 - 2 - AI calls the `wolf_hunt` MCP tool. No arguments are needed.
-- 3 - wolf performs the hunt as described in UC-02.1 step 2-5, and returns the summary of results (N fetched, M duplicates skipped, K new jobs saved) to the AI. AI should then relay this information to the user in a natural language response.
+- 3 - wolf performs the hunt as described in UC-02.1.1 step 2-5, and returns the summary of results (N fetched, M duplicates skipped, K new jobs saved) to the AI. AI should then relay this information to the user in a natural language response.
 - 4 - AI may suggest next steps (e.g. "I found K new jobs for you. Would you like me to score them against your profile?") and guide the user through the workflow.
 
-## UC-03.1 · Score Jobs (`wolf score`)
+## UC-02.2.1 · Add a Job Manually (`wolf add` — CLI)
+
+**Actor:** User
+**Precondition:** `wolf.toml` exists; the user has a specific job they want to track.
+
+- 1 - User runs `wolf add` with required flags:
+   - `--title <title>` — job title
+   - `--company <company>` — company name
+   - One of:
+     - `--jd <text>` — inline job description text
+     - `--file <path>` — path to a plain-text file containing the JD
+   - Optional: `--url <url>` — link to the original posting
+- 2 - wolf checks if a job with the same URL already exists in the DB (URL normalized, query params stripped).
+   - 2.1 - URL not found → proceed to step 3.
+   - 2.2 - URL found, existing status is `new` / `reviewed` / `filtered` / `ignored` / `rejected` / `closed` → overwrite the existing record and warn: "Job already exists (jobId: xxx); record updated."
+   - 2.3 - URL found, existing status is `applied` / `applied_previously` / `interview` / `offer` → do not store; return existing `jobId` with a warning: "You have already applied to this job."
+- 3 - wolf looks up the company by name.
+   - 3.1 - If the company does not exist → wolf creates a new company record.
+   - 3.2 - If the company already exists → wolf reuses the existing record.
+- 4 - wolf saves the job with `status: new`, `score: null`.
+- 5 - wolf prints the assigned `jobId` and hints at next steps (e.g. "Job saved. Run `wolf tailor <jobId>` to tailor your resume.").
+
+## UC-02.2.2 · Add a Job Manually (MCP)
+
+**Actor:** AI Agent (e.g. Claude Code, OpenClaw)
+**Precondition:** `wolf.toml` exists; the user has a specific job in mind (link, pasted JD, screenshot, or verbal description).
+**Note:** The AI caller is responsible for extracting structured fields from the raw input; wolf only stores.
+
+- 1 - User shares a job with the AI in any form: a URL, a pasted job description, a screenshot, or a verbal description (e.g. "there's a PM role at Stripe I want to track").
+- 2 - AI reads the content (fetches the URL if needed, runs OCR if a screenshot, or parses the text) and extracts: `title`, `company`, `jdText`, and optionally `url`.
+- 3 - AI calls `wolf_add` with the extracted fields.
+- 4 - wolf applies the same URL dedup logic as UC-02.2.1 steps 2.1–2.3.
+   - 4.1 - No URL collision → wolf looks up the company, creates or reuses the record, saves the job, and returns `{ jobId, created: true }`.
+   - 4.2 - URL collision, not yet applied → wolf overwrites the existing record and returns `{ jobId, created: false, warning: "existing record updated" }`.
+   - 4.3 - URL collision, already applied → wolf does not store; returns `{ jobId, created: false, warning: "already applied" }`.
+- 5 - AI relays the outcome to the user.
+   - 5.1 - Created → "Saved. Want me to score it now, or tailor your resume for it?"
+   - 5.2 - Already applied → "You've already applied to this job (jobId: xxx). No new record created."
+
+NEXT: On success, AI may immediately chain into `wolf_score` with `{ jobId, single: true }` for synchronous scoring, or `wolf_tailor` with `{ jobId }` to produce a tailored resume.
+
+## UC-03.1.1 · Score Jobs (`wolf score`)
 
 **Actor:** User
 **Precondition:** At least one job with `score: null` exists in the DB.
@@ -93,7 +134,7 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
 - 4 - wolf writes all results to SQLite: structured fields, filter status, score, and justification.
 - 5 - wolf prints a summary (e.g. "Scored N jobs: X high fit (≥0.7), Y medium fit (0.4–0.7), Z filtered, W errors.") and hints at next steps (e.g. "Run `wolf list --jobs` to view scored jobs.").
 
-## UC-03.2 · Score Jobs (MCP)
+## UC-03.1.2 · Score Jobs (MCP)
 
 **Actor:** AI Agent
 **Precondition:** `wolf.toml` exists; at least one job with `score: null` exists in the DB.
@@ -102,10 +143,10 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
 - 2 - AI calls `wolf_score` with no arguments to score all pending jobs.
    - 2.1 - To score a single job → AI calls `wolf_score` with `{ jobId }`.
    - 2.2 - `profileId` arg is a placeholder for future multi-profile support (TBD); omit for now.
-- 3 - wolf performs scoring as described in UC-03.1 steps 2–5 and returns per-job results including score, filter status, justification, and any errors.
+- 3 - wolf performs scoring as described in UC-03.1.1 steps 2–5 and returns per-job results including score, filter status, justification, and any errors.
 - 4 - AI presents the results to the user in a natural language summary, highlighting top matches.
 
-## UC-04.1 · List (`wolf list`)
+## UC-04.1.1 · List (`wolf list`)
 
 **Actor:** User
 **Precondition:** At least one record exists in the local DB.
@@ -131,7 +172,7 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
 - 2 - wolf returns all distinct companies in the DB with their IDs.
 - 3 - wolf prints a table: companyId, company name.
 
-## UC-04.2 · List (MCP)
+## UC-04.1.2 · List (MCP)
 
 **Actor:** AI Agent
 **Precondition:** At least one record exists in the local DB.
@@ -150,7 +191,7 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
 - 3 - wolf returns all distinct companies with their IDs.
 - 4 - AI presents the company list to the user. AI may follow up by calling `wolf_list` with `{ mode: "jobs", fromCompanyId: "..." }` if the user wants to drill into a specific company.
 
-## UC-05.1 · Select Jobs (`wolf select`)
+## UC-05.1.1 · Select Jobs (`wolf select`)
 
 **Actor:** User
 **Precondition:** Jobs in DB have been scored.
@@ -159,18 +200,18 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
 - 2 - wolf loads scored jobs using the same query logic as `wolf list --jobs`, sorted by score descending. wolf opens an interactive TUI showing company, title, score, status, and JD URL as plain text.
 - 3 - User navigates the list and toggles selection on jobs they want to apply for. The `selected` field is updated to `true` or `false` in the DB accordingly.
 
-## UC-05.2 · Select Jobs (MCP)
+## UC-05.1.2 · Select Jobs (MCP)
 
 **Actor:** AI Agent
 **Precondition:** Jobs in DB have been scored.
 
-- 1 - User reviews the numbered list from UC-04.2 and tells the AI which jobs to select (e.g. "I want jobs 1, 3, and 5").
+- 1 - User reviews the numbered list from UC-04.1.2 and tells the AI which jobs to select (e.g. "I want jobs 1, 3, and 5").
 - 2 - AI maps the user's numbers to jobIds from the prior `wolf_list` response and calls `wolf_select` with `{ jobIds: [...], action: "select" }`.
 - 3 - wolf updates the `selected` field to `true` for the given jobs.
    - 3.1 - To deselect → AI calls `wolf_select` with `{ jobIds: [...], action: "unselect" }`.
 - 4 - AI confirms the selection to the user.
 
-## UC-06.1 · Tailor Resume (`wolf tailor`)
+## UC-06.1.1 · Tailor Resume (`wolf tailor`)
 
 **Actor:** User
 **Precondition:** `profile.toml` exists; `resume_pool.md` exists; target job is in the DB.
@@ -179,7 +220,7 @@ NEXT: AI recommends the user initialize via MCP first. Proceed to UC-01.
    - `--profile <profileId>` → use the specified profile. (TBD: multi-profile support — currently a placeholder; defaults to `default_profile` in `wolf.toml`.)
    - `--jobid <jobId>` → tailor only the specified job synchronously; otherwise tailors all selected jobs.
    - `--diff` → print a before/after comparison of every changed bullet per job.
-   - `--cover-letter` → after tailoring completes, generate a cover letter for each job in the batch (same logic as UC-07.1).
+   - `--cover-letter` → after tailoring completes, generate a cover letter for each job in the batch (same logic as UC-07.1.1).
 - 2 - wolf reads all jobs with `selected: true` AND (`status: scored` OR `status: tailor_error`) from SQLite (or just the specified job if `--jobid` is set), extracting JD, company, title, and other relevant fields.
 - 3 - wolf reads the user's profile from `profile.toml` at profile's folder and resume bullet points from `resume_pool.md` under that folder.
 - 4 - wolf submits all jobs to Claude Batch API in a single batch, each request including the JD text and resume pool. CLI provides progress updates while polling.
@@ -196,24 +237,24 @@ The following steps (5–8) run per-job after the batch results are received. Ea
    - 8.2 - If Claude returns LGTM → continue to next job.
    - 8.3 - After 3 attempts without LGTM → wolf checks the final PDF page count: if 1 page → accept and continue; if 2 pages → mark `status: tailor_error`, continue to next job.
 - 9 - wolf prints a summary: jobs tailored, errors, and output file paths.
-- 10 - If `--cover-letter` was set → run UC-07.1 for all successfully tailored jobs in this batch.
+- 10 - If `--cover-letter` was set → run UC-07.1.1 for all successfully tailored jobs in this batch.
 
-## UC-06.2 · Tailor Resume (MCP)
+## UC-06.1.2 · Tailor Resume (MCP)
 
 **Actor:** AI Agent
 **Precondition:** `wolf.toml` exists; active `profile.toml` exists; `resume_pool.md` exists; target job is in the DB.
 
 - 1 - User asks the AI to tailor their resume for a job (e.g. "Tailor my resume for job 42").
 - 2 - AI calls `wolf_tailor` with `{ jobId }` to tailor a specific job, or with no arguments to tailor all selected jobs. `profileId` is a placeholder arg for future multi-profile support (TBD); omit for now.
-- 3 - wolf performs tailoring as described in UC-06.1 steps 2–10 and returns per-job results: PDF path, page count, number of visual review iterations used, cover letter path (if generated), and any errors (`tailor_error` jobs are included with reason).
+- 3 - wolf performs tailoring as described in UC-06.1.1 steps 2–10 and returns per-job results: PDF path, page count, number of visual review iterations used, cover letter path (if generated), and any errors (`tailor_error` jobs are included with reason).
 - 4 - AI presents a summary to the user: which jobs were tailored successfully, which hit `tailor_error` and why, and offers next steps (e.g. run `wolf_cover_letter` or `wolf_fill`).
 
-## UC-07.1 · Generate Cover Letter (`wolf cover-letter`)
+## UC-07.1.1 · Generate Cover Letter (`wolf cover-letter`)
 
 **Actor:** User
 **Precondition:** Target job is in the DB; tailored resume has been generated for the job.
 
-- 1 - (Entered from UC-06.1 when `--cover-letter` is set, or user runs `wolf cover-letter [--jobid <jobId>]` directly, or triggered automatically from UC-08.1 when a CL field is detected and no CL exists.)
+- 1 - (Entered from UC-06.1.1 when `--cover-letter` is set, or user runs `wolf cover-letter [--jobid <jobId>]` directly, or triggered automatically from UC-08.1.1 when a CL field is detected and no CL exists.)
 - 2 - wolf reads all selected jobs with no existing cover letter path in evaluations (or just the specified job if `--jobid` is set). For each, wolf reads the JD, user profile, and tailored resume.
 - 3 - wolf checks whether the JD or `companies` table contains a company description.
    - 3.1 - If a company description is available → full CL including a "why this company" section.
@@ -223,30 +264,41 @@ The following steps (5–8) run per-job after the batch results are received. Ea
 - 6 - wolf converts `.md` to PDF via `md-to-pdf`. If `md-to-pdf` is not installed → skip PDF conversion for all jobs, print a warning, and continue.
 - 7 - wolf prints the output file paths.
 
-## UC-07.2 · Generate Cover Letter (MCP)
+## UC-07.1.2 · Generate Cover Letter (MCP)
 
 **Actor:** AI Agent
 **Precondition:** Target job is in the DB; tailored resume has been generated for the job.
 
-- 1 - User asks the AI to generate a cover letter (e.g. "Write a cover letter for job 42"), or AI triggers this automatically during UC-08.2 when a CL field is detected.
+- 1 - User asks the AI to generate a cover letter (e.g. "Write a cover letter for job 42"), or AI triggers this automatically during UC-08.1.2 when a CL field is detected.
 - 2 - AI calls `wolf_cover_letter` with `{ jobId }`. `profileId` is a placeholder arg for future multi-profile support (TBD); omit for now.
-- 3 - wolf generates the cover letter as described in UC-07.1 steps 2–6 and returns the cover letter content, `.md` path, PDF path (if conversion succeeded), and whether company context was available.
+- 3 - wolf generates the cover letter as described in UC-07.1.1 steps 2–6 and returns the cover letter content, `.md` path, PDF path (if conversion succeeded), and whether company context was available.
 - 4 - AI displays the cover letter content to the user for review.
    - 4.1 - If the user requests changes → AI calls `wolf_cover_letter` again with revision instructions; repeat from step 4.
 
-## UC-08.1 · Fill Application Form (`wolf fill`)
+## UC-08.1.1 · Fill Application Form (`wolf fill`)
 
-> TODO: Fill is complex. Design deferred.
+> TODO: Fill is complex. Full design deferred.
 
-## UC-08.2 · Fill Application Form (MCP)
+**Deduplication behaviour (decided, not deferred):**
 
-> TODO: Fill is complex. Design deferred.
+Before submitting, wolf checks the job's current status. If `applied`, `applied_previously`, `interview`, or `offer` → skip and warn; do not re-submit.
 
-## UC-09.1 · Send Outreach Email (`wolf reach`)
+During filling, if the ATS reports the role has already been applied to (e.g. "You have already applied"):
+- wolf sets `status: applied_previously` and `appliedProfileId: null`.
+- wolf warns the user and skips submission.
+- Stats will count this job separately from wolf-submitted applications.
+
+## UC-08.1.2 · Fill Application Form (MCP)
+
+> TODO: Fill is complex. Full design deferred.
+
+**Deduplication behaviour:** Same as UC-08.1.1. The `wolf_fill` MCP tool returns `{ skipped: true, reason: "already_applied", jobId }` when the ATS reports a prior application, so the AI can inform the user.
+
+## UC-09.1.1 · Send Outreach Email (`wolf reach`)
 
 > TODO: Outreach is complex. Design deferred.
 
-## UC-09.2 · Send Outreach Email (MCP)
+## UC-09.1.2 · Send Outreach Email (MCP)
 
 > TODO: Outreach is complex. Design deferred.
 

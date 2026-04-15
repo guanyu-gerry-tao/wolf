@@ -7,7 +7,8 @@ export type JobStatus =
   | "reviewed" // user has seen it, not dismissed — next step is to apply
   | "ignored" // user manually dismissed; kept for recovery
   | "filtered" // auto-dismissed by dealbreaker rules; kept for recovery
-  | "applied" // application submitted
+  | "applied" // application submitted by wolf
+  | "applied_previously" // fill detected the role was already applied to before wolf processed it; skipped
   | "interview" // company reached out for interview
   | "offer" // received an offer
   | "rejected" // company passed, or user withdrew

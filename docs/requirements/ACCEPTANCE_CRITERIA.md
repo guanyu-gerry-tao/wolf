@@ -7,7 +7,7 @@ Each section corresponds to a User Story and Use Case.
 
 ## AC-01 · Initial Setup (`wolf init`)
 
-**Story:** US-01 · **Use case:** UC-01
+**Story:** US-01 · **Use case:** UC-01.1.1, UC-01.1.2
 
 **AC-01-1 — Happy path**
 - Given wolf is installed and no `wolf.toml` exists
@@ -33,7 +33,7 @@ Each section corresponds to a User Story and Use Case.
 
 ## AC-02 · Job Discovery (`wolf hunt`)
 
-**Story:** US-02 · **Use case:** UC-02
+**Story:** US-02 · **Use case:** UC-02.1.1, UC-02.1.2, UC-02.2.1, UC-02.2.2
 
 **AC-02-1 — Jobs saved to DB**
 - Given at least one provider is configured in `wolf.toml`
