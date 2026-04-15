@@ -69,6 +69,7 @@ function wireContext(
   profileRepository: ProfileRepository,
   workspaceDir: string,
   defaultAiConfig: AiConfig,
+  defaultCoverLetterTone: string,
 ): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
@@ -81,7 +82,7 @@ function wireContext(
   const renderService = new RenderServiceImpl();
   const rewriteService = new ResumeCoverLetterServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
-    jobRepo, profileRepository, renderService, rewriteService, workspaceDir, defaultAiConfig,
+    jobRepo, profileRepository, renderService, rewriteService, workspaceDir, defaultAiConfig, defaultCoverLetterTone,
   );
 
   return {
@@ -118,8 +119,9 @@ export function createAppContext(): AppContext {
   // Load config synchronously so default-parameter pattern in commands works.
   const config = loadConfigSync();
   const defaultAiConfig: AiConfig = config.ai;
+  const defaultCoverLetterTone = config.tailor.defaultCoverLetterTone;
 
-  return wireContext(sqlite, profileRepository, workspaceDir, defaultAiConfig);
+  return wireContext(sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone);
 }
 
 /**
@@ -133,5 +135,5 @@ export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
   const profileRepository = new InMemoryProfileRepositoryImpl();
   const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
-  return wireContext(sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig);
+  return wireContext(sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, 'professional');
 }

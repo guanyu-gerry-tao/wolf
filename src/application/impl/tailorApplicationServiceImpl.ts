@@ -1,8 +1,7 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { TailorApplicationService } from '../tailorApplicationService.js';
-import type { TailorOptions, TailorResult } from '../../types/index.js';
-import type { AiConfig } from '../../types/index.js';
+import type { TailorOptions, TailorResult, AiConfig } from '../../types/index.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
@@ -21,6 +20,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly rewriteService: ResumeCoverLetterService,
     private readonly workspaceDir: string,
     private readonly defaultAiConfig: AiConfig,
+    private readonly defaultCoverLetterTone: string,
   ) {}
 
   async tailor(options: TailorOptions): Promise<TailorResult> {
@@ -69,7 +69,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
         resumePool,
         job.description,
         profile,
-        'professional',
+        this.defaultCoverLetterTone,
         aiConfig,
       );
       coverLetterHtmlPath = path.join(outputDir, 'cover_letter.html');

@@ -1,7 +1,6 @@
 import { aiClient } from '../../utils/ai.js';
 import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
-import type { AiConfig } from '../../types/index.js';
-import type { UserProfile } from '../../types/index.js';
+import type { AiConfig, UserProfile } from '../../types/index.js';
 
 const SYSTEM_PROMPT = `You are a professional resume writer. Your job is to tailor a resume to a specific job description.
 

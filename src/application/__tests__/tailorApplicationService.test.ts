@@ -85,7 +85,7 @@ describe('TailorApplicationService', () => {
     const jobRepo = makeJobRepo();
     const svc = new TailorApplicationServiceImpl(
       jobRepo, makeProfileRepo(), makeRenderSvc(), makeRewriteSvc(),
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     const result = await svc.tailor({ jobId: 'job-1' });
     expect(result.tailoredPdfPath).toContain('resume.pdf');
@@ -98,7 +98,7 @@ describe('TailorApplicationService', () => {
   it('throws if job is not found', async () => {
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(null), makeProfileRepo(), makeRenderSvc(), makeRewriteSvc(),
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     await expect(svc.tailor({ jobId: 'missing-job' })).rejects.toThrow('Job not found');
   });
@@ -108,7 +108,7 @@ describe('TailorApplicationService', () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     await svc.tailor({ jobId: 'job-1' });
     expect(rewriteSvc.tailorResumeToHtml).toHaveBeenCalledWith(
@@ -124,7 +124,7 @@ describe('TailorApplicationService', () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     await svc.tailor({ jobId: 'job-1', aiProvider: 'openai', aiModel: 'gpt-4o' });
     const calledWithAiConfig = vi.mocked(rewriteSvc.tailorResumeToHtml).mock.calls[0][3];
@@ -136,7 +136,7 @@ describe('TailorApplicationService', () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     await svc.tailor({ jobId: 'job-1' });
     const calledWithAiConfig = vi.mocked(rewriteSvc.tailorResumeToHtml).mock.calls[0][3];
@@ -148,7 +148,7 @@ describe('TailorApplicationService', () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     const result = await svc.tailor({ jobId: 'job-1' });
     expect(rewriteSvc.generateCoverLetter).toHaveBeenCalledOnce();
@@ -161,7 +161,7 @@ describe('TailorApplicationService', () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
-      '/workspace', DEFAULT_AI,
+      '/workspace', DEFAULT_AI, 'professional',
     );
     const result = await svc.tailor({ jobId: 'job-1', coverLetter: false });
     expect(rewriteSvc.generateCoverLetter).not.toHaveBeenCalled();
