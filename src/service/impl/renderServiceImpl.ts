@@ -30,4 +30,25 @@ export class RenderServiceImpl implements RenderService {
       await browser.close();
     }
   }
+
+  async renderCoverLetterPdf(htmlBody: string): Promise<Buffer> {
+    const browser = await chromium.launch();
+    const page = await browser.newPage();
+    try {
+      await page.emulateMedia({ media: 'print' });
+      await page.goto('file://' + SHELL_PATH, { waitUntil: 'domcontentloaded' });
+      await page.evaluate((html: string) => {
+        const root = document.getElementById('resume-root');
+        if (!root) throw new Error('shell.html is missing #resume-root element');
+        root.innerHTML = html;
+      }, htmlBody);
+      // Wait for fonts to finish loading before generating PDF.
+      await page.evaluate(() =>
+        (document as unknown as { fonts: { ready: Promise<void> } }).fonts.ready
+      );
+      return page.pdf({ printBackground: true, preferCSSPageSize: true });
+    } finally {
+      await browser.close();
+    }
+  }
 }

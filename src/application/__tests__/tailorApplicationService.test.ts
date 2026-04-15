@@ -67,7 +67,10 @@ function makeProfileRepo(): ProfileRepository {
 }
 
 function makeRenderSvc(): RenderService {
-  return { renderPdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf')) };
+  return {
+    renderPdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf')),
+    renderCoverLetterPdf: vi.fn().mockResolvedValue(Buffer.from('fake-cl-pdf')),
+  };
 }
 
 function makeRewriteSvc(): ResumeCoverLetterService {
@@ -152,6 +155,13 @@ describe('TailorApplicationService', () => {
     );
     const result = await svc.tailor({ jobId: 'job-1' });
     expect(rewriteSvc.generateCoverLetter).toHaveBeenCalledOnce();
+    expect(rewriteSvc.generateCoverLetter).toHaveBeenCalledWith(
+      expect.any(String),  // resumePool
+      expect.any(String),  // jdText
+      FAKE_PROFILE,
+      'professional',      // tone
+      DEFAULT_AI,          // aiConfig
+    );
     expect(result.coverLetterHtmlPath).toContain('cover_letter.html');
     expect(result.coverLetterPdfPath).toContain('cover_letter.pdf');
   });

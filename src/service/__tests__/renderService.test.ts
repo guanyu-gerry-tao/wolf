@@ -3,7 +3,10 @@ import { RenderServiceImpl } from '../impl/renderServiceImpl.js';
 import { CannotFitError, CannotFillError } from '../impl/render/fit.js';
 import type { FitResult } from '../impl/render/fit.js';
 
+const FAKE_PDF = Buffer.from('fake-pdf-bytes');
+
 // Mock Playwright so tests don't need a real browser.
+// page.pdf returns FAKE_PDF to support renderCoverLetterPdf tests.
 vi.mock('playwright', () => ({
   chromium: {
     launch: vi.fn().mockResolvedValue({
@@ -11,7 +14,7 @@ vi.mock('playwright', () => ({
         emulateMedia: vi.fn().mockResolvedValue(undefined),
         goto: vi.fn().mockResolvedValue(undefined),
         evaluate: vi.fn().mockResolvedValue(undefined),
-        pdf: vi.fn(),
+        pdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf-bytes')),
       }),
       close: vi.fn().mockResolvedValue(undefined),
     }),
@@ -26,7 +29,8 @@ vi.mock('../impl/render/fit.js', async (importOriginal) => {
 
 import { fit } from '../impl/render/fit.js';
 
-const FAKE_PDF = Buffer.from('fake-pdf-bytes');
+// Alias for readability in cover letter test.
+const mockFit = vi.mocked(fit);
 
 describe('RenderService', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -72,5 +76,15 @@ describe('RenderService', () => {
 
     const svc = new RenderServiceImpl();
     await expect(svc.renderPdf('<h2>Too little</h2>')).rejects.toThrow(CannotFillError);
+  });
+
+  // renderCoverLetterPdf: skip fit, directly call page.pdf and return the buffer.
+  it('renderCoverLetterPdf returns pdf buffer without fit', async () => {
+    mockFit.mockResolvedValue({ pdf: FAKE_PDF, finalParams: {}, iterations: 1, trace: [] } as unknown as FitResult);
+    const svc = new RenderServiceImpl();
+    const result = await svc.renderCoverLetterPdf('<p>Cover letter content</p>');
+    expect(result).toEqual(FAKE_PDF);
+    // fit should NOT be called for cover letter rendering
+    expect(mockFit).not.toHaveBeenCalled();
   });
 });

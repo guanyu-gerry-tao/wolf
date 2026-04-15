@@ -84,7 +84,7 @@ describe('ResumeCoverLetterServiceImpl', () => {
 
   const TONE = 'professional';
 
-  // Happy path: AI returns cover letter HTML — verify prompt contains JD and candidate name.
+  // Happy path: AI returns cover letter HTML — verify prompt contains JD, candidate name, and tone.
   it('calls aiClient with prompt containing JD and profile name for cover letter', async () => {
     vi.mocked(aiClient).mockResolvedValue('<p>Dear Hiring Manager, I am excited...</p>');
     const svc = new ResumeCoverLetterServiceImpl();
@@ -93,6 +93,7 @@ describe('ResumeCoverLetterServiceImpl', () => {
     const [prompt, systemPrompt] = vi.mocked(aiClient).mock.calls[0];
     expect(prompt).toContain(JD_TEXT);
     expect(prompt).toContain(PROFILE.name);
+    expect(prompt).toContain(TONE);
     // System prompt must mention cover letter.
     expect(systemPrompt).toContain('cover letter');
   });

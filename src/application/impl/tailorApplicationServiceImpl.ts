@@ -64,7 +64,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     let coverLetterPdfPath: string | null = null;
 
     if (options.coverLetter !== false) {
-      // Generate cover letter HTML and render to PDF using the same Playwright pipeline.
       const clHtml = await this.rewriteService.generateCoverLetter(
         resumePool,
         job.description,
@@ -72,9 +71,11 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
         this.defaultCoverLetterTone,
         aiConfig,
       );
+      // Write HTML source for debugging (raw fragment — useful for prompt iteration)
       coverLetterHtmlPath = path.join(outputDir, 'cover_letter.html');
       await writeFile(coverLetterHtmlPath, clHtml);
-      const clPdfBuffer = await this.renderService.renderPdf(clHtml);
+      // Render to PDF using simple renderer (no fit algorithm — cover letters don't need forced one-page)
+      const clPdfBuffer = await this.renderService.renderCoverLetterPdf(clHtml);
       coverLetterPdfPath = path.join(outputDir, 'cover_letter.pdf');
       await writeFile(coverLetterPdfPath, clPdfBuffer);
     }
