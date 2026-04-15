@@ -50,7 +50,7 @@ export function initializeSchema(db: DrizzleDb): void {
       applied_profile_id          TEXT,
       tailored_resume_tex_path    TEXT,
       tailored_resume_pdf_path    TEXT,
-      cover_letter_md_path        TEXT,
+      cover_letter_html_path      TEXT,
       cover_letter_pdf_path       TEXT,
       screenshot_path             TEXT,
       outreach_draft_path         TEXT,

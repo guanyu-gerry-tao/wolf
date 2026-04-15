@@ -33,7 +33,7 @@ const FAKE_JOB: Job = {
   appliedProfileId: null,
   tailoredResumeTexPath: null,
   tailoredResumePdfPath: null,
-  coverLetterMDPath: null,
+  coverLetterHtmlPath: null,
   coverLetterPdfPath: null,
   screenshotPath: null,
   outreachDraftPath: null,
@@ -71,7 +71,10 @@ function makeRenderSvc(): RenderService {
 }
 
 function makeRewriteSvc(): ResumeCoverLetterService {
-  return { tailorResumeToHtml: vi.fn().mockResolvedValue('<h2>EXPERIENCE</h2>') };
+  return {
+    tailorResumeToHtml: vi.fn().mockResolvedValue('<h2>EXPERIENCE</h2>'),
+    generateCoverLetter: vi.fn().mockResolvedValue('<p>Dear Hiring Manager...</p>'),
+  };
 }
 
 describe('TailorApplicationService', () => {
@@ -138,5 +141,31 @@ describe('TailorApplicationService', () => {
     await svc.tailor({ jobId: 'job-1' });
     const calledWithAiConfig = vi.mocked(rewriteSvc.tailorResumeToHtml).mock.calls[0][3];
     expect(calledWithAiConfig).toEqual(DEFAULT_AI);
+  });
+
+  // Cover letter default: when coverLetter option is not set, generateCoverLetter is called and paths are returned.
+  it('calls generateCoverLetter and returns coverLetterHtmlPath when coverLetter is not false', async () => {
+    const rewriteSvc = makeRewriteSvc();
+    const svc = new TailorApplicationServiceImpl(
+      makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
+      '/workspace', DEFAULT_AI,
+    );
+    const result = await svc.tailor({ jobId: 'job-1' });
+    expect(rewriteSvc.generateCoverLetter).toHaveBeenCalledOnce();
+    expect(result.coverLetterHtmlPath).toContain('cover_letter.html');
+    expect(result.coverLetterPdfPath).toContain('cover_letter.pdf');
+  });
+
+  // Cover letter opt-out: when coverLetter: false, generation is skipped entirely.
+  it('skips cover letter generation when coverLetter is false', async () => {
+    const rewriteSvc = makeRewriteSvc();
+    const svc = new TailorApplicationServiceImpl(
+      makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
+      '/workspace', DEFAULT_AI,
+    );
+    const result = await svc.tailor({ jobId: 'job-1', coverLetter: false });
+    expect(rewriteSvc.generateCoverLetter).not.toHaveBeenCalled();
+    expect(result.coverLetterHtmlPath).toBeNull();
+    expect(result.coverLetterPdfPath).toBeNull();
   });
 });

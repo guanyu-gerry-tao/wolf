@@ -42,33 +42,54 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
 
     const resumePool = await this.profileRepository.getResumePool(profile.id);
 
-    // Rewrite resume pool into tailored HTML body matching this JD.
+    // Create output directory: data/<company>_<title>_<jobId>/
+    const dirName = `${sanitize(job.companyId)}_${sanitize(job.title)}_${jobId}`;
+    const outputDir = path.join(this.workspaceDir, 'data', dirName);
+    await mkdir(outputDir, { recursive: true });
+
+    // --- Resume ---
+    // Rewrite resume pool into tailored HTML body matching this JD, then render to PDF.
     const htmlBody = await this.rewriteService.tailorResumeToHtml(
       resumePool,
       job.description,
       profile,
       aiConfig,
     );
-
-    // Render HTML body to one-page PDF.
     const pdfBuffer = await this.renderService.renderPdf(htmlBody);
-
-    // Write PDF to data/<company>_<title>_<jobId>/resume.pdf
-    const dirName = `${sanitize(job.companyId)}_${sanitize(job.title)}_${jobId}`;
-    const outputDir = path.join(this.workspaceDir, 'data', dirName);
-    await mkdir(outputDir, { recursive: true });
     const pdfPath = path.join(outputDir, 'resume.pdf');
     await writeFile(pdfPath, pdfBuffer);
 
+    // --- Cover Letter (default: true) ---
+    let coverLetterHtmlPath: string | null = null;
+    let coverLetterPdfPath: string | null = null;
+
+    if (options.coverLetter !== false) {
+      // Generate cover letter HTML and render to PDF using the same Playwright pipeline.
+      const clHtml = await this.rewriteService.generateCoverLetter(
+        resumePool,
+        job.description,
+        profile,
+        'professional',
+        aiConfig,
+      );
+      coverLetterHtmlPath = path.join(outputDir, 'cover_letter.html');
+      await writeFile(coverLetterHtmlPath, clHtml);
+      const clPdfBuffer = await this.renderService.renderPdf(clHtml);
+      coverLetterPdfPath = path.join(outputDir, 'cover_letter.pdf');
+      await writeFile(coverLetterPdfPath, clPdfBuffer);
+    }
+
     await this.jobRepository.update(jobId, {
       tailoredResumePdfPath: pdfPath,
+      coverLetterHtmlPath,
+      coverLetterPdfPath,
     });
 
     return {
       tailoredTexPath: null,
       tailoredPdfPath: pdfPath,
-      coverLetterMdPath: null,
-      coverLetterPdfPath: null,
+      coverLetterHtmlPath,
+      coverLetterPdfPath,
       changes: [],
       matchScore: 0,
     };

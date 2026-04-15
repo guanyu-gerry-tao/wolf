@@ -56,7 +56,7 @@ export interface TailorOptions {
 export interface TailorResult {
   tailoredTexPath: string | null;    // null if resume was not re-tailored
   tailoredPdfPath: string | null;
-  coverLetterMdPath: string | null;
+  coverLetterHtmlPath: string | null;
   coverLetterPdfPath: string | null;
   changes: string[];
   matchScore: number;

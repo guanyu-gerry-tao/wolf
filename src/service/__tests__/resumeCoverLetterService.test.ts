@@ -81,4 +81,28 @@ describe('ResumeCoverLetterServiceImpl', () => {
     const [, , options] = vi.mocked(aiClient).mock.calls[0];
     expect(options).toEqual({ provider: 'openai', model: 'gpt-4o' });
   });
+
+  const TONE = 'professional';
+
+  // Happy path: AI returns cover letter HTML — verify prompt contains JD and candidate name.
+  it('calls aiClient with prompt containing JD and profile name for cover letter', async () => {
+    vi.mocked(aiClient).mockResolvedValue('<p>Dear Hiring Manager, I am excited...</p>');
+    const svc = new ResumeCoverLetterServiceImpl();
+    const result = await svc.generateCoverLetter(RESUME_POOL, JD_TEXT, PROFILE, TONE, AI_CONFIG);
+    expect(result).toContain('Dear Hiring Manager');
+    const [prompt, systemPrompt] = vi.mocked(aiClient).mock.calls[0];
+    expect(prompt).toContain(JD_TEXT);
+    expect(prompt).toContain(PROFILE.name);
+    // System prompt must mention cover letter.
+    expect(systemPrompt).toContain('cover letter');
+  });
+
+  // Guard against empty AI response for cover letter generation.
+  it('throws if aiClient returns empty string for cover letter', async () => {
+    vi.mocked(aiClient).mockResolvedValue('');
+    const svc = new ResumeCoverLetterServiceImpl();
+    await expect(
+      svc.generateCoverLetter(RESUME_POOL, JD_TEXT, PROFILE, TONE, AI_CONFIG),
+    ).rejects.toThrow('empty');
+  });
 });

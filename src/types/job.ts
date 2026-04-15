@@ -71,7 +71,7 @@ export interface Job {
   appliedProfileId: string | null; // which profile was used; null if not yet applied
   tailoredResumeTexPath: string | null; // path to the .tex file generated
   tailoredResumePdfPath: string | null; // path to the PDF generated
-  coverLetterMDPath: string | null; // path to the .md file generated
+  coverLetterHtmlPath: string | null; // path to the cover letter HTML file generated
   coverLetterPdfPath: string | null; // path to the PDF generated
   screenshotPath: string | null; // path to the screenshot folders when applying via browser
   outreachDraftPath: string | null; // path to the outreach email draft (.eml)
@@ -96,7 +96,7 @@ export interface JobUpdate {
   scoreJustification?: string | null;
   tailoredResumeTexPath?: string | null;
   tailoredResumePdfPath?: string | null;
-  coverLetterMDPath?: string | null;
+  coverLetterHtmlPath?: string | null;
   coverLetterPdfPath?: string | null;
   screenshotPath?: string | null;
   outreachDraftPath?: string | null;

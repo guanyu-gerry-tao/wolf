@@ -59,7 +59,7 @@ export async function add(
     appliedProfileId: null,
     tailoredResumeTexPath: null,
     tailoredResumePdfPath: null,
-    coverLetterMDPath: null,
+    coverLetterHtmlPath: null,
     coverLetterPdfPath: null,
     screenshotPath: null,
     outreachDraftPath: null,
