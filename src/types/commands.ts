@@ -115,14 +115,3 @@ export interface StatusResult {
   total: number;
   byStatus: Record<JobStatus, number>;
 }
-
-/**
- * Plugin interface (strategy pattern) for job sources.
- * Each provider independently implements this interface.
- * wolf hunt iterates all enabled providers, merges and deduplicates raw results.
- * Scoring is handled separately by wolf score.
- */
-export interface JobProvider {
-  name: string;
-  hunt(options: HuntOptions): Promise<object[]>;  // returns raw JSON objects from the data source
-}
