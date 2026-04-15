@@ -1,11 +1,12 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { TailorApplicationService } from '../tailorApplicationService.js';
-import type { TailorResult } from '../../types/index.js';
+import type { TailorOptions, TailorResult } from '../../types/index.js';
+import type { AiConfig } from '../../types/index.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
-import type { ResumeRewriteService } from '../../service/resumeRewriteService.js';
+import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterService.js';
 
 // Strip characters unsafe for directory names, collapse repeated underscores, cap length.
 function sanitize(s: string): string {
@@ -17,11 +18,20 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly jobRepository: JobRepository,
     private readonly profileRepository: ProfileRepository,
     private readonly renderService: RenderService,
-    private readonly rewriteService: ResumeRewriteService,
+    private readonly rewriteService: ResumeCoverLetterService,
     private readonly workspaceDir: string,
+    private readonly defaultAiConfig: AiConfig,
   ) {}
 
-  async tailor(jobId: string, profileId?: string): Promise<TailorResult> {
+  async tailor(options: TailorOptions): Promise<TailorResult> {
+    const { jobId, profileId } = options;
+
+    // Merge defaults with per-command overrides.
+    const aiConfig: AiConfig = {
+      provider: options.aiProvider ?? this.defaultAiConfig.provider,
+      model: options.aiModel ?? this.defaultAiConfig.model,
+    };
+
     const job = await this.jobRepository.get(jobId);
     if (!job) throw new Error(`Job not found: ${jobId}`);
 
@@ -37,10 +47,11 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       resumePool,
       job.description,
       profile,
+      aiConfig,
     );
 
     // Render HTML body to one-page PDF.
-    const pdfBuffer = await this.renderService.renderResumePdf(htmlBody);
+    const pdfBuffer = await this.renderService.renderPdf(htmlBody);
 
     // Write PDF to data/<company>_<title>_<jobId>/resume.pdf
     const dirName = `${sanitize(job.companyId)}_${sanitize(job.title)}_${jobId}`;

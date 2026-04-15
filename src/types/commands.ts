@@ -49,6 +49,8 @@ export interface TailorOptions {
   resume?: string;         // path to .tex; defaults to profile.resumePath
   coverLetter?: boolean;   // default true
   diff?: boolean;          // show before/after comparison
+  aiProvider?: 'anthropic' | 'openai';  // overrides AppConfig.ai.provider for this call
+  aiModel?: string;                      // overrides AppConfig.ai.model for this call
 }
 
 export interface TailorResult {

@@ -3,7 +3,8 @@ import { TailorApplicationServiceImpl } from '../impl/tailorApplicationServiceIm
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
-import type { ResumeRewriteService } from '../../service/resumeRewriteService.js';
+import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterService.js';
+import type { AiConfig } from '../../types/index.js';
 import type { Job } from '../../types/job.js';
 import type { UserProfile } from '../../types/index.js';
 
@@ -47,6 +48,9 @@ const FAKE_PROFILE: UserProfile = {
   targetRoles: ['SWE'], targetLocations: ['Remote'], scoringNotes: null,
 };
 
+// Default AI config used across tests — matches production default.
+const DEFAULT_AI: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
+
 function makeJobRepo(job: Job | null = FAKE_JOB): JobRepository {
   return {
     get: vi.fn().mockResolvedValue(job),
@@ -63,10 +67,10 @@ function makeProfileRepo(): ProfileRepository {
 }
 
 function makeRenderSvc(): RenderService {
-  return { renderResumePdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf')) };
+  return { renderPdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf')) };
 }
 
-function makeRewriteSvc(): ResumeRewriteService {
+function makeRewriteSvc(): ResumeCoverLetterService {
   return { tailorResumeToHtml: vi.fn().mockResolvedValue('<h2>EXPERIENCE</h2>') };
 }
 
@@ -78,9 +82,9 @@ describe('TailorApplicationService', () => {
     const jobRepo = makeJobRepo();
     const svc = new TailorApplicationServiceImpl(
       jobRepo, makeProfileRepo(), makeRenderSvc(), makeRewriteSvc(),
-      '/workspace',
+      '/workspace', DEFAULT_AI,
     );
-    const result = await svc.tailor('job-1');
+    const result = await svc.tailor({ jobId: 'job-1' });
     expect(result.tailoredPdfPath).toContain('resume.pdf');
     expect(jobRepo.update).toHaveBeenCalledWith('job-1', expect.objectContaining({
       tailoredResumePdfPath: expect.any(String),
@@ -91,23 +95,48 @@ describe('TailorApplicationService', () => {
   it('throws if job is not found', async () => {
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(null), makeProfileRepo(), makeRenderSvc(), makeRewriteSvc(),
-      '/workspace',
+      '/workspace', DEFAULT_AI,
     );
-    await expect(svc.tailor('missing-job')).rejects.toThrow('Job not found');
+    await expect(svc.tailor({ jobId: 'missing-job' })).rejects.toThrow('Job not found');
   });
 
-  // Verify the correct inputs are passed down to ResumeRewriteService.
-  it('calls rewriteService with resume pool and JD text', async () => {
+  // Verify the correct inputs are passed down to ResumeCoverLetterService.
+  it('calls rewriteService with resume pool, JD text, profile, and aiConfig', async () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
-      '/workspace',
+      '/workspace', DEFAULT_AI,
     );
-    await svc.tailor('job-1');
+    await svc.tailor({ jobId: 'job-1' });
     expect(rewriteSvc.tailorResumeToHtml).toHaveBeenCalledWith(
       '# EXPERIENCE\nBuilt things.',
       'Build cool stuff with Go.',
       FAKE_PROFILE,
+      DEFAULT_AI,
     );
+  });
+
+  // Verify that aiProvider/aiModel overrides in TailorOptions replace the defaults.
+  it('passes overridden aiConfig when TailorOptions specifies aiProvider', async () => {
+    const rewriteSvc = makeRewriteSvc();
+    const svc = new TailorApplicationServiceImpl(
+      makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
+      '/workspace', DEFAULT_AI,
+    );
+    await svc.tailor({ jobId: 'job-1', aiProvider: 'openai', aiModel: 'gpt-4o' });
+    const calledWithAiConfig = vi.mocked(rewriteSvc.tailorResumeToHtml).mock.calls[0][3];
+    expect(calledWithAiConfig).toEqual({ provider: 'openai', model: 'gpt-4o' });
+  });
+
+  // Verify that when no overrides are given, defaultAiConfig is used unchanged.
+  it('uses defaultAiConfig when TailorOptions has no aiProvider', async () => {
+    const rewriteSvc = makeRewriteSvc();
+    const svc = new TailorApplicationServiceImpl(
+      makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
+      '/workspace', DEFAULT_AI,
+    );
+    await svc.tailor({ jobId: 'job-1' });
+    const calledWithAiConfig = vi.mocked(rewriteSvc.tailorResumeToHtml).mock.calls[0][3];
+    expect(calledWithAiConfig).toEqual(DEFAULT_AI);
   });
 });

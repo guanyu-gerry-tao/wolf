@@ -14,5 +14,5 @@ export async function tailor(
   options: TailorOptions,
   ctx: AppContext = createAppContext(),
 ): Promise<TailorResult> {
-  return ctx.tailorApp.tailor(options.jobId, options.profileId);
+  return ctx.tailorApp.tailor(options);
 }

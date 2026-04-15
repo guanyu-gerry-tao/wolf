@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHELL_PATH = path.join(__dirname, 'render', 'shell.html');
 
 export class RenderServiceImpl implements RenderService {
-  async renderResumePdf(htmlBody: string): Promise<Buffer> {
+  async renderPdf(htmlBody: string): Promise<Buffer> {
     const browser = await chromium.launch();
     const page = await browser.newPage();
     try {

@@ -1,5 +1,6 @@
 import { aiClient } from '../../utils/ai.js';
-import type { ResumeRewriteService } from '../resumeRewriteService.js';
+import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
+import type { AiConfig } from '../../types/index.js';
 import type { UserProfile } from '../../types/index.js';
 
 const SYSTEM_PROMPT = `You are a professional resume writer. Your job is to tailor a resume to a specific job description.
@@ -57,11 +58,12 @@ Rules:
 - Skills section: comma-separated list, no bullets
 - Output raw HTML only — no markdown fences, no explanation text`;
 
-export class ResumeRewriteServiceImpl implements ResumeRewriteService {
+export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
   async tailorResumeToHtml(
     resumePool: string,
     jdText: string,
     profile: UserProfile,
+    aiConfig: AiConfig,
   ): Promise<string> {
     const urls = [profile.firstUrl, profile.secondUrl, profile.thirdUrl]
       .filter(Boolean)
@@ -82,12 +84,12 @@ ${jdText}
 Produce the tailored resume HTML body now.`;
 
     const text = await aiClient(userPrompt, SYSTEM_PROMPT, {
-      provider: 'anthropic',
-      model: 'claude-sonnet-4-6',
+      provider: aiConfig.provider,
+      model: aiConfig.model,
     });
 
     const trimmed = text.trim();
-    if (!trimmed) throw new Error('ResumeRewriteService: Claude returned an empty response');
+    if (!trimmed) throw new Error('ResumeCoverLetterService: AI returned an empty response');
     return trimmed;
   }
 }

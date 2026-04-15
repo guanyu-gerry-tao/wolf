@@ -1,14 +1,10 @@
-import type { TailorResult } from '../types/index.js';
+import type { TailorOptions, TailorResult } from '../types/index.js';
 
 export interface TailorApplicationService {
   /**
-   * Tailor a resume for a specific job.
-   * 1. Load Job + UserProfile from repositories
-   * 2. Call ResumeRewriteService to produce tailored HTML body
-   * 3. Call RenderService to produce one-page PDF
-   * 4. Write PDF to data/<company>_<title>_<jobId>/resume.pdf
-   * 5. Update job record with tailoredResumePdfPath
+   * Tailor a resume (and optionally a cover letter) for a specific job.
+   * Accepts full TailorOptions so AI provider overrides flow through.
    * @throws if job not found, AI fails, or render fails
    */
-  tailor(jobId: string, profileId?: string): Promise<TailorResult>;
+  tailor(options: TailorOptions): Promise<TailorResult>;
 }

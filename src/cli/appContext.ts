@@ -26,8 +26,9 @@ import { FileProfileRepositoryImpl } from '../repository/impl/fileProfileReposit
 import { InMemoryProfileRepositoryImpl } from '../repository/impl/inMemoryProfileRepositoryImpl.js';
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
-import { ResumeRewriteServiceImpl } from '../service/impl/resumeRewriteServiceImpl.js';
+import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
+import { loadConfigSync } from '../utils/config.js';
 
 import type { JobRepository } from '../repository/jobRepository.js';
 import type { CompanyRepository } from '../repository/companyRepository.js';
@@ -36,8 +37,9 @@ import type { ProfileRepository } from '../repository/profileRepository.js';
 import type { BatchService } from '../service/batchService.js';
 import type { JobProvider } from '../service/jobProvider.js';
 import type { RenderService } from '../service/renderService.js';
-import type { ResumeRewriteService } from '../service/resumeRewriteService.js';
+import type { ResumeCoverLetterService } from '../service/resumeCoverLetterService.js';
 import type { TailorApplicationService } from '../application/tailorApplicationService.js';
+import type { AiConfig } from '../types/index.js';
 
 export interface AppContext {
   // repositories
@@ -49,21 +51,24 @@ export interface AppContext {
   batchService: BatchService;
   jobProviders: JobProvider[];
   renderService: RenderService;
-  rewriteService: ResumeRewriteService;
+  rewriteService: ResumeCoverLetterService;
   // application services
   tailorApp: TailorApplicationService;
+  // config
+  defaultAiConfig: AiConfig;
 }
 
 /**
  * Wires repositories, services, and application services around an open SQLite connection.
  * Extracted so both createAppContext() and createTestAppContext() share the same
  * construction logic, differing only in their SQLite instance, ProfileRepository,
- * and workspaceDir.
+ * workspaceDir, and defaultAiConfig.
  */
 function wireContext(
   sqlite: BetterSqlite3.Database,
   profileRepository: ProfileRepository,
   workspaceDir: string,
+  defaultAiConfig: AiConfig,
 ): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
@@ -74,9 +79,9 @@ function wireContext(
 
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
   const renderService = new RenderServiceImpl();
-  const rewriteService = new ResumeRewriteServiceImpl();
+  const rewriteService = new ResumeCoverLetterServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
-    jobRepo, profileRepository, renderService, rewriteService, workspaceDir,
+    jobRepo, profileRepository, renderService, rewriteService, workspaceDir, defaultAiConfig,
   );
 
   return {
@@ -89,6 +94,7 @@ function wireContext(
     renderService,
     rewriteService,
     tailorApp,
+    defaultAiConfig,
   };
 }
 
@@ -109,7 +115,11 @@ export function createAppContext(): AppContext {
   const sqlite = new BetterSqlite3(dbPath);
   const profileRepository = new FileProfileRepositoryImpl(workspaceDir);
 
-  return wireContext(sqlite, profileRepository, workspaceDir);
+  // Load config synchronously so default-parameter pattern in commands works.
+  const config = loadConfigSync();
+  const defaultAiConfig: AiConfig = config.ai;
+
+  return wireContext(sqlite, profileRepository, workspaceDir, defaultAiConfig);
 }
 
 /**
@@ -122,5 +132,6 @@ export function createAppContext(): AppContext {
 export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
   const profileRepository = new InMemoryProfileRepositoryImpl();
-  return wireContext(sqlite, profileRepository, '/tmp/wolf-test');
+  const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
+  return wireContext(sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig);
 }

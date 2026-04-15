@@ -30,6 +30,10 @@ export const UserProfileSchema = z.object({
 // --- AppConfig ---
 export const AppConfigSchema = z.object({
   defaultProfileId: z.string(),
+  ai: z.object({
+    provider: z.enum(['anthropic', 'openai']).default('anthropic'),
+    model: z.string().default('claude-sonnet-4-6'),
+  }).default({ provider: 'anthropic', model: 'claude-sonnet-4-6' }),
   hunt: z.object({
     minScore: z.number().min(0).max(1).default(0.5),
     maxResults: z.number().positive().default(50),

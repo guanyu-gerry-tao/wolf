@@ -41,7 +41,7 @@ describe('RenderService', () => {
     } as FitResult);
 
     const svc = new RenderServiceImpl();
-    const result = await svc.renderResumePdf('<h2>Experience</h2>');
+    const result = await svc.renderPdf('<h2>Experience</h2>');
     expect(result).toEqual(FAKE_PDF);
     expect(fit).toHaveBeenCalledOnce();
   });
@@ -57,7 +57,7 @@ describe('RenderService', () => {
     vi.mocked(fit).mockRejectedValue(new CannotFitError(fakeResult));
 
     const svc = new RenderServiceImpl();
-    await expect(svc.renderResumePdf('<h2>Too much content</h2>')).rejects.toThrow(CannotFitError);
+    await expect(svc.renderPdf('<h2>Too much content</h2>')).rejects.toThrow(CannotFitError);
   });
 
   // Underflow case: content too sparse to fill the page — CannotFillError should bubble up.
@@ -71,6 +71,6 @@ describe('RenderService', () => {
     vi.mocked(fit).mockRejectedValue(new CannotFillError(fakeResult));
 
     const svc = new RenderServiceImpl();
-    await expect(svc.renderResumePdf('<h2>Too little</h2>')).rejects.toThrow(CannotFillError);
+    await expect(svc.renderPdf('<h2>Too little</h2>')).rejects.toThrow(CannotFillError);
   });
 });
