@@ -24,4 +24,8 @@ export default defineConfig({
   clean: true,
   // Type declarations are not needed for a CLI binary.
   dts: false,
+  // Copy static assets that are loaded at runtime via file:// URLs.
+  // tsup bundles all chunks to dist/ root, so __dirname resolves to dist/,
+  // meaning shell.html must live at dist/render/shell.html.
+  onSuccess: 'mkdir -p dist/render && cp src/service/impl/render/shell.html dist/render/shell.html',
 });

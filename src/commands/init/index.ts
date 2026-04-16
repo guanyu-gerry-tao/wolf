@@ -18,39 +18,111 @@ const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 function buildResumePoolTemplate(name: string): string {
   return `# Resume Pool — ${name}
 
-<!--
-  This is your "everything" resume — wolf reads this and selects the most relevant
-  content for each job. Include ALL experience, projects, and skills, even older ones.
-  wolf will pick the right subset per application.
--->
+// This is your "everything" resume — wolf reads this and selects the most relevant
+// content for each job. Include ALL experience, projects, and skills, even older ones.
+// wolf will pick the right subset per application.
+// LINES STARTING WITH // ARE NOTES FOR YOU ONLY — THE AI WILL NOT READ THEM.
 
-## Contact
-Name: ${name}
-Email:
-Phone:
-LinkedIn:
-GitHub:
+// ## Contact
+// Your contact info (name, email, phone, LinkedIn, etc.) is NOT stored here.
+// To update it, edit: profiles/default/profile.toml
+
 
 ## Experience
 
+// List every role, including short stints and older jobs — wolf picks what's relevant.
+// Use strong action verbs and include metrics where possible (e.g. "reduced latency by 40%").
+
 ### Job Title — Company Name
-*Month Year – Month Year (or Present)*
+*Month Year - Month Year (or Present)*
 - Bullet describing impact or responsibility
 - Bullet with metrics if available
+
+// ## Projects
+// Include personal, open-source, and side projects — not just work projects.
+// Mention the tech stack and what problem it solved.
 
 ## Projects
 
 ### Project Name
 *Year*
-- What it does and what you built
+- What it does, what you built, and what tech you used
 
 ## Education
 
+// List degrees in reverse chronological order. Include GPA if 3.5+.
+// Relevant coursework is optional but useful for new grads.
+
 ### Degree — University Name
-*Year – Year*
+*Year - Year*
 
 ## Skills
+// Comma-separated list. Group loosely by category if helpful (e.g. Languages, Tools, Platforms).
+// wolf will reformat this to match the JD's preferred phrasing.
+
 TypeScript, Python, SQL, ...
+
+// ## Certifications (optional)
+// Include professional certs: AWS, GCP, Azure, PMP, CFA, etc.
+// Add the issuing body and year.
+
+// ## Certifications (optional)
+// - AWS Certified Solutions Architect — Amazon, 2024
+// - Google Cloud Professional Data Engineer — Google, 2023
+
+// ## Awards & Honors (optional)
+// Hackathon wins, academic honors, competitive programming, scholarships.
+// Even older awards are worth keeping — wolf will decide if they're relevant.
+
+// ## Awards & Honors (optional)
+// - 1st Place — HackMIT 2023
+// - Dean's List — University Name, 2019–2021
+
+// ## Publications (optional)
+// Research papers, technical blog posts, or articles. Important for ML/research roles.
+// Include venue/journal and year.
+
+// ## Publications (optional)
+// - "Paper Title" — NeurIPS 2023
+// - "Blog Post Title" — Personal blog, 2024 (link)
+
+// ## Open Source (optional)
+// Notable contributions beyond your own projects. Include repo links and impact.
+// Especially valuable if contributions are to well-known projects.
+
+// ## Open Source (optional)
+// - Contributor to facebook/react — fixed hydration bug, 200+ stars on PR
+// - Maintainer of your-lib (2.4k stars on GitHub)
+
+// ## Languages (optional)
+// Spoken/written languages. Useful for international or customer-facing roles.
+// Format: Language (Proficiency level).
+
+// ## Languages (optional)
+// - English (Native)
+// - Mandarin (Fluent)
+// - Spanish (Conversational)
+
+// ## Volunteer (optional)
+// Community work, non-profit, or mentoring. Shows character and range.
+// Rarely included unless directly relevant or the role values culture-add.
+
+// ## Volunteer (optional)
+// - Coding instructor — Code.org, 2022–present
+
+// ## Interests (optional)
+// Keep it brief and genuine — avoid generic hobbies like "reading" or "travel".
+// Best used when the company culture values personality fit.
+
+// ## Interests (optional)
+// Competitive chess, trail running, generative art
+
+// ## Speaking (optional)
+// Conference talks, panels, podcasts. More relevant for senior or staff roles.
+// Rarely included unless you speak regularly or the role involves evangelism.
+
+// ## Speaking (optional)
+// - "Talk Title" — Conference Name, Year
 `;
 }
 
@@ -222,7 +294,17 @@ Consider cd-ing to a dedicated folder first, e.g.:
   if (profileExists) {
     console.log(dim('profiles/default/profile.toml already exists — skipping (edit manually to update)'));
   } else {
-    await fs.writeFile(profileTomlPath, stringify(profile as unknown as Record<string, unknown>), 'utf-8');
+    // Replace null with "" so optional fields always appear in the file.
+    // smol-toml skips null entirely (TOML has no null type), which would hide
+    // fields from users who want to fill them in later.
+    const serializable = {
+      ...profile,
+      firstUrl:     profile.firstUrl     ?? '',
+      secondUrl:    profile.secondUrl    ?? '',
+      thirdUrl:     profile.thirdUrl     ?? '',
+      scoringNotes: profile.scoringNotes ?? '',
+    };
+    await fs.writeFile(profileTomlPath, stringify(serializable as unknown as Record<string, unknown>), 'utf-8');
   }
 
   // ── Step 4: Write profiles/default/resume_pool.md (only if absent) ───────
