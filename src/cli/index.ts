@@ -7,6 +7,7 @@ import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
 import { status } from '../commands/status/index.js';
 import { init } from '../commands/init/index.js';
+import { add } from '../commands/add/index.js';
 import { envShow, envSet, envClear } from '../commands/env/index.js';
 import { startMcpServer } from '../mcp/server.js';
 
@@ -22,6 +23,25 @@ program
   .description('Interactive setup wizard')
   .action(async () => {
     await init();
+  });
+
+program
+  .command('add')
+  .description('Add a job manually')
+  .requiredOption('-t, --title <title>', 'Job title')
+  .requiredOption('-c, --company <company>', 'Company name')
+  .requiredOption('-j, --jd-text <text>', 'Job description text')
+  .option('-u, --url <url>', 'Original job posting URL')
+  .option('-p, --profile <id>', 'Profile to use')
+  .action(async (opts) => {
+    const result = await add({
+      title: opts.title,
+      company: opts.company,
+      jdText: opts.jdText,
+      url: opts.url,
+      profileId: opts.profile,
+    });
+    console.log(JSON.stringify(result, null, 2));
   });
 
 program

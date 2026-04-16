@@ -51,7 +51,7 @@ export const anthropicClient: ProviderClient = async (
   const client = new Anthropic({ apiKey: process.env.WOLF_ANTHROPIC_API_KEY });
   const response = await client.messages.create({
     model,
-    max_tokens: 1024,
+    max_tokens: 4096,
     ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: "user", content: prompt }],
   });

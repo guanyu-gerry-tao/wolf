@@ -10,10 +10,9 @@ export type Sponsorship =
 
 /**
  * Represents the candidate's work authorization status.
+ * Common values listed for reference; free-form strings are allowed to support
+ * multi-status situations (e.g. "H-1B + 485 pending") or non-US contexts.
+ *
+ * Common values: "H-1B" | "L1" | "OPT" | "CPT" | "no limit"
  */
-export type Status =
-  | "H-1B" // H-1B visa, or equivalent for other countries (e.g. Canada's LMIA work permits)
-  | "L1"   // L1 visa or equivalent single employer work permit
-  | "OPT"  // OPT STEM extension, or equivalent for other countries (e.g. Canada's post-graduation work permits)
-  | "CPT"  // CPT, or equivalent for other countries (e.g. Canada's co-op work permits)
-  | "no limit"; // e.g. US citizen or GC holder, H4 EAD, 485 EAD, or equivalent for other countries (e.g. Canadian permanent residents, UK settled status)
+export type Status = string;

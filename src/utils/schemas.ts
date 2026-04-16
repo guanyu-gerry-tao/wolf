@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 // --- Sponsorship enums ---
-export const StatusSchema = z.enum(['H-1B', 'L1', 'OPT', 'CPT', 'no limit']);
+// Free-form string — common values are H-1B, L1, OPT, CPT, "no limit",
+// but users may enter multi-status or non-US equivalents.
+export const StatusSchema = z.string().min(1);
 export const SponsorshipSchema = z.enum([
   'no sponsorship',
   'Green card',
@@ -17,14 +19,16 @@ export const UserProfileSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   phone: z.string(),
-  firstUrl: z.string().nullable().default(null),
-  secondUrl: z.string().nullable().default(null),
-  thirdUrl: z.string().nullable().default(null),
+  // Empty string is treated as absent — written as "" when null so the field
+  // always appears in profile.toml, making it visible and easy to fill in later.
+  firstUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
+  secondUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
+  thirdUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
   immigrationStatus: StatusSchema,
   willingToRelocate: z.boolean(),
   targetRoles: z.array(z.string()),
   targetLocations: z.array(z.string()),
-  scoringNotes: z.string().nullable().default(null),
+  scoringNotes: z.string().nullable().default(null).transform(v => v === '' ? null : v),
 });
 
 // --- AppConfig ---
