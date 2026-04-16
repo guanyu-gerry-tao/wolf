@@ -29,6 +29,7 @@ import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
 import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
+import { parseModelRef } from '../utils/parseModelRef.js';
 
 import type { JobRepository } from '../repository/jobRepository.js';
 import type { CompanyRepository } from '../repository/companyRepository.js';
@@ -118,7 +119,7 @@ export function createAppContext(): AppContext {
 
   // Load config synchronously so default-parameter pattern in commands works.
   const config = loadConfigSync();
-  const defaultAiConfig: AiConfig = config.ai;
+  const defaultAiConfig: AiConfig = parseModelRef(config.tailor.model);
   const defaultCoverLetterTone = config.tailor.defaultCoverLetterTone;
 
   return wireContext(sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone);

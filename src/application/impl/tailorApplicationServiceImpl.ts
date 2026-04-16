@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { parseModelRef } from '../../utils/parseModelRef.js';
 import type { TailorApplicationService } from '../tailorApplicationService.js';
 import type { TailorOptions, TailorResult, AiConfig } from '../../types/index.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
@@ -26,11 +27,10 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
   async tailor(options: TailorOptions): Promise<TailorResult> {
     const { jobId, profileId } = options;
 
-    // Merge defaults with per-command overrides.
-    const aiConfig: AiConfig = {
-      provider: options.aiProvider ?? this.defaultAiConfig.provider,
-      model: options.aiModel ?? this.defaultAiConfig.model,
-    };
+    // Merge defaults with per-command override.
+    const aiConfig: AiConfig = options.aiModel
+      ? parseModelRef(options.aiModel)
+      : this.defaultAiConfig;
 
     const job = await this.jobRepository.get(jobId);
     if (!job) throw new Error(`Job not found: ${jobId}`);

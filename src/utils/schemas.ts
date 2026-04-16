@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROVIDER_IDS } from './ai/registry.js';
 
 // --- Sponsorship enums ---
 // Free-form string — common values are H-1B, L1, OPT, CPT, "no limit",
@@ -25,28 +26,46 @@ export const UserProfileSchema = z.object({
   secondUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
   thirdUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
   immigrationStatus: StatusSchema,
-  willingToRelocate: z.boolean(),
+  willingToRelocate: z.string(),
   targetRoles: z.array(z.string()),
   targetLocations: z.array(z.string()),
   scoringNotes: z.string().nullable().default(null).transform(v => v === '' ? null : v),
 });
 
 // --- AppConfig ---
+
+// Model reference format: "<provider>/<model>"
+// Regex is built from the PROVIDERS registry so adding a provider there
+// automatically widens what wolf.toml accepts.
+// Exported so tests can assert the regex and parseModelRef stay in agreement.
+const PROVIDER_PATTERN = PROVIDER_IDS.join('|');
+export const ModelRefSchema = z.string().regex(
+  new RegExp(`^(${PROVIDER_PATTERN})\\/.+$`),
+  `Model must be "<provider>/<model>" where provider is one of ${PROVIDER_IDS.join(', ')}`,
+);
+
+const DEFAULT_SONNET = 'anthropic/claude-sonnet-4-6';
+const DEFAULT_HAIKU  = 'anthropic/claude-haiku-4-5-20251001';
+
 export const AppConfigSchema = z.object({
   defaultProfileId: z.string(),
-  ai: z.object({
-    provider: z.enum(['anthropic', 'openai']).default('anthropic'),
-    model: z.string().default('claude-sonnet-4-6'),
-  }).default({ provider: 'anthropic', model: 'claude-sonnet-4-6' }),
   hunt: z.object({
     minScore: z.number().min(0).max(1).default(0.5),
     maxResults: z.number().positive().default(50),
-  }),
+  }).default({ minScore: 0.5, maxResults: 50 }),
   tailor: z.object({
+    model: ModelRefSchema.default(DEFAULT_SONNET),
     defaultCoverLetterTone: z.string().default('professional'),
-  }),
+  }).default({ model: DEFAULT_SONNET, defaultCoverLetterTone: 'professional' }),
+  score: z.object({
+    model: ModelRefSchema.default(DEFAULT_SONNET),
+  }).default({ model: DEFAULT_SONNET }),
   reach: z.object({
+    model: ModelRefSchema.default(DEFAULT_SONNET),
     defaultEmailTone: z.string().default('professional'),
     maxEmailsPerDay: z.number().positive().default(10),
-  }),
+  }).default({ model: DEFAULT_SONNET, defaultEmailTone: 'professional', maxEmailsPerDay: 10 }),
+  fill: z.object({
+    model: ModelRefSchema.default(DEFAULT_HAIKU),
+  }).default({ model: DEFAULT_HAIKU }),
 });

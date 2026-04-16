@@ -9,6 +9,8 @@ import { status } from '../commands/status/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
 import { envShow, envSet, envClear } from '../commands/env/index.js';
+import { configGet, configSet } from '../commands/config/index.js';
+import { profileGet, profileSet, profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
 import { startMcpServer } from '../mcp/server.js';
 
 const program = new Command();
@@ -139,6 +141,50 @@ program
     });
     console.log(JSON.stringify(result, null, 2));
   });
+
+const configCmd = new Command('config').description('Get or set wolf.toml fields by dot-path key');
+configCmd
+  .command('get <key>')
+  .description('Print value at key (e.g. tailor.model, hunt.minScore)')
+  .action(async (key: string) => { await configGet(key); });
+configCmd
+  .command('set <key> <value>')
+  .description('Set value at key and save wolf.toml (coerced to the field\'s current type)')
+  .action(async (key: string, value: string) => { await configSet(key, value); });
+program.addCommand(configCmd);
+
+const profileCmd = new Command('profile').description('Get or set profile.toml fields by dot-path key');
+profileCmd
+  .command('get <key>')
+  .description('Print value at key (e.g. name, email, targetRoles)')
+  .option('-p, --profile <id>', 'Profile ID (defaults to defaultProfileId from wolf.toml)')
+  .action(async (key: string, opts: { profile?: string }) => { await profileGet(key, opts.profile); });
+profileCmd
+  .command('set <key> <value>')
+  .description('Set value at key and save profile.toml (arrays accept comma-separated)')
+  .option('-p, --profile <id>', 'Profile ID (defaults to defaultProfileId from wolf.toml)')
+  .action(async (key: string, value: string, opts: { profile?: string }) => {
+    await profileSet(key, value, opts.profile);
+  });
+profileCmd
+  .command('list')
+  .description('List all profiles (default marked with *)')
+  .action(async () => { await profileList(); });
+profileCmd
+  .command('create <id>')
+  .description('Create a new profile (clones default unless --from is given)')
+  .option('-f, --from <src>', 'Source profile to clone from')
+  .action(async (id: string, opts: { from?: string }) => { await profileCreate(id, opts); });
+profileCmd
+  .command('use <id>')
+  .description('Set <id> as the default profile in wolf.toml')
+  .action(async (id: string) => { await profileUse(id); });
+profileCmd
+  .command('delete <id>')
+  .description('Delete profile directory (requires --yes)')
+  .option('-y, --yes', 'Confirm deletion')
+  .action(async (id: string, opts: { yes?: boolean }) => { await profileDelete(id, opts); });
+program.addCommand(profileCmd);
 
 const envCmd = new Command('env').description('Manage WOLF_ environment variables (API keys)');
 envCmd

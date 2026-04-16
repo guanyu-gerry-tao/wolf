@@ -1,39 +1,35 @@
-// Vitest natively supports ESM — vi.mock() is automatically hoisted to the top
-// Vitest 原生支持 ESM，vi.mock() 会自动提升到文件顶部执行
-import { vi, describe, test, expect, beforeEach } from "vitest";
-import { anthropicClient, openaiClient, aiClient } from "../ai.js";
+import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { aiClient, PROVIDERS, PROVIDER_IDS, isProviderId } from '../ai/index.js';
 
-// vi.hoisted() creates mock functions that can be referenced both inside
-// vi.mock() factories AND inside test cases
-// vi.hoisted() 创建可以在 vi.mock() 工厂函数和测试用例中同时引用的 mock 函数
+// Hoisted mocks so the factory passed to vi.mock() can reference them.
+// These fake SDK instances let us assert call shapes without network I/O.
 const { mockAnthropicCreate, mockOpenAICreate, mockAnthropicConstructor, mockOpenAIConstructor } = vi.hoisted(() => ({
   mockAnthropicCreate: vi.fn().mockResolvedValue({
-    content: [{ type: "text", text: "mock: hello from claude" }],
+    content: [{ type: 'text', text: 'mock: hello from claude' }],
   }),
   mockOpenAICreate: vi.fn().mockResolvedValue({
-    choices: [{ message: { content: "mock: hello from gpt" } }],
+    choices: [{ message: { content: 'mock: hello from gpt' } }],
   }),
   mockAnthropicConstructor: vi.fn(),
   mockOpenAIConstructor: vi.fn(),
 }));
 
-// Mock Anthropic SDK — intercepts real network requests, returns hardcoded fake data
-vi.mock("@anthropic-ai/sdk", () => ({
+// Intercept real network requests — SDKs are never actually instantiated with real keys.
+vi.mock('@anthropic-ai/sdk', () => ({
   default: vi.fn().mockImplementation(function (opts: unknown) {
     mockAnthropicConstructor(opts);
     return { messages: { create: mockAnthropicCreate } };
   }),
 }));
 
-// Mock OpenAI SDK — same pattern as above
-vi.mock("openai", () => ({
+vi.mock('openai', () => ({
   default: vi.fn().mockImplementation(function (opts: unknown) {
     mockOpenAIConstructor(opts);
     return { chat: { completions: { create: mockOpenAICreate } } };
   }),
 }));
 
-// Reset call counts and env vars between tests
+// Reset call counts and env vars between tests so each scenario starts clean.
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.WOLF_ANTHROPIC_API_KEY;
@@ -41,193 +37,112 @@ beforeEach(() => {
 });
 
 // =====================================================================
-// Type checks — verify the exports exist and are functions
-// 类型检查 — 验证函数存在
+// Registry — source of truth for which providers wolf supports
 // =====================================================================
 
-describe("AIClient type", () => {
-  test("anthropicClient is a function", () => {
-    expect(typeof anthropicClient).toBe("function");
+describe('registry', () => {
+  // PROVIDER_IDS is derived from PROVIDERS keys, so adding a provider here
+  // is a one-line change that propagates everywhere that imports these.
+  test('exports PROVIDER_IDS matching the PROVIDERS object keys', () => {
+    expect(PROVIDER_IDS.sort()).toEqual(Object.keys(PROVIDERS).sort());
   });
 
-  test("openaiClient is a function", () => {
-    expect(typeof openaiClient).toBe("function");
+  // isProviderId guards untrusted strings (parseModelRef input, CLI flags, etc).
+  test('isProviderId accepts registered ids and rejects anything else', () => {
+    for (const id of PROVIDER_IDS) expect(isProviderId(id)).toBe(true);
+    expect(isProviderId('google')).toBe(false);
+    expect(isProviderId('')).toBe(false);
+  });
+
+  // Every registered provider must have a resolvable family implementation;
+  // this test would fail if someone adds a provider referencing a new family
+  // without wiring its FamilyCall into the dispatch table.
+  test('every provider points at a family the dispatcher knows about', async () => {
+    for (const id of PROVIDER_IDS) {
+      // Smoke-test: aiClient should route without throwing a "no family" error.
+      await expect(aiClient('hi', undefined, { provider: id })).resolves.toBeTypeOf('string');
+    }
   });
 });
 
 // =====================================================================
-// anthropicClient — uses mock, no API key needed, no cost
-// anthropicClient — 使用 mock，不需要 API key，不花钱
+// aiClient — provider routing, default behaviours, request shape
 // =====================================================================
 
-describe("anthropicClient", () => {
-  test("returns a non-empty string", async () => {
-    const result = await anthropicClient("Reply with just the word: hello");
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test("accepts an optional systemPrompt", async () => {
-    const result = await anthropicClient(
-      "What are you?",
-      "You are a helpful assistant. Reply in one sentence.",
-    );
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test("calls Anthropic SDK with the prompt as a user message", async () => {
-    await anthropicClient("hello");
-    // Verify the SDK was actually called — can't hardcode the return value to pass this
-    // 验证 SDK 确实被调用了，直接硬编码返回值无法通过这个测试
-    expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
-    expect(mockAnthropicCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [{ role: "user", content: "hello" }],
-      }),
-    );
-  });
-
-  test("passes systemPrompt as system role when provided", async () => {
-    await anthropicClient("hello", "be concise");
-    expect(mockAnthropicCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        system: "be concise",
-        messages: [{ role: "user", content: "hello" }],
-      }),
-    );
-  });
-});
-
-// =====================================================================
-// openaiClient — uses mock, no API key needed, no cost
-// openaiClient — 使用 mock，不需要 API key，不花钱
-// =====================================================================
-
-describe("openaiClient", () => {
-  test("returns a non-empty string", async () => {
-    const result = await openaiClient("Reply with just the word: hello");
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test("accepts an optional systemPrompt", async () => {
-    const result = await openaiClient(
-      "What are you?",
-      "You are a helpful assistant. Reply in one sentence.",
-    );
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test("calls OpenAI SDK with the prompt as a user message", async () => {
-    await openaiClient("hello");
-    // Verify the SDK was actually called — can't hardcode the return value to pass this
-    // 验证 SDK 确实被调用了，直接硬编码返回值无法通过这个测试
-    expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
-    expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: [{ role: "user", content: "hello" }],
-      }),
-    );
-  });
-
-  test("passes systemPrompt as system role when provided", async () => {
-    await openaiClient("hello", "be concise");
-    expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: expect.arrayContaining([
-          { role: "system", content: "be concise" },
-          { role: "user", content: "hello" },
-        ]),
-      }),
-    );
-  });
-});
-
-// =====================================================================
-// aiClient — unified wrapper that routes to the correct provider
-// aiClient — 统一封装，根据 provider 路由到对应实现
-// =====================================================================
-
-describe("aiClient", () => {
-  test("is a function", () => {
-    expect(typeof aiClient).toBe("function");
-  });
-
-  test("defaults to anthropic provider", async () => {
-    const result = await aiClient("hello");
+describe('aiClient — routing', () => {
+  test('defaults to anthropic when no provider is specified', async () => {
+    const result = await aiClient('hello');
     expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
     expect(mockOpenAICreate).not.toHaveBeenCalled();
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
+    expect(typeof result).toBe('string');
   });
 
-  test("routes to openai when provider is 'openai'", async () => {
-    const result = await aiClient("hello", undefined, { provider: "openai" });
+  test('routes to the openai family when provider is openai', async () => {
+    await aiClient('hello', undefined, { provider: 'openai' });
     expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
     expect(mockAnthropicCreate).not.toHaveBeenCalled();
-    expect(typeof result).toBe("string");
-    expect(result.length).toBeGreaterThan(0);
   });
 
-  test("routes to anthropic when provider is 'anthropic'", async () => {
-    await aiClient("hello", undefined, { provider: "anthropic" });
+  test('routes to the anthropic family when provider is anthropic', async () => {
+    await aiClient('hello', undefined, { provider: 'anthropic' });
     expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
     expect(mockOpenAICreate).not.toHaveBeenCalled();
   });
+});
 
-  test("passes custom model to anthropic", async () => {
-    await aiClient("hello", undefined, {
-      provider: "anthropic",
-      model: "claude-opus-4-6",
-    });
+describe('aiClient — model', () => {
+  // The registry holds per-provider defaults; aiClient falls back to them
+  // when the caller does not pass a model.
+  test('uses the provider default model when no model is specified (anthropic)', async () => {
+    await aiClient('hello');
     expect(mockAnthropicCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "claude-opus-4-6" }),
+      expect.objectContaining({ model: PROVIDERS.anthropic.defaultModel }),
     );
   });
 
-  test("passes custom model to openai", async () => {
-    await aiClient("hello", undefined, {
-      provider: "openai",
-      model: "gpt-4o-mini",
-    });
+  test('uses the provider default model when no model is specified (openai)', async () => {
+    await aiClient('hello', undefined, { provider: 'openai' });
     expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-4o-mini" }),
+      expect.objectContaining({ model: PROVIDERS.openai.defaultModel }),
     );
   });
 
-  test("uses default anthropic model when model not specified", async () => {
-    await aiClient("hello");
+  test('passes the caller-specified model through to anthropic', async () => {
+    await aiClient('hello', undefined, { provider: 'anthropic', model: 'claude-opus-4-6' });
     expect(mockAnthropicCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "claude-haiku-4-5-20251001" }),
+      expect.objectContaining({ model: 'claude-opus-4-6' }),
     );
   });
 
-  test("uses default openai model when model not specified", async () => {
-    await aiClient("hello", undefined, { provider: "openai" });
+  test('passes the caller-specified model through to openai', async () => {
+    await aiClient('hello', undefined, { provider: 'openai', model: 'gpt-4o-mini' });
     expect(mockOpenAICreate).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-4o" }),
+      expect.objectContaining({ model: 'gpt-4o-mini' }),
     );
   });
+});
 
-  test("passes prompt and systemPrompt to anthropic", async () => {
-    await aiClient("my prompt", "my system", { provider: "anthropic" });
+describe('aiClient — message shape', () => {
+  // Anthropic: system is a top-level field, not a message — this is the key
+  // behavioural difference that justifies a separate family implementation.
+  test('anthropic family puts systemPrompt in the system field', async () => {
+    await aiClient('my prompt', 'my system', { provider: 'anthropic' });
     expect(mockAnthropicCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        system: "my system",
-        messages: [{ role: "user", content: "my prompt" }],
+        system: 'my system',
+        messages: [{ role: 'user', content: 'my prompt' }],
       }),
     );
   });
 
-  test("passes prompt and systemPrompt to openai", async () => {
-    await aiClient("my prompt", "my system", { provider: "openai" });
+  // OpenAI-compat: system is the first message with role: 'system'.
+  test('openai family puts systemPrompt as a system-role message', async () => {
+    await aiClient('my prompt', 'my system', { provider: 'openai' });
     expect(mockOpenAICreate).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: expect.arrayContaining([
-          { role: "system", content: "my system" },
-          { role: "user", content: "my prompt" },
+          { role: 'system', content: 'my system' },
+          { role: 'user', content: 'my prompt' },
         ]),
       }),
     );
@@ -235,25 +150,23 @@ describe("aiClient", () => {
 });
 
 // =====================================================================
-// API key — verify WOLF_* env vars are passed to SDK constructors
+// API key wiring — env vars must reach SDK constructors
 // =====================================================================
 
-describe("anthropicClient — API key", () => {
-  test("passes WOLF_ANTHROPIC_API_KEY to Anthropic constructor", async () => {
-    process.env.WOLF_ANTHROPIC_API_KEY = "test-anthropic-key";
-    await anthropicClient("hello");
+describe('aiClient — env var wiring', () => {
+  test('passes WOLF_ANTHROPIC_API_KEY to the Anthropic SDK constructor', async () => {
+    process.env.WOLF_ANTHROPIC_API_KEY = 'test-anthropic-key';
+    await aiClient('hello', undefined, { provider: 'anthropic' });
     expect(mockAnthropicConstructor).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: "test-anthropic-key" }),
+      expect.objectContaining({ apiKey: 'test-anthropic-key' }),
     );
   });
-});
 
-describe("openaiClient — API key", () => {
-  test("passes WOLF_OPENAI_API_KEY to OpenAI constructor", async () => {
-    process.env.WOLF_OPENAI_API_KEY = "test-openai-key";
-    await openaiClient("hello");
+  test('passes WOLF_OPENAI_API_KEY to the OpenAI SDK constructor', async () => {
+    process.env.WOLF_OPENAI_API_KEY = 'test-openai-key';
+    await aiClient('hello', undefined, { provider: 'openai' });
     expect(mockOpenAIConstructor).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: "test-openai-key" }),
+      expect.objectContaining({ apiKey: 'test-openai-key' }),
     );
   });
 });
