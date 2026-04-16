@@ -10,7 +10,7 @@ import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
 import { envShow, envSet, envClear } from '../commands/env/index.js';
 import { configGet, configSet } from '../commands/config/index.js';
-import { profileGet, profileSet } from '../commands/profile/index.js';
+import { profileGet, profileSet, profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
 import { startMcpServer } from '../mcp/server.js';
 
 const program = new Command();
@@ -166,6 +166,24 @@ profileCmd
   .action(async (key: string, value: string, opts: { profile?: string }) => {
     await profileSet(key, value, opts.profile);
   });
+profileCmd
+  .command('list')
+  .description('List all profiles (default marked with *)')
+  .action(async () => { await profileList(); });
+profileCmd
+  .command('create <id>')
+  .description('Create a new profile (clones default unless --from is given)')
+  .option('-f, --from <src>', 'Source profile to clone from')
+  .action(async (id: string, opts: { from?: string }) => { await profileCreate(id, opts); });
+profileCmd
+  .command('use <id>')
+  .description('Set <id> as the default profile in wolf.toml')
+  .action(async (id: string) => { await profileUse(id); });
+profileCmd
+  .command('delete <id>')
+  .description('Delete profile directory (requires --yes)')
+  .option('-y, --yes', 'Confirm deletion')
+  .action(async (id: string, opts: { yes?: boolean }) => { await profileDelete(id, opts); });
 program.addCommand(profileCmd);
 
 const envCmd = new Command('env').description('Manage WOLF_ environment variables (API keys)');
