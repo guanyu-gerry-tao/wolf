@@ -42,10 +42,13 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
 
     const resumePool = await this.profileRepository.getResumePool(profile.id);
 
-    // Create output directory: data/<company>_<title>_<jobId>/
+    // Create output directories:
+    //   data/<company>_<title>_<jobId>/         — PDFs (final output)
+    //   data/<company>_<title>_<jobId>/src/     — HTML source (for prompt inspection)
     const dirName = `${sanitize(job.companyId)}_${sanitize(job.title)}_${jobId}`;
     const outputDir = path.join(this.workspaceDir, 'data', dirName);
-    await mkdir(outputDir, { recursive: true });
+    const srcDir = path.join(outputDir, 'src');
+    await mkdir(srcDir, { recursive: true });
 
     // --- Resume ---
     // Rewrite resume pool into tailored HTML body matching this JD, then render to PDF.
@@ -55,6 +58,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       profile,
       aiConfig,
     );
+    // Save HTML source for inspection alongside the PDF.
+    await writeFile(path.join(srcDir, 'resume.html'), htmlBody);
     const pdfBuffer = await this.renderService.renderPdf(htmlBody);
     const pdfPath = path.join(outputDir, 'resume.pdf');
     await writeFile(pdfPath, pdfBuffer);
@@ -71,8 +76,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
         this.defaultCoverLetterTone,
         aiConfig,
       );
-      // Write HTML source for debugging (raw fragment — useful for prompt iteration)
-      coverLetterHtmlPath = path.join(outputDir, 'cover_letter.html');
+      // Save HTML source for inspection.
+      coverLetterHtmlPath = path.join(srcDir, 'cover_letter.html');
       await writeFile(coverLetterHtmlPath, clHtml);
       // Render to PDF using simple renderer (no fit algorithm — cover letters don't need forced one-page)
       const clPdfBuffer = await this.renderService.renderCoverLetterPdf(clHtml);

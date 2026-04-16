@@ -15,6 +15,7 @@ vi.mock('playwright', () => ({
         goto: vi.fn().mockResolvedValue(undefined),
         evaluate: vi.fn().mockResolvedValue(undefined),
         pdf: vi.fn().mockResolvedValue(Buffer.from('fake-pdf-bytes')),
+        setViewportSize: vi.fn().mockResolvedValue(undefined),
       }),
       close: vi.fn().mockResolvedValue(undefined),
     }),
@@ -78,13 +79,13 @@ describe('RenderService', () => {
     await expect(svc.renderPdf('<h2>Too little</h2>')).rejects.toThrow(CannotFillError);
   });
 
-  // renderCoverLetterPdf: skip fit, directly call page.pdf and return the buffer.
-  it('renderCoverLetterPdf returns pdf buffer without fit', async () => {
+  // renderCoverLetterPdf: reuses fit() so the PDF code path is identical to renderPdf.
+  it('renderCoverLetterPdf returns pdf buffer via fit', async () => {
     mockFit.mockResolvedValue({ pdf: FAKE_PDF, finalParams: {}, iterations: 1, trace: [] } as unknown as FitResult);
     const svc = new RenderServiceImpl();
     const result = await svc.renderCoverLetterPdf('<p>Cover letter content</p>');
     expect(result).toEqual(FAKE_PDF);
-    // fit should NOT be called for cover letter rendering
-    expect(mockFit).not.toHaveBeenCalled();
+    // fit IS called — cover letters are one page and share the same rendering path.
+    expect(mockFit).toHaveBeenCalledOnce();
   });
 });

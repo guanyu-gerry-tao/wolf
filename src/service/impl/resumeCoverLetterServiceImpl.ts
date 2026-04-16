@@ -1,11 +1,12 @@
 import { aiClient } from '../../utils/ai.js';
+import { stripComments } from '../../utils/stripComments.js';
 import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
 import type { AiConfig, UserProfile } from '../../types/index.js';
 
 const SYSTEM_PROMPT = `You are a professional resume writer. Your job is to tailor a resume to a specific job description.
 
 You will be given:
-1. A resume pool in Markdown (all the candidate's experience, projects, education, skills)
+1. A resume pool in Markdown (all the candidate's experience, projects, education, skills, and optional sections)
 2. A job description
 3. Candidate contact info
 
@@ -31,13 +32,18 @@ Required HTML structure:
 <h2>Experience</h2>
 <div class="item">
   <div class="item-header"><span>Job Title, Company</span><span>Start – End</span></div>
-  <ul><li>Bullet rewritten to match JD keywords.</li></ul>
+  <ul>
+    <li>Bullet rewritten to match JD keywords — strong action verb, quantified impact.</li>
+    <li>3–5 bullets per role.</li>
+  </ul>
 </div>
 
 <h2>Projects</h2>
 <div class="item">
   <div class="item-header"><span>Project Name</span><span>Year</span></div>
-  <ul><li>Description.</li></ul>
+  <ul>
+    <li>What it does and how it relates to this JD — 3–5 bullets per project.</li>
+  </ul>
 </div>
 
 <h2>Education</h2>
@@ -47,15 +53,49 @@ Required HTML structure:
 
 <h2>Skills</h2>
 <div>Skill1, Skill2, Skill3</div>
+
+<!-- Render any other sections present in the resume pool using the same pattern -->
 \`\`\`
 
-Rules:
-- Select only the most relevant experiences and projects for this specific JD
-- Rewrite bullet points using keywords and phrasing from the JD where accurate
-- Do NOT fabricate experience, companies, or skills not present in the resume pool
-- Keep bullets concise — one sentence each, strong action verb first
-- Skills section: comma-separated list, no bullets
-- Output raw HTML only — no markdown fences, no explanation text`;
+## Step 1 — inventory (do this mentally before writing any HTML)
+
+Read the resume pool and list every section heading that has real content (not just comments).
+You MUST output ALL of them. Missing any section is a hard error, not a style choice.
+
+## Step 2 — output every section
+
+This is a ONE-PAGE resume. Every section must fit. Apply the hard limits below — do not exceed them.
+
+**Experience** (REQUIRED if present)
+- Include ALL roles — never drop a job.
+- HARD LIMIT: exactly 3 bullets per role.
+- Each bullet: 12–15 words max. Strong action verb, quantified result where possible.
+
+**Projects** (REQUIRED if present)
+- HARD LIMIT: pick the 2–3 most relevant projects only. Drop the rest.
+- HARD LIMIT: exactly 3 bullets per project.
+- Each bullet: 12–15 words max.
+
+**Education** (REQUIRED if present — do not skip)
+- All degrees. One line each: degree, institution, years. No bullets.
+
+**Skills** (REQUIRED if present — do not skip)
+- The pool may use markdown bold headers like **Category:** items.
+- Convert to plain comma-separated groups in HTML. No bold, no bullets.
+- Keep 10–12 most relevant skills for this JD.
+
+**Publications / Languages / Certifications / any other section** (REQUIRED if present — do not skip)
+- Include every section that exists in the pool. 1 item maximum per section, no bullets — one concise line.
+- Use the same .item structure as Experience/Projects.
+
+**Section order:** Experience → Projects → Education → Skills → remaining sections in pool order.
+
+## Output rules
+- Stay within the bullet and word limits above — the page cannot overflow.
+- The renderer will compress font/spacing to fit, but content limits are YOUR responsibility.
+- Do NOT fabricate experience, companies, or skills not present in the resume pool.
+- Output raw HTML only — no markdown fences, no explanation text.
+- Keep the CSS block exactly as shown; do not add extra styles.`;
 
 const COVER_LETTER_SYSTEM_PROMPT = `You are a professional cover letter writer.
 You will be given a resume pool, a job description, candidate contact info, and a tone.
@@ -109,7 +149,7 @@ Phone: ${profile.phone}
 URLs: ${urls || 'none'}
 
 ## Resume Pool
-${resumePool}
+${stripComments(resumePool)}
 
 ## Job Description
 ${jdText}
@@ -145,7 +185,7 @@ URLs: ${urls || 'none'}
 Tone: ${tone}
 
 ## Resume Pool
-${resumePool}
+${stripComments(resumePool)}
 
 ## Job Description
 ${jdText}
