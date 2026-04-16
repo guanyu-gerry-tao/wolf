@@ -20,7 +20,7 @@ const PROFILE: UserProfile = {
   secondUrl: 'github.com/alex',
   thirdUrl: null,
   immigrationStatus: 'no limit',
-  willingToRelocate: false,
+  willingToRelocate: 'no',
   targetRoles: ['Software Engineer'],
   targetLocations: ['Remote'],
   scoringNotes: null,

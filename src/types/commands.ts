@@ -31,7 +31,7 @@ export interface ScoreOptions {
   jobIds?: string[];                     // score only specific jobs; defaults to all with score: null
   poll?: boolean;                        // default false — if true, poll pending batches instead of submitting new
   single?: boolean;                      // default false — if true, skip Batch API and score synchronously via Haiku
-  aiProvider?: 'anthropic' | 'openai';  // defaults to anthropic
+  aiModel?: string;   // overrides AppConfig.score.model for this call; format "<provider>/<model>"
 }
 
 export interface ScoreResult {
@@ -49,8 +49,7 @@ export interface TailorOptions {
   resume?: string;         // path to .tex; defaults to profile.resumePath
   coverLetter?: boolean;   // default true
   diff?: boolean;          // show before/after comparison
-  aiProvider?: 'anthropic' | 'openai';  // overrides AppConfig.ai.provider for this call
-  aiModel?: string;                      // overrides AppConfig.ai.model for this call
+  aiModel?: string;   // overrides AppConfig.tailor.model for this call; format "<provider>/<model>"
 }
 
 export interface TailorResult {

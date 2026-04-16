@@ -11,7 +11,7 @@ const MOCK_PROFILE: UserProfile = {
   secondUrl: null,
   thirdUrl: null,
   immigrationStatus: 'no limit',
-  willingToRelocate: false,
+  willingToRelocate: 'no',
   targetRoles: ['Software Engineer'],
   targetLocations: ['Remote'],
   scoringNotes: null,

@@ -25,28 +25,44 @@ export const UserProfileSchema = z.object({
   secondUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
   thirdUrl: z.string().nullable().default(null).transform(v => v === '' ? null : v),
   immigrationStatus: StatusSchema,
-  willingToRelocate: z.boolean(),
+  willingToRelocate: z.string(),
   targetRoles: z.array(z.string()),
   targetLocations: z.array(z.string()),
   scoringNotes: z.string().nullable().default(null).transform(v => v === '' ? null : v),
 });
 
 // --- AppConfig ---
+
+// Model reference format: "<provider>/<model>"
+// Providers validated at runtime by parseModelRef; regex here just enforces the shape.
+// Exported so tests can assert the regex and parseModelRef stay in agreement.
+export const ModelRefSchema = z.string().regex(
+  /^(anthropic|openai)\/.+$/,
+  'Model must be "<provider>/<model>" where provider is "anthropic" or "openai"',
+);
+
+const DEFAULT_SONNET = 'anthropic/claude-sonnet-4-6';
+const DEFAULT_HAIKU  = 'anthropic/claude-haiku-4-5-20251001';
+
 export const AppConfigSchema = z.object({
   defaultProfileId: z.string(),
-  ai: z.object({
-    provider: z.enum(['anthropic', 'openai']).default('anthropic'),
-    model: z.string().default('claude-sonnet-4-6'),
-  }).default({ provider: 'anthropic', model: 'claude-sonnet-4-6' }),
   hunt: z.object({
     minScore: z.number().min(0).max(1).default(0.5),
     maxResults: z.number().positive().default(50),
-  }),
+  }).default({ minScore: 0.5, maxResults: 50 }),
   tailor: z.object({
+    model: ModelRefSchema.default(DEFAULT_SONNET),
     defaultCoverLetterTone: z.string().default('professional'),
-  }),
+  }).default({ model: DEFAULT_SONNET, defaultCoverLetterTone: 'professional' }),
+  score: z.object({
+    model: ModelRefSchema.default(DEFAULT_SONNET),
+  }).default({ model: DEFAULT_SONNET }),
   reach: z.object({
+    model: ModelRefSchema.default(DEFAULT_SONNET),
     defaultEmailTone: z.string().default('professional'),
     maxEmailsPerDay: z.number().positive().default(10),
-  }),
+  }).default({ model: DEFAULT_SONNET, defaultEmailTone: 'professional', maxEmailsPerDay: 10 }),
+  fill: z.object({
+    model: ModelRefSchema.default(DEFAULT_HAIKU),
+  }).default({ model: DEFAULT_HAIKU }),
 });

@@ -40,11 +40,10 @@ function setupDefaultMocks(): void {
     .mockResolvedValueOnce('Software Engineer') // targetRoles
     .mockResolvedValueOnce('Remote');           // targetLocations
 
-  // select call: immigrationStatus
-  vi.mocked(select).mockResolvedValueOnce('no limit');
-
-  // confirm call: willingToRelocate (and any subsequent confirms)
-  vi.mocked(confirm).mockResolvedValue(false);
+  // select calls in order: immigrationStatus, willingToRelocate
+  vi.mocked(select)
+    .mockResolvedValueOnce('no limit')  // immigrationStatus
+    .mockResolvedValueOnce('no');       // willingToRelocate
 }
 
 // Helper: runs init() with cwd temporarily set to dir, restores cwd afterward,
@@ -90,8 +89,8 @@ describe('init()', () => {
       const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
       const config = AppConfigSchema.parse(parse(raw));
       expect(config.defaultProfileId).toBe('default');
-      expect(config.ai.provider).toBe('anthropic');
-      expect(config.ai.model).toBe('claude-sonnet-4-6');
+      expect(config.tailor.model).toBe('anthropic/claude-sonnet-4-6');
+      expect(config.fill.model).toBe('anthropic/claude-haiku-4-5-20251001');
 
       // profile.toml should round-trip through UserProfileSchema with the entered values.
       const profileRaw = await fs.readFile(
@@ -102,7 +101,7 @@ describe('init()', () => {
       expect(profile.email).toBe('alex@example.com');
       expect(profile.phone).toBe('+1 555 000 0000');
       expect(profile.immigrationStatus).toBe('no limit');
-      expect(profile.willingToRelocate).toBe(false);
+      expect(profile.willingToRelocate).toBe('no');
       expect(profile.targetRoles).toEqual(['Software Engineer']);
       expect(profile.targetLocations).toEqual(['Remote']);
       // Empty URL inputs should be stored as null, not empty string.

@@ -44,7 +44,7 @@ const FAKE_JOB: Job = {
 const FAKE_PROFILE: UserProfile = {
   id: 'default', label: 'Default', name: 'Alex', email: 'alex@example.com',
   phone: '+1 555 000 0000', firstUrl: null, secondUrl: null, thirdUrl: null,
-  immigrationStatus: 'no limit', willingToRelocate: false,
+  immigrationStatus: 'no limit', willingToRelocate: 'no',
   targetRoles: ['SWE'], targetLocations: ['Remote'], scoringNotes: null,
 };
 
@@ -122,20 +122,21 @@ describe('TailorApplicationService', () => {
     );
   });
 
-  // Verify that aiProvider/aiModel overrides in TailorOptions replace the defaults.
-  it('passes overridden aiConfig when TailorOptions specifies aiProvider', async () => {
+  // Verify that aiModel override in TailorOptions replaces the default AI config.
+  // The override arrives as a "<provider>/<model>" string and gets parsed into AiConfig.
+  it('passes overridden aiConfig when TailorOptions specifies aiModel', async () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,
       '/workspace', DEFAULT_AI, 'professional',
     );
-    await svc.tailor({ jobId: 'job-1', aiProvider: 'openai', aiModel: 'gpt-4o' });
+    await svc.tailor({ jobId: 'job-1', aiModel: 'openai/gpt-4o' });
     const calledWithAiConfig = vi.mocked(rewriteSvc.tailorResumeToHtml).mock.calls[0][3];
     expect(calledWithAiConfig).toEqual({ provider: 'openai', model: 'gpt-4o' });
   });
 
-  // Verify that when no overrides are given, defaultAiConfig is used unchanged.
-  it('uses defaultAiConfig when TailorOptions has no aiProvider', async () => {
+  // Verify that when no override is given, defaultAiConfig is used unchanged.
+  it('uses defaultAiConfig when TailorOptions has no aiModel', async () => {
     const rewriteSvc = makeRewriteSvc();
     const svc = new TailorApplicationServiceImpl(
       makeJobRepo(), makeProfileRepo(), makeRenderSvc(), rewriteSvc,

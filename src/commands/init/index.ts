@@ -255,17 +255,26 @@ Consider cd-ing to a dedicated folder first, e.g.:
 
   console.log(`\n${bold('── Job Preferences ──')}`);
 
-  const willingToRelocate = await confirm({ message: 'Willing to relocate?', default: false });
+  const willingToRelocate = await select({
+    message: 'Willing to relocate?',
+    choices: [
+      { name: 'No',                    value: 'no' },
+      { name: 'Yes',                   value: 'yes' },
+      { name: 'Domestic only',         value: 'domestic only' },
+      { name: 'Open to relocation',    value: 'open to relocation' },
+    ],
+  });
   const targetRolesRaw     = await input({ message: 'Target roles (comma-separated):', default: 'Software Engineer' });
   const targetLocationsRaw = await input({ message: 'Target locations (comma-separated):', default: 'Remote' });
 
   // ── Step 2: Write wolf.toml ───────────────────────────────────────────────
   const config: AppConfig = {
     defaultProfileId: 'default',
-    ai: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
     hunt: { minScore: 0.5, maxResults: 50 },
-    tailor: { defaultCoverLetterTone: 'professional' },
-    reach: { defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+    tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
+    score: { model: 'anthropic/claude-sonnet-4-6' },
+    reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+    fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
   };
   await saveConfig(config);
 

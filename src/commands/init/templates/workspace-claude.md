@@ -54,20 +54,28 @@ Open `wolf.toml` with any text editor and save.
 ```toml
 defaultProfileId = "default"
 
-[ai]
-provider = "anthropic"          # "anthropic" or "openai"
-model = "claude-sonnet-4-6"    # model used for all AI tasks
+# Each AI-using command has its own model.
+# Format: "<provider>/<model>" where provider is "anthropic" or "openai".
 
 [hunt]
-minScore = 0.5                  # 0.0–1.0 — jobs below this are filtered
+minScore = 0.5                  # 0.0-1.0 - jobs below this are filtered
 maxResults = 50                 # max jobs fetched per hunt run
+# no model - wolf hunt does not call AI
 
 [tailor]
-defaultCoverLetterTone = "professional"   # tone hint for cover letter AI
+model = "anthropic/claude-sonnet-4-6"
+defaultCoverLetterTone = "professional"
+
+[score]
+model = "anthropic/claude-sonnet-4-6"
 
 [reach]
+model = "anthropic/claude-sonnet-4-6"
 defaultEmailTone = "professional"
 maxEmailsPerDay = 10            # safety cap
+
+[fill]
+model = "anthropic/claude-haiku-4-5-20251001"   # cheaper/faster for form filling
 ```
 
 </details>
@@ -93,7 +101,7 @@ firstUrl = "https://linkedin.com/in/you"   # null if not set
 secondUrl = "https://github.com/you"       # null if not set
 thirdUrl = null                            # personal website, null if not set
 immigrationStatus = "no limit"             # H-1B | L1 | OPT | CPT | no limit
-willingToRelocate = false
+willingToRelocate = "no"           # "no" | "yes" | "domestic only" | "open to relocation"
 targetRoles = ["Software Engineer"]
 targetLocations = ["Remote", "NYC"]
 scoringNotes = null   # optional free-form hints to the AI scorer
