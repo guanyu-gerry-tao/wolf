@@ -1,3 +1,4 @@
+import type { ProviderId } from "../utils/ai/registry.js";
 import { Status } from "./sponsorship.js";
 
 /**
@@ -60,6 +61,6 @@ export interface AppConfig {
 
 /** AI provider + model split for a single service call. */
 export interface AiConfig {
-  provider: 'anthropic' | 'openai';
+  provider: ProviderId;
   model: string;
 }

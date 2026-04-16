@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROVIDER_IDS } from './ai/registry.js';
 
 // --- Sponsorship enums ---
 // Free-form string — common values are H-1B, L1, OPT, CPT, "no limit",
@@ -34,11 +35,13 @@ export const UserProfileSchema = z.object({
 // --- AppConfig ---
 
 // Model reference format: "<provider>/<model>"
-// Providers validated at runtime by parseModelRef; regex here just enforces the shape.
+// Regex is built from the PROVIDERS registry so adding a provider there
+// automatically widens what wolf.toml accepts.
 // Exported so tests can assert the regex and parseModelRef stay in agreement.
+const PROVIDER_PATTERN = PROVIDER_IDS.join('|');
 export const ModelRefSchema = z.string().regex(
-  /^(anthropic|openai)\/.+$/,
-  'Model must be "<provider>/<model>" where provider is "anthropic" or "openai"',
+  new RegExp(`^(${PROVIDER_PATTERN})\\/.+$`),
+  `Model must be "<provider>/<model>" where provider is one of ${PROVIDER_IDS.join(', ')}`,
 );
 
 const DEFAULT_SONNET = 'anthropic/claude-sonnet-4-6';

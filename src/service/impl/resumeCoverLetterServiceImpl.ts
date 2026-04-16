@@ -1,4 +1,4 @@
-import { aiClient } from '../../utils/ai.js';
+import { aiClient } from '../../utils/ai/index.js';
 import { stripComments } from '../../utils/stripComments.js';
 import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
 import type { AiConfig, UserProfile } from '../../types/index.js';
@@ -22,7 +22,7 @@ Required HTML structure:
        margin: 0.85em 0 0.3em 0; padding-bottom: 0.1em; font-size: 1.08em; }
   .item { margin-bottom: 0.45em; }
   .item-header { display: flex; justify-content: space-between; font-weight: 600; }
-  ul { margin: 0.2em 0 0.3em 1.2em; padding: 0; }
+  ul { margin: 0.2em 0 0.3em 1.2em; padding: 0 }
   li { margin-bottom: 0.12em; }
 </style>
 

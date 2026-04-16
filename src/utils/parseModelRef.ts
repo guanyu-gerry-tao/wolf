@@ -1,3 +1,4 @@
+import { isProviderId, PROVIDER_IDS } from './ai/registry.js';
 import type { AiConfig } from '../types/index.js';
 
 /**
@@ -13,8 +14,8 @@ export function parseModelRef(ref: string): AiConfig {
   }
   const provider = ref.slice(0, slash);
   const model = ref.slice(slash + 1);
-  if (provider !== 'anthropic' && provider !== 'openai') {
-    throw new Error(`Unknown provider "${provider}" in model ref "${ref}": expected "anthropic" or "openai"`);
+  if (!isProviderId(provider)) {
+    throw new Error(`Unknown provider "${provider}" in model ref "${ref}": expected one of ${PROVIDER_IDS.join(', ')}`);
   }
   return { provider, model };
 }
