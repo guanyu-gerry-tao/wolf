@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -20,6 +20,11 @@ import { init } from '../index.js';
 function makeTempDir(): string {
   return path.join(os.tmpdir(), `wolf-init-test-${randomUUID()}`);
 }
+
+// Stub WOLF_ANTHROPIC_API_KEY so init() skips the envSet() call at the end.
+// Without this, tests fail in CI where the key is absent — input() runs out of
+// mock responses and throws on undefined.trim().
+const originalApiKey = process.env.WOLF_ANTHROPIC_API_KEY;
 
 // Default mock answers matching the interactive prompts in the order they fire.
 // The order must stay in sync with the input() / select() / confirm() call sequence in init().
@@ -61,7 +66,18 @@ async function runInitIn(dir: string, assertFn: () => Promise<void>): Promise<vo
 }
 
 describe('init()', () => {
-  afterEach(() => vi.clearAllMocks());
+  // Set a fake API key so init() skips the envSet() call at the end.
+  // Without this, tests fail in CI where the key is absent — input() runs out
+  // of mock responses and throws on undefined.trim().
+  beforeEach(() => { process.env.WOLF_ANTHROPIC_API_KEY = 'test-key'; });
+  afterEach(() => {
+    vi.clearAllMocks();
+    if (originalApiKey === undefined) {
+      delete process.env.WOLF_ANTHROPIC_API_KEY;
+    } else {
+      process.env.WOLF_ANTHROPIC_API_KEY = originalApiKey;
+    }
+  });
 
   // Happy path: fresh workspace — all expected files should be created with valid content.
   it('creates wolf.toml, profile.toml, and resume_pool.md in a fresh directory', async () => {
