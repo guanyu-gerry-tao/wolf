@@ -10,7 +10,7 @@ You will be given:
 2. A job description
 3. Candidate contact info
 
-Output ONLY the HTML body content for the resume — no <html>, <head>, or <body> tags.
+Output ONLY the HTML body content for the resume - no <html>, <head>, or <body> tags.
 The HTML will be injected into a page that already has Inter font and base CSS loaded.
 
 Required HTML structure:
@@ -31,10 +31,10 @@ Required HTML structure:
 
 <h2>Experience</h2>
 <div class="item">
-  <div class="item-header"><span>Job Title, Company</span><span>Start – End</span></div>
+  <div class="item-header"><span>Job Title, Company</span><span>Start - End</span></div>
   <ul>
-    <li>Bullet rewritten to match JD keywords — strong action verb, quantified impact.</li>
-    <li>3–5 bullets per role.</li>
+    <li>Bullet rewritten to match JD keywords - strong action verb, quantified impact.</li>
+    <li>3-5 bullets per role.</li>
   </ul>
 </div>
 
@@ -42,13 +42,13 @@ Required HTML structure:
 <div class="item">
   <div class="item-header"><span>Project Name</span><span>Year</span></div>
   <ul>
-    <li>What it does and how it relates to this JD — 3–5 bullets per project.</li>
+    <li>What it does and how it relates to this JD - 3-5 bullets per project.</li>
   </ul>
 </div>
 
 <h2>Education</h2>
 <div class="item">
-  <div class="item-header"><span>Degree, University</span><span>Year – Year</span></div>
+  <div class="item-header"><span>Degree, University</span><span>Year - Year</span></div>
 </div>
 
 <h2>Skills</h2>
@@ -57,50 +57,51 @@ Required HTML structure:
 <!-- Render any other sections present in the resume pool using the same pattern -->
 \`\`\`
 
-## Step 1 — inventory (do this mentally before writing any HTML)
+## Step 1 - inventory (do this mentally before writing any HTML)
 
 Read the resume pool and list every section heading that has real content (not just comments).
 You MUST output ALL of them. Missing any section is a hard error, not a style choice.
 
-## Step 2 — output every section
+## Step 2 - output every section
 
-This is a ONE-PAGE resume. Every section must fit. Apply the hard limits below — do not exceed them.
+This is a ONE-PAGE resume. Every section must fit. Apply the hard limits below - do not exceed them.
 
 **Experience** (REQUIRED if present)
-- Include ALL roles — never drop a job.
+- Include ALL roles - never drop a job.
 - HARD LIMIT: exactly 3 bullets per role.
-- Each bullet: 12–15 words max. Strong action verb, quantified result where possible.
+- Each bullet: 12-15 words max. Strong action verb, quantified result where possible.
 
 **Projects** (REQUIRED if present)
-- HARD LIMIT: pick the 2–3 most relevant projects only. Drop the rest.
+- HARD LIMIT: pick the 2-3 most relevant projects only. Drop the rest.
 - HARD LIMIT: exactly 3 bullets per project.
-- Each bullet: 12–15 words max.
+- Each bullet: 12-15 words max.
 
-**Education** (REQUIRED if present — do not skip)
+**Education** (REQUIRED if present - do not skip)
 - All degrees. One line each: degree, institution, years. No bullets.
 
-**Skills** (REQUIRED if present — do not skip)
+**Skills** (REQUIRED if present - do not skip)
 - The pool may use markdown bold headers like **Category:** items.
 - Convert to plain comma-separated groups in HTML. No bold, no bullets.
-- Keep 10–12 most relevant skills for this JD.
+- Keep 10-12 most relevant skills for this JD.
 
-**Publications / Languages / Certifications / any other section** (REQUIRED if present — do not skip)
-- Include every section that exists in the pool. 1 item maximum per section, no bullets — one concise line.
+**Publications / Languages / Certifications / any other section** (REQUIRED if present - do not skip)
+- Include every section that exists in the pool. 1 item maximum per section, no bullets - one concise line.
 - Use the same .item structure as Experience/Projects.
 
 **Section order:** Experience → Projects → Education → Skills → remaining sections in pool order.
 
 ## Output rules
-- Stay within the bullet and word limits above — the page cannot overflow.
+- Stay within the bullet and word limits above - the page cannot overflow.
 - The renderer will compress font/spacing to fit, but content limits are YOUR responsibility.
 - Do NOT fabricate experience, companies, or skills not present in the resume pool.
-- Output raw HTML only — no markdown fences, no explanation text.
-- Keep the CSS block exactly as shown; do not add extra styles.`;
+- Output raw HTML only - no markdown fences, no explanation text.
+- Keep the CSS block exactly as shown; do not add extra styles.
+- Use a plain hyphen-minus (-) for all dashes. Do not output em dashes or en dashes.`;
 
 const COVER_LETTER_SYSTEM_PROMPT = `You are a professional cover letter writer.
 You will be given a resume pool, a job description, candidate contact info, and a tone.
 
-Output ONLY the HTML body for the cover letter — no <html>, <head>, or <body> tags.
+Output ONLY the HTML body for the cover letter - no <html>, <head>, or <body> tags.
 The HTML will be injected into the same shell as the resume.
 
 Required HTML structure:
@@ -126,10 +127,13 @@ Required HTML structure:
 </div>
 
 Rules:
-- Match the requested tone
-- Reference specific JD requirements — do not write generic letters
-- Do NOT fabricate skills, titles, or companies not in the resume pool
-- Output raw HTML only — no markdown fences, no explanation text`;
+- Write exactly 3 short paragraphs: opening (why this role), body (2-3 strongest matches), closing (call to action).
+- Max 300 words total - the cover letter must fit on one page.
+- Match the requested tone.
+- Reference specific JD requirements - do not write generic letters.
+- Do NOT fabricate skills, titles, or companies not in the resume pool.
+- Output raw HTML only - no markdown fences, no explanation text.
+- Use a plain hyphen-minus (-) for all dashes. Do not output em dashes (-) or en dashes (-).`;
 
 export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
   async tailorResumeToHtml(
