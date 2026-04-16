@@ -156,8 +156,9 @@ Consider cd-ing to a dedicated folder first, e.g.:
     validate: v => v.trim() !== '' || 'Required',
   });
 
-  // Enumerate immigration status so the value matches the Status union type exactly.
-  const immigrationStatus = await select({
+  // Select from common statuses; "Other" allows free-form entry for multi-status
+  // situations (e.g. "H-1B + 485 pending") or non-US work authorizations.
+  const immigrationStatusRaw = await select({
     message: 'Work authorization status:',
     choices: [
       { name: 'No limit (citizen / GC / EAD)', value: 'no limit' },
@@ -165,8 +166,15 @@ Consider cd-ing to a dedicated folder first, e.g.:
       { name: 'L1',                             value: 'L1' },
       { name: 'OPT (STEM extension)',           value: 'OPT' },
       { name: 'CPT',                            value: 'CPT' },
+      { name: 'Other / multiple statuses',      value: '__other__' },
     ],
   });
+  const immigrationStatus = immigrationStatusRaw === '__other__'
+    ? await input({
+        message: 'Any other status, or multiple statuses:',
+        validate: v => v.trim() !== '' || 'Required',
+      })
+    : immigrationStatusRaw;
 
   // Optional URLs — empty string collapses to null so the TOML stays clean.
   const firstUrlRaw  = await input({ message: 'LinkedIn URL  (Enter to skip):', default: '' });

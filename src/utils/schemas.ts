@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 // --- Sponsorship enums ---
-export const StatusSchema = z.enum(['H-1B', 'L1', 'OPT', 'CPT', 'no limit']);
+// Free-form string — common values are H-1B, L1, OPT, CPT, "no limit",
+// but users may enter multi-status or non-US equivalents.
+export const StatusSchema = z.string().min(1);
 export const SponsorshipSchema = z.enum([
   'no sponsorship',
   'Green card',
