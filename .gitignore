@@ -47,6 +47,7 @@ Thumbs.db
 
 # Claude Code memory
 .claude/
+.superpowers/
 
 # data files
 data/*
