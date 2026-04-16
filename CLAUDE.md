@@ -104,6 +104,26 @@ Run `wolf env show` to verify, `wolf env clear` to remove.
 
 For MCP server usage, add these to the `env` section of `claude_desktop_config.json`.
 
+## Naming conventions
+
+- **File names:** camelCase (`batchServiceImpl.ts`, `fileProfileRepositoryImpl.ts`). Never PascalCase for non-component files, never kebab-case.
+- **Symbol names:** PascalCase for classes/interfaces/types (`BatchService`, `JobRepository`), camelCase for functions and values.
+- **File name = main exported symbol name**, first letter lower-cased.
+
+### Interface / implementation layering
+
+- Interfaces live in the layer root and carry the layer suffix: `service/batchService.ts` exports `interface BatchService`; `repository/profileRepository.ts` exports `interface ProfileRepository`; `application/tailorApplicationService.ts` exports `interface TailorApplicationService`.
+- Implementations live in `impl/` and **always** end with `Impl`:
+  - Single implementation: `<interface>Impl` → `batchServiceImpl.ts` exports `class BatchServiceImpl`.
+  - Multiple implementations: `<qualifier><interface>Impl` → `fileProfileRepositoryImpl.ts` exports `class FileProfileRepositoryImpl`, `inMemoryProfileRepositoryImpl.ts` exports `class InMemoryProfileRepositoryImpl`.
+- Qualifier says *which kind* of implementation (`File`, `InMemory`, `Sqlite`, `Api`, `Http`, …). `Impl` says *this is an implementation*. Both signals are carried explicitly — every class ending in `Impl` is grep-discoverable.
+- Do NOT use `I` prefix on interfaces (`IBatchService` is C#/Java-style; TS community has moved away from it).
+
+### Import style
+
+- Use `import type { ... }` for any import used **only** as a type (interface references, generic parameters, `implements` clauses). The import is erased at compile time — no runtime cost, no accidental module side effects, and loops are broken.
+- Use regular `import { ... }` only for values you actually reference at runtime (`new SomeImpl()`, calling a function, etc.).
+
 ## Testing conventions
 
 - Unit test files go in a `__tests__/` folder adjacent to the source they test
@@ -111,6 +131,11 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - e.g. `src/commands/env/__tests__/env.test.ts` tests `src/commands/env/index.ts`
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
+
+### Comment style
+
+- **Tests:** Write thorough English comments. Every `describe`, `it`, helper function, and non-obvious assertion should have a comment explaining *what scenario is being tested and why*. A reader should understand the test's intent without reading the implementation.
+- **Implementation:** Add single-line English comments before logical blocks to explain intent. Do not add comments after a line of code — always on the line above. Keep it concise; explain *why*, not *what*.
 
 ## Workflow rules
 

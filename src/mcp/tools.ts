@@ -1,9 +1,7 @@
-// @ts-nocheck
-// TODO: the types refactor (ad1f6fd) removed UserProfile.resumePath and changed
-// other fields this file reads. Disable type checking until the MCP tool wiring
-// is reconciled with the new types.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { add } from '../commands/add/index.js';
+import { tailor } from '../commands/tailor/index.js';
 
 function notImplemented(tool: string): object {
   return { error: 'not_implemented', tool, message: `${tool} is not yet implemented.` };
@@ -57,12 +55,18 @@ then present the result to the user and offer to run wolf_tailor.`,
         profileId: z.string().optional().describe('Profile to use; defaults to defaultProfileId in wolf.toml'),
       },
     },
-    // TODO(M2): replace with async (args) => { const result = await add(args); ... }
-    (args) => {
+    async (args) => {
       if (!args.title || !args.company || !args.jdText) {
         return { content: [{ type: 'text', text: JSON.stringify(missingParam('title/company/jdText', 'Extract title, company, and jdText from the user\'s input before calling wolf_add.')) }] };
       }
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_add')) }] };
+      const result = await add({
+        title: args.title as string,
+        company: args.company as string,
+        jdText: args.jdText as string,
+        url: args.url as string | undefined,
+        profileId: args.profileId as string | undefined,
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
   );
 
@@ -100,12 +104,16 @@ Ask user if they want a cover letter generated (coverLetter: true/false).`,
         profileId: z.string().optional().describe('Profile to use; defaults to defaultProfileId in wolf.toml'),
       },
     },
-    // TODO(M2): replace with async (args) => { const result = await tailor(args); ... }
-    (args) => {
+    async (args) => {
       if (!args.jobId) {
-        return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.')) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_add or wolf_hunt first.')) }] };
       }
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_tailor')) }] };
+      const result = await tailor({
+        jobId: args.jobId as string,
+        profileId: args.profileId as string | undefined,
+        coverLetter: args.coverLetter as boolean | undefined,
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }
   );
 
@@ -168,26 +176,24 @@ Returns what's missing and what the next step should be.`,
     async () => {
       try {
         const { loadConfig } = await import('../utils/config.js');
-        const config = await loadConfig();
-        const profile = config.profiles?.[0];
+        const { createAppContext } = await import('../cli/appContext.js');
+        // loadConfig validates wolf.toml exists; createAppContext opens SQLite + loads profile.
+        await loadConfig();
+        const ctx = createAppContext();
+        const profile = await ctx.profileRepository.getDefault();
         const hasProfile = !!profile?.name && !!profile?.email;
-        const hasResume = !!profile?.resumePath;
 
         const result = {
           profile: hasProfile ? 'ok' : 'missing',
-          resume: hasResume ? 'ok' : 'missing',
           integrations: {
             anthropic: !!process.env['WOLF_ANTHROPIC_API_KEY'],
             apify: !!process.env['WOLF_APIFY_API_TOKEN'],
-            gmail: !!process.env['WOLF_GMAIL_CLIENT_ID'],
           },
           next_step: !hasProfile
             ? 'Run `wolf init` in your workspace to set up your profile.'
-            : !hasResume
-              ? 'Add your resume path to wolf.toml, or re-run `wolf init`.'
-              : !process.env['WOLF_ANTHROPIC_API_KEY']
-                ? 'Run `wolf env set` to configure your API keys.'
-                : 'Wolf is ready. Try `wolf_hunt` to find jobs.',
+            : !process.env['WOLF_ANTHROPIC_API_KEY']
+              ? 'Set WOLF_ANTHROPIC_API_KEY in your shell to enable AI features.'
+              : 'Wolf is ready. Try `wolf_add` or `wolf_hunt` to get started.',
         };
 
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
@@ -197,8 +203,7 @@ Returns what's missing and what the next step should be.`,
             type: 'text',
             text: JSON.stringify({
               profile: 'missing',
-              resume: 'missing',
-              integrations: { anthropic: false, apify: false, gmail: false },
+              integrations: { anthropic: false, apify: false },
               next_step: 'No wolf.toml found. Run `wolf init` in your workspace directory first.',
             }),
           }],

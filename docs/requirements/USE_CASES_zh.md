@@ -14,9 +14,9 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - c - 使用 README 中提供的可复制配置块配置 MCP 插件，其中 `cwd` 设置为步骤 a 中创建的工作区文件夹。
 - 3 - 用户完成上述步骤；MCP 服务器现已配置为以正确的工作目录启动。
 
-下一步：AI 建议用户优先通过 MCP 初始化。继续至 UC-01。
+下一步：AI 建议用户优先通过 MCP 初始化。继续至 UC-01.1.2。
 
-## UC-01 · 运行初始化（`wolf init`）
+## UC-01.1.1 · 运行初始化（`wolf init` — CLI）
 
 **Actor：** User
 **前置条件：** wolf 已安装；工作区中不存在 `wolf.toml`。
@@ -35,7 +35,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - 6.2 - 若未设置 → 打印设置说明；继续（初始化完成不要求该 key）。
 - 7 - wolf 打印所有 `WOLF_*` key 的汇总（已设置 / 未设置），列出可用 CLI 命令，建议运行 `--help` 查看详情，然后退出。
 
-## UC-01.1 · 运行初始化（MCP）
+## UC-01.1.2 · 运行初始化（MCP）
 
 **Actor：** AI Agent（如 OpenClaw、Claude Code 或 Claude Chat）
 **前置条件：** wolf 已安装；工作区中不存在 `wolf.toml`；AI 已安装 wolf MCP 插件。
@@ -49,7 +49,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 6 - AI 确认设置完成。
    - 6.1 - 若 API key 未配置 → AI 告知用户需要设置 API key，说明如何注册和获取，并提供可复制的代码块（例如 `export WOLF_ANTHROPIC_API_KEY=your_key_here`），指导用户将其添加到 `~/.zshrc` 后运行 `source ~/.zshrc` 或重启终端。
 
-## UC-02.1 · 搜索职位（`wolf hunt`）
+## UC-02.1.1 · 搜索职位（`wolf hunt`）
 
 **Actor：** User 或 Agent
 **前置条件：** `wolf.toml` 存在；至少配置了一个数据源。
@@ -59,22 +59,63 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - 2.1 - 若未配置任何数据源 → 打印设置提示并退出。（提示内容 TBD）
 - 3 - 对每个数据源，wolf 通过 `JobProvider` 接口获取职位列表。
    - 3.1 - 若某数据源返回错误 → 记录错误，跳过该数据源，继续处理其他数据源。
-- 4 - wolf 对结果去重（相同 URL，或相同职位名 + 公司）。
-- 5 - wolf 将新职位以 `status: raw`、`score: null` 保存至 SQLite。
+- 4 - wolf 按 URL 去重（规范化处理，去除 query 参数）。URL 已存在于 DB 的职位直接跳过——多来源重复（同一职位同时挂在 LinkedIn 和 Handshake）保留为独立记录，在 fill 阶段兜底处理。
+- 5 - wolf 将新职位以 `status: new`、`score: null` 保存至 SQLite。
 - 6 - wolf 打印汇总：获取 N 条，跳过 M 条重复，保存 K 条新职位。
 - 7 - `CLI` 提示下一步操作（例如"运行 `wolf score` 对照你的 profile 评估这些职位"）。
 
-## UC-02.2 · 搜索职位（MCP）
+## UC-02.1.2 · 搜索职位（MCP）
 
 **Actor：** AI Agent（如 OpenClaw）
 **前置条件：** wolf 已安装；`wolf.toml` 存在且至少配置了一个数据源。
 
 - 1 - 用户询问 AI："你能帮我找些职位吗？"或"我们去找工作！"或"用 wolf 帮我找职位！"
 - 2 - AI 调用 `wolf_hunt` MCP tool，无需参数。
-- 3 - wolf 按 UC-02.1 步骤 2–5 执行搜索，并将结果汇总（获取 N 条、跳过 M 条重复、保存 K 条新职位）返回给 AI。AI 以自然语言向用户转述。
+- 3 - wolf 按 UC-02.1.1 步骤 2–5 执行搜索，并将结果汇总（获取 N 条、跳过 M 条重复、保存 K 条新职位）返回给 AI。AI 以自然语言向用户转述。
 - 4 - AI 可建议下一步（例如"我为你找到了 K 个新职位，需要我对照你的 profile 为它们评分吗？"）并引导用户继续工作流。
 
-## UC-03.1 · 评分（`wolf score`）
+## UC-02.2.1 · 手动添加职位（`wolf add` — CLI）
+
+**Actor：** User
+**前置条件：** `wolf.toml` 存在；用户有一个想跟踪的目标职位。
+
+- 1 - 用户运行 `wolf add` 并提供必要参数：
+   - `--title <title>` — 职位名称
+   - `--company <company>` — 公司名称
+   - 以下之一：
+     - `--jd <text>` — 内联职位描述文本
+     - `--file <path>` — 包含 JD 内容的纯文本文件路径
+   - 可选：`--url <url>` — 原始招聘帖子链接
+- 2 - wolf 检查 DB 中是否已有相同 URL 的职位（URL 规范化，去除 query 参数）。
+   - 2.1 - URL 未找到 → 继续步骤 3。
+   - 2.2 - URL 已存在，现有状态为 `new` / `reviewed` / `filtered` / `ignored` / `rejected` / `closed` → 覆盖已有记录并警告："职位已存在（jobId: xxx）；记录已更新。"
+   - 2.3 - URL 已存在，现有状态为 `applied` / `applied_previously` / `interview` / `offer` → 不存入新记录；返回已有 `jobId` 并警告："你已申请过此职位。"
+- 3 - wolf 按公司名查询数据库。
+   - 3.1 - 若公司不存在 → wolf 创建新公司记录。
+   - 3.2 - 若公司已存在 → wolf 复用已有记录。
+- 4 - wolf 以 `status: new`、`score: null` 保存职位。
+- 5 - wolf 打印分配的 `jobId`，并提示下一步（如"职位已保存。运行 `wolf tailor <jobId>` 定制简历"）。
+
+## UC-02.2.2 · 手动添加职位（MCP）
+
+**Actor：** AI Agent（如 Claude Code、OpenClaw）
+**前置条件：** `wolf.toml` 存在；用户已有一个目标职位（链接、粘贴的 JD、截图或口头描述）。
+**注意：** AI 调用方负责从原始输入中提取结构化字段，wolf 只负责存储。
+
+- 1 - 用户以任意形式向 AI 分享一个职位：URL、粘贴的职位描述、截图，或口头描述（如"Stripe 有个 PM 职位我想记录下来"）。
+- 2 - AI 读取内容（如需则抓取 URL、对截图进行 OCR 或解析文本），提取：`title`、`company`、`jdText`，以及可选的 `url`。
+- 3 - AI 携带提取的字段调用 `wolf_add`。
+- 4 - wolf 执行与 UC-02.2.1 步骤 2.1–2.3 相同的 URL 去重逻辑。
+   - 4.1 - 无 URL 碰撞 → wolf 查询公司、创建或复用记录、保存职位，返回 `{ jobId, created: true }`。
+   - 4.2 - URL 碰撞，尚未申请 → wolf 覆盖已有记录，返回 `{ jobId, created: false, warning: "existing record updated" }`。
+   - 4.3 - URL 碰撞，已申请 → wolf 不存新记录，返回 `{ jobId, created: false, warning: "already applied" }`。
+- 5 - AI 向用户转述结果。
+   - 5.1 - 已创建 → "已保存。要我现在评分，还是为它定制简历？"
+   - 5.2 - 已申请 → "你已申请过此职位（jobId: xxx），未创建新记录。"
+
+后续：成功时，AI 可立即链式调用 `wolf_score`（传入 `{ jobId, single: true }` 同步评分）或 `wolf_tailor`（传入 `{ jobId }` 生成定制简历）。
+
+## UC-03.1.1 · 评分（`wolf score`）
 
 **Actor：** User
 **前置条件：** DB 中至少存在一条 `score: null` 的职位。
@@ -93,7 +134,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 4 - wolf 将所有结果写入 SQLite：结构化字段、过滤状态、分数和说明。
 - 5 - wolf 打印汇总（例如"已评分 N 条职位：X 条高匹配（≥0.7），Y 条中等匹配（0.4–0.7），Z 条已过滤，W 条错误"），并提示下一步（例如"运行 `wolf list --jobs` 查看评分结果"）。
 
-## UC-03.2 · 评分（MCP）
+## UC-03.1.2 · 评分（MCP）
 
 **Actor：** AI Agent
 **前置条件：** `wolf.toml` 存在；DB 中至少存在一条 `score: null` 的职位。
@@ -102,10 +143,10 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 2 - AI 无参数调用 `wolf_score` 对所有待评分职位评分。
    - 2.1 - 若只对单个职位评分 → AI 携带 `{ jobId }` 调用 `wolf_score`。
    - 2.2 - `profileId` 参数为未来多 profile 支持的占位参数（TBD）；目前省略。
-- 3 - wolf 按 UC-03.1 步骤 2–5 执行评分，并返回每条职位的结果，包括分数、过滤状态、说明和错误信息。
+- 3 - wolf 按 UC-03.1.1 步骤 2–5 执行评分，并返回每条职位的结果，包括分数、过滤状态、说明和错误信息。
 - 4 - AI 以自然语言摘要向用户展示结果，突出显示高匹配职位。
 
-## UC-04.1 · 列表（`wolf list`）
+## UC-04.1.1 · 列表（`wolf list`）
 
 **Actor：** User
 **前置条件：** 本地 DB 中至少存在一条记录。
@@ -131,7 +172,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 2 - wolf 返回 DB 中所有不重复的公司及其 ID。
 - 3 - wolf 打印表格：companyId、公司名称。
 
-## UC-04.2 · 列表（MCP）
+## UC-04.1.2 · 列表（MCP）
 
 **Actor：** AI Agent
 **前置条件：** 本地 DB 中至少存在一条记录。
@@ -150,7 +191,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 3 - wolf 返回所有不重复的公司及其 ID。
 - 4 - AI 向用户展示公司列表。若用户想查看某个公司的职位，AI 可跟进调用 `wolf_list`，参数为 `{ mode: "jobs", fromCompanyId: "..." }`。
 
-## UC-05.1 · 选择职位（`wolf select`）
+## UC-05.1.1 · 选择职位（`wolf select`）
 
 **Actor：** User
 **前置条件：** DB 中的职位已完成评分。
@@ -159,18 +200,18 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 2 - wolf 使用与 `wolf list --jobs` 相同的查询逻辑加载已评分职位，按分数降序排列。wolf 打开交互式 TUI，显示公司、职位名、分数、状态和 JD URL（纯文本）。
 - 3 - 用户浏览列表，切换想要申请的职位的选中状态。DB 中对应职位的 `selected` 字段随之更新为 `true` 或 `false`。
 
-## UC-05.2 · 选择职位（MCP）
+## UC-05.1.2 · 选择职位（MCP）
 
 **Actor：** AI Agent
 **前置条件：** DB 中的职位已完成评分。
 
-- 1 - 用户查看 UC-04.2 中带编号的列表，告知 AI 要选择哪些职位（例如"我要第 1、3、5 条"）。
+- 1 - 用户查看 UC-04.1.2 中带编号的列表，告知 AI 要选择哪些职位（例如"我要第 1、3、5 条"）。
 - 2 - AI 将用户给出的编号映射至上次 `wolf_list` 响应中的 jobId，调用 `wolf_select`，参数为 `{ jobIds: [...], action: "select" }`。
 - 3 - wolf 将指定职位的 `selected` 字段更新为 `true`。
    - 3.1 - 若要取消选中 → AI 调用 `wolf_select`，参数为 `{ jobIds: [...], action: "unselect" }`。
 - 4 - AI 向用户确认选中结果。
 
-## UC-06.1 · 定制简历（`wolf tailor`）
+## UC-06.1.1 · 定制简历（`wolf tailor`）
 
 **Actor：** User
 **前置条件：** `profile.toml` 存在；`resume_pool.md` 存在；目标职位在 DB 中。
@@ -179,7 +220,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - `--profile <profileId>` → 使用指定 profile。（TBD：多 profile 支持——当前为占位参数；默认使用 `wolf.toml` 中的 `default_profile`。）
    - `--jobid <jobId>` → 仅同步定制指定职位；否则定制所有已选职位。
    - `--diff` → 打印每个职位中每条改动前后的对比。
-   - `--cover-letter` → 定制完成后，为本批次的每个职位生成求职信（逻辑同 UC-07.1）。
+   - `--cover-letter` → 定制完成后，为本批次的每个职位生成求职信（逻辑同 UC-07.1.1）。
 - 2 - wolf 从 SQLite 读取所有 `selected: true` 且（`status: scored` 或 `status: tailor_error`）的职位（若设置了 `--jobid` 则仅读取指定职位），提取 JD、公司、职位名等相关字段。
 - 3 - wolf 从 profile 文件夹下的 `profile.toml` 读取用户 profile，从同一文件夹下的 `resume_pool.md` 读取简历要点。
 - 4 - wolf 将所有职位批量提交至 Claude Batch API，每个请求包含 JD 文本和简历池。CLI 在轮询时提供进度更新。
@@ -198,24 +239,24 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - 8.2 - 若 Claude 返回 LGTM → 继续处理下一条职位。
    - 8.3 - 3 次后仍未获得 LGTM → wolf 检查最终 PDF 页数：1 页则接受并继续；2 页则标记 `status: tailor_error`，继续处理下一条。
 - 9 - wolf 打印汇总：已定制职位数、错误数和输出文件路径。
-- 10 - 若设置了 `--cover-letter` → 为本批次所有定制成功的职位运行 UC-07.1。
+- 10 - 若设置了 `--cover-letter` → 为本批次所有定制成功的职位运行 UC-07.1.1。
 
-## UC-06.2 · 定制简历（MCP）
+## UC-06.1.2 · 定制简历（MCP）
 
 **Actor：** AI Agent
 **前置条件：** `wolf.toml` 存在；active `profile.toml` 存在；`resume_pool.md` 存在；目标职位在 DB 中。
 
 - 1 - 用户要求 AI 为某职位定制简历（例如"帮我为职位 42 定制简历"）。
 - 2 - AI 携带 `{ jobId }` 调用 `wolf_tailor` 定制指定职位，或无参数调用以定制所有已选职位。`profileId` 为未来多 profile 支持的占位参数（TBD）；目前省略。
-- 3 - wolf 按 UC-06.1 步骤 2–10 执行定制，并返回每条职位的结果：PDF 路径、页数、视觉审查迭代次数、求职信路径（若已生成），以及错误信息（`tailor_error` 职位附带原因）。
+- 3 - wolf 按 UC-06.1.1 步骤 2–10 执行定制，并返回每条职位的结果：PDF 路径、页数、视觉审查迭代次数、求职信路径（若已生成），以及错误信息（`tailor_error` 职位附带原因）。
 - 4 - AI 向用户汇报摘要：哪些职位定制成功，哪些遇到 `tailor_error` 及原因，并提示下一步（例如运行 `wolf_cover_letter` 或 `wolf_fill`）。
 
-## UC-07.1 · 生成求职信（`wolf cover-letter`）
+## UC-07.1.1 · 生成求职信（`wolf cover-letter`）
 
 **Actor：** User
 **前置条件：** 目标职位在 DB 中；该职位的定制简历已生成。
 
-- 1 - （从 UC-06.1 设置了 `--cover-letter` 时进入，或用户直接运行 `wolf cover-letter [--jobid <jobId>]`，或在 UC-08.1 检测到表单有求职信字段且无现有求职信时自动触发。）
+- 1 - （从 UC-06.1.1 设置了 `--cover-letter` 时进入，或用户直接运行 `wolf cover-letter [--jobid <jobId>]`，或在 UC-08.1.1 检测到表单有求职信字段且无现有求职信时自动触发。）
 - 2 - wolf 读取 evaluations 中没有现有求职信路径的所有已选职位（若设置了 `--jobid` 则仅读取指定职位）。对每条职位，wolf 读取 JD、用户 profile 和定制简历。
 - 3 - wolf 检查 JD 或 `companies` 表中是否包含公司描述。
    - 3.1 - 若有公司描述 → 生成完整求职信，包含"为什么选择这家公司"章节。
@@ -225,30 +266,41 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 6 - wolf 通过 `md-to-pdf` 将 `.md` 转换为 PDF。若未安装 `md-to-pdf` → 跳过所有职位的 PDF 转换，打印警告并继续。
 - 7 - wolf 打印输出文件路径。
 
-## UC-07.2 · 生成求职信（MCP）
+## UC-07.1.2 · 生成求职信（MCP）
 
 **Actor：** AI Agent
 **前置条件：** 目标职位在 DB 中；该职位的定制简历已生成。
 
-- 1 - 用户要求 AI 生成求职信（例如"为职位 42 写一封求职信"），或 AI 在 UC-08.2 检测到求职信字段时自动触发。
+- 1 - 用户要求 AI 生成求职信（例如"为职位 42 写一封求职信"），或 AI 在 UC-08.1.2 检测到求职信字段时自动触发。
 - 2 - AI 携带 `{ jobId }` 调用 `wolf_cover_letter`。`profileId` 为未来多 profile 支持的占位参数（TBD）；目前省略。
-- 3 - wolf 按 UC-07.1 步骤 2–6 生成求职信，并返回求职信内容、`.md` 路径、PDF 路径（若转换成功）以及是否有公司上下文。
+- 3 - wolf 按 UC-07.1.1 步骤 2–6 生成求职信，并返回求职信内容、`.md` 路径、PDF 路径（若转换成功）以及是否有公司上下文。
 - 4 - AI 向用户展示求职信内容供审阅。
    - 4.1 - 若用户请求修改 → AI 携带修改指令再次调用 `wolf_cover_letter`；从步骤 4 重复。
 
-## UC-08.1 · 填写申请表（`wolf fill`）
+## UC-08.1.1 · 填写申请表（`wolf fill`）
 
-> TODO：填表流程复杂，设计暂缓。
+> TODO：填表流程复杂，完整设计暂缓。
 
-## UC-08.2 · 填写申请表（MCP）
+**去重行为（已决定，不暂缓）：**
 
-> TODO：填表流程复杂，设计暂缓。
+填表前，wolf 检查职位当前状态。若为 `applied`、`applied_previously`、`interview` 或 `offer` → 跳过并警告，不重新提交。
 
-## UC-09.1 · 发送外联邮件（`wolf reach`）
+填表过程中，若 ATS 提示该职位已申请过（如"您已申请过此职位"）：
+- wolf 将状态设为 `applied_previously`，`appliedProfileId` 设为 `null`。
+- wolf 警告用户并跳过提交。
+- 统计时，此类职位与 wolf 正常提交的 `applied` 分开计数。
+
+## UC-08.1.2 · 填写申请表（MCP）
+
+> TODO：填表流程复杂，完整设计暂缓。
+
+**去重行为：** 同 UC-08.1.1。`wolf_fill` MCP tool 在 ATS 报告已申请时返回 `{ skipped: true, reason: "already_applied", jobId }`，供 AI 向用户说明情况。
+
+## UC-09.1.1 · 发送外联邮件（`wolf reach`）
 
 > TODO：外联流程复杂，设计暂缓。
 
-## UC-09.2 · 发送外联邮件（MCP）
+## UC-09.1.2 · 发送外联邮件（MCP）
 
 > TODO：外联流程复杂，设计暂缓。
 

@@ -1,10 +1,10 @@
 import { and, eq, inArray } from 'drizzle-orm';
-import type { CompanyRepository } from '../company.js';
+import type { CompanyRepository } from '../companyRepository.js';
 import type { Company, CompanyQuery, CompanyUpdate } from '../../types/company.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { companies } from './schema.js';
 
-export class SqliteCompanyRepository implements CompanyRepository {
+export class SqliteCompanyRepositoryImpl implements CompanyRepository {
   constructor(private readonly db: DrizzleDb) {}
 
   async get(id: string): Promise<Company | null> {

@@ -27,6 +27,7 @@ describe('config utils', () => {
 
       const config = {
         defaultProfileId: 'default',
+        ai: { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' },
         hunt: { minScore: 0.5, maxResults: 50 },
         tailor: { defaultCoverLetterTone: 'professional' },
         reach: { defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
@@ -49,7 +50,7 @@ describe('config utils', () => {
   describe('backupConfig', () => {
     it('copies wolf.toml to wolf.toml.backup1', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      await saveConfig({ defaultProfileId: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } });
+      await saveConfig({ defaultProfileId: '', ai: { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' }, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } });
 
       await backupConfig();
 
@@ -59,7 +60,7 @@ describe('config utils', () => {
 
     it('rotates backups: backup1 becomes backup2 on second call', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { defaultProfileId: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } };
+      const stub = { defaultProfileId: '', ai: { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' }, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } };
 
       await saveConfig(stub);
       await backupConfig(); // creates backup1
@@ -75,7 +76,7 @@ describe('config utils', () => {
 
     it('keeps at most 5 backups', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { defaultProfileId: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } };
+      const stub = { defaultProfileId: '', ai: { provider: 'anthropic' as const, model: 'claude-sonnet-4-6' }, hunt: { minScore: 0.5, maxResults: 50 }, tailor: { defaultCoverLetterTone: '' }, reach: { defaultEmailTone: '', maxEmailsPerDay: 10 } };
 
       for (let i = 0; i < 6; i++) {
         await saveConfig(stub);

@@ -56,7 +56,7 @@ export const jobs = sqliteTable('jobs', {
   appliedProfileId: text('applied_profile_id'),
   tailoredResumeTexPath: text('tailored_resume_tex_path'),
   tailoredResumePdfPath: text('tailored_resume_pdf_path'),
-  coverLetterMDPath: text('cover_letter_md_path'),
+  coverLetterHtmlPath: text('cover_letter_html_path'),
   coverLetterPdfPath: text('cover_letter_pdf_path'),
   screenshotPath: text('screenshot_path'),
   outreachDraftPath: text('outreach_draft_path'),

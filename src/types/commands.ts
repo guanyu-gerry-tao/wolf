@@ -49,12 +49,14 @@ export interface TailorOptions {
   resume?: string;         // path to .tex; defaults to profile.resumePath
   coverLetter?: boolean;   // default true
   diff?: boolean;          // show before/after comparison
+  aiProvider?: 'anthropic' | 'openai';  // overrides AppConfig.ai.provider for this call
+  aiModel?: string;                      // overrides AppConfig.ai.model for this call
 }
 
 export interface TailorResult {
   tailoredTexPath: string | null;    // null if resume was not re-tailored
   tailoredPdfPath: string | null;
-  coverLetterMdPath: string | null;
+  coverLetterHtmlPath: string | null;
   coverLetterPdfPath: string | null;
   changes: string[];
   matchScore: number;
@@ -114,15 +116,4 @@ export interface StatusResult {
   jobs: Job[];
   total: number;
   byStatus: Record<JobStatus, number>;
-}
-
-/**
- * Plugin interface (strategy pattern) for job sources.
- * Each provider independently implements this interface.
- * wolf hunt iterates all enabled providers, merges and deduplicates raw results.
- * Scoring is handled separately by wolf score.
- */
-export interface JobProvider {
-  name: string;
-  hunt(options: HuntOptions): Promise<object[]>;  // returns raw JSON objects from the data source
 }

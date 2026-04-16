@@ -30,6 +30,10 @@ export interface UserProfile {
  */
 export interface AppConfig {
   defaultProfileId: string;            // which profile folder to use by default
+  ai: {
+    provider: 'anthropic' | 'openai';  // default 'anthropic'
+    model: string;                     // default 'claude-sonnet-4-6'
+  };
   hunt: {
     minScore: number;                  // default 0.5
     maxResults: number;                // default 50
@@ -42,3 +46,6 @@ export interface AppConfig {
     maxEmailsPerDay: number;           // safety limit, default 10
   };
 }
+
+/** AI provider + model for a single service call. Derived from AppConfig.ai; no separate type file needed. */
+export type AiConfig = AppConfig['ai'];

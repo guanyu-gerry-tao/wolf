@@ -7,6 +7,7 @@
  *   3. initializeSchema — creates tables if not exist
  *   4. Construct repositories (each receives DrizzleDb only)
  *   5. Construct services (each receives repository interfaces only)
+ *   6. Construct application services (receive repositories + services)
  *
  * Swap any implementation by changing this file only.
  * No service or repository knows about this file.
@@ -18,19 +19,27 @@ import BetterSqlite3 from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 
 import { initializeSchema } from '../repository/impl/initializeSchema.js';
-import { SqliteJobRepository } from '../repository/impl/sqliteJobRepository.js';
-import { SqliteCompanyRepository } from '../repository/impl/sqliteCompanyRepository.js';
-import { SqliteBatchRepository } from '../repository/impl/sqliteBatchRepository.js';
-import { FileProfileRepository } from '../repository/impl/fileProfileRepository.js';
-import { InMemoryProfileRepository } from '../repository/impl/inMemoryProfileRepository.js';
+import { SqliteJobRepositoryImpl } from '../repository/impl/sqliteJobRepositoryImpl.js';
+import { SqliteCompanyRepositoryImpl } from '../repository/impl/sqliteCompanyRepositoryImpl.js';
+import { SqliteBatchRepositoryImpl } from '../repository/impl/sqliteBatchRepositoryImpl.js';
+import { FileProfileRepositoryImpl } from '../repository/impl/fileProfileRepositoryImpl.js';
+import { InMemoryProfileRepositoryImpl } from '../repository/impl/inMemoryProfileRepositoryImpl.js';
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
+import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
+import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
+import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
+import { loadConfigSync } from '../utils/config.js';
 
-import type { JobRepository } from '../repository/job.js';
-import type { CompanyRepository } from '../repository/company.js';
-import type { BatchRepository } from '../repository/batch.js';
-import type { ProfileRepository } from '../repository/profile.js';
-import type { BatchService } from '../service/batch.js';
-import type { JobProviderService } from '../service/jobProvider.js';
+import type { JobRepository } from '../repository/jobRepository.js';
+import type { CompanyRepository } from '../repository/companyRepository.js';
+import type { BatchRepository } from '../repository/batchRepository.js';
+import type { ProfileRepository } from '../repository/profileRepository.js';
+import type { BatchService } from '../service/batchService.js';
+import type { JobProvider } from '../service/jobProvider.js';
+import type { RenderService } from '../service/renderService.js';
+import type { ResumeCoverLetterService } from '../service/resumeCoverLetterService.js';
+import type { TailorApplicationService } from '../application/tailorApplicationService.js';
+import type { AiConfig } from '../types/index.js';
 
 export interface AppContext {
   // repositories
@@ -40,25 +49,41 @@ export interface AppContext {
   profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
-  jobProviders: JobProviderService[];
-  // application services — TODO: add as M3+ implementations land
+  jobProviders: JobProvider[];
+  renderService: RenderService;
+  rewriteService: ResumeCoverLetterService;
+  // application services
+  tailorApp: TailorApplicationService;
+  // config
+  defaultAiConfig: AiConfig;
 }
 
 /**
- * Wires SQLite-backed repositories and services around an open SQLite connection.
- * Extracted so both createAppContext() and createTestAppContext() share the
- * same construction logic, differing only in which SQLite instance and which
- * ProfileRepository implementation they use.
+ * Wires repositories, services, and application services around an open SQLite connection.
+ * Extracted so both createAppContext() and createTestAppContext() share the same
+ * construction logic, differing only in their SQLite instance, ProfileRepository,
+ * workspaceDir, and defaultAiConfig.
  */
-function wireContext(sqlite: BetterSqlite3.Database, profileRepository: ProfileRepository): AppContext {
+function wireContext(
+  sqlite: BetterSqlite3.Database,
+  profileRepository: ProfileRepository,
+  workspaceDir: string,
+  defaultAiConfig: AiConfig,
+  defaultCoverLetterTone: string,
+): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
 
-  const jobRepo = new SqliteJobRepository(db);
-  const companyRepo = new SqliteCompanyRepository(db);
-  const batchRepo = new SqliteBatchRepository(db);
+  const jobRepo = new SqliteJobRepositoryImpl(db);
+  const companyRepo = new SqliteCompanyRepositoryImpl(db);
+  const batchRepo = new SqliteBatchRepositoryImpl(db);
 
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
+  const renderService = new RenderServiceImpl();
+  const rewriteService = new ResumeCoverLetterServiceImpl();
+  const tailorApp = new TailorApplicationServiceImpl(
+    jobRepo, profileRepository, renderService, rewriteService, workspaceDir, defaultAiConfig, defaultCoverLetterTone,
+  );
 
   return {
     jobRepository: jobRepo,
@@ -66,7 +91,11 @@ function wireContext(sqlite: BetterSqlite3.Database, profileRepository: ProfileR
     batchRepository: batchRepo,
     profileRepository,
     batchService,
-    jobProviders: [], // loading provider config from wolf.toml is M3+ work
+    jobProviders: [],
+    renderService,
+    rewriteService,
+    tailorApp,
+    defaultAiConfig,
   };
 }
 
@@ -85,9 +114,14 @@ export function createAppContext(): AppContext {
 
   const dbPath = path.join(dataDir, 'wolf.sqlite');
   const sqlite = new BetterSqlite3(dbPath);
-  const profileRepository = new FileProfileRepository(workspaceDir);
+  const profileRepository = new FileProfileRepositoryImpl(workspaceDir);
 
-  return wireContext(sqlite, profileRepository);
+  // Load config synchronously so default-parameter pattern in commands works.
+  const config = loadConfigSync();
+  const defaultAiConfig: AiConfig = config.ai;
+  const defaultCoverLetterTone = config.tailor.defaultCoverLetterTone;
+
+  return wireContext(sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone);
 }
 
 /**
@@ -99,6 +133,7 @@ export function createAppContext(): AppContext {
  */
 export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
-  const profileRepository = new InMemoryProfileRepository();
-  return wireContext(sqlite, profileRepository);
+  const profileRepository = new InMemoryProfileRepositoryImpl();
+  const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
+  return wireContext(sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, 'professional');
 }

@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
-import type { BatchRepository, Batch } from '../batch.js';
+import type { BatchRepository, Batch } from '../batchRepository.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { batches } from './schema.js';
 
-export class SqliteBatchRepository implements BatchRepository {
+export class SqliteBatchRepositoryImpl implements BatchRepository {
   constructor(private readonly db: DrizzleDb) {}
 
   async save(batch: Batch): Promise<void> {

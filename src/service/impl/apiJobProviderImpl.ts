@@ -1,4 +1,4 @@
-import type { JobProviderService, RawJob } from '../jobProvider.js';
+import type { JobProvider, RawJob } from '../jobProvider.js';
 
 export interface ApiProviderConfig {
   name: string;
@@ -8,7 +8,7 @@ export interface ApiProviderConfig {
   body?: string;
 }
 
-export class ApiProviderService implements JobProviderService {
+export class ApiJobProviderImpl implements JobProvider {
   readonly name: string;
   private readonly config: ApiProviderConfig;
 
@@ -28,7 +28,7 @@ export class ApiProviderService implements JobProviderService {
 
     if (!response.ok) {
       throw new Error(
-        `ApiProviderService: HTTP ${response.status} ${response.statusText} from ${this.config.url}`,
+        `ApiJobProviderImpl: HTTP ${response.status} ${response.statusText} from ${this.config.url}`,
       );
     }
 
@@ -48,7 +48,7 @@ export class ApiProviderService implements JobProviderService {
     }
 
     throw new Error(
-      'ApiProviderService: response is not an array or recognisable wrapper',
+      'ApiJobProviderImpl: response is not an array or recognisable wrapper',
     );
   }
 }
