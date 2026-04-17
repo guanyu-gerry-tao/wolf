@@ -92,7 +92,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     });
 
     return {
-      tailoredTexPath: null,
       tailoredPdfPath: resumeStep.pdfPath,
       coverLetterHtmlPath: clStep?.htmlPath ?? null,
       coverLetterPdfPath:  clStep?.pdfPath  ?? null,

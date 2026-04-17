@@ -54,7 +54,6 @@ export const jobs = sqliteTable('jobs', {
   status: text('status').$type<JobStatus>().notNull(),
   error: text('error').$type<JobError>(),
   appliedProfileId: text('applied_profile_id'),
-  tailoredResumeTexPath: text('tailored_resume_tex_path'),
   tailoredResumePdfPath: text('tailored_resume_pdf_path'),
   coverLetterHtmlPath: text('cover_letter_html_path'),
   coverLetterPdfPath: text('cover_letter_pdf_path'),

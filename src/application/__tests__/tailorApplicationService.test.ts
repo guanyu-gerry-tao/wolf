@@ -38,7 +38,6 @@ const FAKE_JOB: Job = {
   status: 'new',
   error: null,
   appliedProfileId: null,
-  tailoredResumeTexPath: null,
   tailoredResumePdfPath: null,
   coverLetterHtmlPath: null,
   coverLetterPdfPath: null,
