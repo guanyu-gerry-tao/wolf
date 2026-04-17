@@ -143,28 +143,44 @@ src/
     └── schemas.ts        # TOML 验证用 Zod schema
 ```
 
-### 示例：tailor 跨层调用链
+### 示例：tailor 跨层调用链（三 agent checkpoint 流水线）
 
 ```
-CLI 解析 --job abc123
-  → [命令层] tailor({ jobId })
-      → ctx.jobRepository.get(jobId)
-      → ctx.profileRepository.getDefault()
-      → [应用层] TailorApplicationService.tailor(job, profile)
-          → [服务层] RewriteService.rewriteBullets(resume, jd)   # Claude API
-          → [服务层] RenderService.compile(texPath)               # xelatex
-          → [服务层] RenderService.fitToOnePage(texPath)          # 二分搜索循环
-      → ctx.jobRepository.update(jobId, { tailoredResumePath, matchScore })
-      → return { tailoredTexPath, tailoredPdfPath, matchScore, changes }
-  → CLI 格式化并打印摘要
-          → [服务层] rewriteBullets(resume, jd)  # 调用 Claude
-          → [服务层] writeResumeTex(result)      # 写入定制 .tex
-          → [流程层] fitToOnePage(texPath)        # 二分搜索 → 编译循环
-              → [服务层] compileTex(params)       # xelatex
-              → [服务层] getPageCount(pdfPath)    # pdfinfo
-      → db.updateEvaluation(jobId, { tailoredResumePath, matchScore })
-      → return { tailoredTexPath, tailoredPdfPath, matchScore, changes }
-  → CLI 格式化并打印摘要
+CLI 解析 --job abc123 [--hint "focus on ML ops"]
+  → [命令层] tailor({ jobId, hint })
+      → [应用层] TailorApplicationService.tailor({ jobId, hint })
+          → prepareContext → 加载 job/profile/resumePool，解析输出路径
+          → ensureHintFile → 如果 hint.md 不存在或传了 --hint，写入文件
+          → [服务层] TailoringBriefService.analyze(pool, jd, profile, aiConfig, hint)
+              → Anthropic API → 返回 Markdown brief
+          → 写入 data/<jobId>/src/tailoring-brief.md
+          → Promise.all:
+              → [服务层] ResumeCoverLetterService.tailorResumeToHtml(pool, jd, profile, brief, ai)
+                  → Anthropic API → 返回 HTML body
+                  → [服务层] RenderService.renderPdf(html)       # Playwright + fit() 二分搜索
+                  → 写入 data/<jobId>/{src/resume.html, resume.pdf}
+              → [服务层] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+                  → Anthropic API → 返回 HTML body
+                  → [服务层] RenderService.renderCoverLetterPdf(html)
+                  → 写入 data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
+      → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
+      → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
+  → CLI 打印 JSON 摘要
+```
+
+每一步也可以独立调用：`wolf tailor brief`、`wolf tailor resume`、`wolf tailor cover`。
+只跑 writer 的步骤会从磁盘读取 brief；brief 不存在会清晰报错。
+
+### `data/<company>_<title>_<jobId>/` 目录布局
+
+```
+src/
+├── hint.md                ← 用户/agent 编辑以引导 analyst（// 开头的行是注释，进 prompt 前会被过滤）
+├── tailoring-brief.md     ← analyst 产出；可编辑的 checkpoint
+├── resume.html            ← resume writer 产出；渲染前可编辑
+└── cover_letter.html      ← CL writer 产出；渲染前可编辑
+resume.pdf                 ← 最终产物
+cover_letter.pdf           ← 最终产物
 ```
 
 ## 设计原则
@@ -430,45 +446,32 @@ CLI 解析参数
   ← CLI 输出 batch 摘要；评分在后台完成
 ```
 
-### `wolf_templategen`（生成通用简历模板）
-
-```
-wolf_templategen({ type: "resume", prompt?: "..." })
-  → 读取 data/resume/resume.txt         # 全量内容池（所有经历、项目、技能）
-  → 检查 data/resume/style_ref.jpg     # 可选的视觉参考图
-  → 调用 Claude Vision（txt + 图片）    # 生成带真实内容的 resume.tex
-  → 写入 data/resume/resume.tex        # 当前通用模板
-  → pdflatex(resume.tex)               # 编译为 PDF（两次）
-  → pdftoppm(resume.pdf)               # 首页截图供审阅
-  → snapshotAsset(txt) + snapshotAsset(jpg) + snapshotAsset(tex)  # 三类资产全部版本化
-  → return { texPath, pdfPath, screenshotPath, texSnapshot }
-← AI 展示截图供用户审阅；用户可附加 prompt 重新调用
-```
-
-### `wolf tailor --job <job_id>`
+### `wolf tailor --job <job_id> [--hint "..."]`
 
 ```
 CLI 解析参数
-  → tailor({ jobId: "abc123" })
-    → db.getJob(jobId)                        # 从本地数据库获取 JD
-    → 验证 data/resume/resume.txt 存在        # 全量内容池
-    → 验证 data/resume/resume.tex 存在        # 通用模板（若缺失，提示先运行 wolf_templategen）
-    → 读取 tailor_notes.md（如存在）           # 每个职位的自定义 prompt 层（见 issue #37）
-    → 调用 Claude：
-        resume.tex（结构）+ resume.txt（全量内容）+ JD
-        → 从 txt 中选取与 JD 最匹配的经历/项目
-        → 填入 tex 结构，改写 bullet 为 JD 关键词
-    → 验证返回的 .tex 合法性
-    → 解析 %WOLF_META 获取 matchScore 和 changes
-    → writeFile(data/tailored/<jobId>.tex)    # 保存定制版 .tex
-    → pdflatex(tailoredTexPath)              # 编译为 PDF（两次）
-    → pdftoppm(tailoredPdfPath)             # 首页截图供视觉预览
-    → snapshotAsset(txt) + snapshotAsset(tex) + snapshotAsset(jpg 若存在)
-    → db.updateJob(jobId, { tailoredResumePath, tailoredResumePdfPath, screenshotPath,
-                            resumeSnapshot, styleSnapshot, texSnapshot })
-    → return { tailoredTexPath, tailoredPdfPath, changes, matchScore }
-  ← CLI 打印 diff 和摘要
+  → tailor({ jobId, hint })
+    → prepareContext: 加载 job/profile/resumePool，解析输出路径
+    → ensureHintFile: 写入 data/<jobId>/src/hint.md（不存在则写 header；传了 --hint 则覆盖）
+    → analyst = TailoringBriefService.analyze(pool, jd, profile, ai, hint)
+        → Claude → Markdown brief
+        → 写入 data/<jobId>/src/tailoring-brief.md
+    → Promise.all:
+        → ResumeCoverLetterService.tailorResumeToHtml(pool, jd, profile, brief, ai)
+          → Claude → HTML body
+          → RenderService.renderPdf(html)  # Playwright + fit() 二分搜索
+          → 写入 data/<jobId>/{src/resume.html, resume.pdf}
+        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+          → Claude → HTML body
+          → RenderService.renderCoverLetterPdf(html)
+          → 写入 data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
+    → db.updateJob(jobId, { tailoredResumePdfPath, coverLetterPaths })
+    → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
+  ← CLI 打印 JSON 摘要
 ```
+
+只跑单步：`wolf tailor brief|resume|cover --job <id>`。resume/cover 步骤从磁盘读 brief；
+brief 缺失会清晰报错，提示先运行 `wolf tailor brief`。
 
 ### `wolf fill --job <job_id> --dry-run`
 

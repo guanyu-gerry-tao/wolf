@@ -204,3 +204,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** POC 已验证 HTML → PDF via Playwright 的方案。与 LaTeX 相比，不需要 xelatex 系统依赖，HTML/CSS 迭代也更快。
 **AI：** 验证通过。`fit()` 二分搜索算法（从 POC 移植到 `RenderService`）以确定性方式处理单页压缩。Claude 输出 HTML body，shell 和 CSS 是静态文件。用户无需安装 xelatex。
 **结果：** M3 采用。`RenderServiceImpl` 封装 Playwright + `fit.ts`。简历 body 为 HTML；shell 为 `src/service/impl/render/shell.html`。M3 范围内移除 LaTeX 路径。
+
+---
+
+**2026-04-16 — Tailor 改为三 agent checkpoint 流程（分析员 + 写手）**
+**我：** 原 tailor 只有一个 resume agent 和一个 cover-letter agent，两者各自读 pool+JD。结果产出不一致：resume 强调项目 A、B、C，CL 却强调 A、D、E——同一个候选人两种叙事。
+**AI：** 拆成三个 agent，共享一份决策文档。Agent 1（分析员）读 pool+JD，产出 Markdown tailoring brief（选定角色、2-3 个项目、3 个核心主题、CL 切入角度）。Agent 2、3（resume writer、CL writer）读 brief + pool + JD 并行运行。两个 writer 的 system prompt 把 brief 作为选择的真相来源。Brief 格式考虑过 JSON，但两个消费者都是 LLM，散文对它们更自然；schema 校验 YAGNI。
+**结果：** 采用。新增 `TailoringBriefService`（在 `src/service/` 下）。`TailorApplicationService` 暴露四个方法 —— `tailor`（编排三步）、`analyze`（只产 brief）、`writeResume`、`writeCoverLetter`，用户可以跑局部步骤，手动编辑 `data/<jobId>/src/tailoring-brief.md`，然后只重跑 writer 而不重跑分析员。可选的 `hint.md`（`//` 注释头被 `stripComments` 过滤）让用户或外部 AI agent 在分析员运行前对它进行引导。代价：每个 job 多一次 AI 调用（约 3 秒，可用 Haiku）。一致性收益足以抵消。

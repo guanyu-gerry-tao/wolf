@@ -204,3 +204,10 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **Me:** The POC validated HTML → PDF via Playwright. Compared to LaTeX, it removes the xelatex system dependency and the HTML/CSS approach is faster to iterate on.
 **AI:** Validated. The `fit()` binary search algorithm (ported from POC to `RenderService`) handles single-page compression deterministically. Claude outputs the HTML body; the shell and CSS are static. No xelatex dependency for users.
 **Result:** Adopted for M3. `RenderServiceImpl` wraps Playwright + `fit.ts`. Resume body is HTML; shell is `src/service/impl/render/shell.html`. LaTeX path is removed from M3 scope.
+
+---
+
+**2026-04-16 — Three-agent checkpoint flow for tailor (analyst + writers)**
+**Me:** Original tailor called one resume agent and one cover-letter agent, each reading pool+JD independently. Output drift: the resume emphasized projects A, B, C while the cover letter emphasized A, D, E — two voices about the same candidate.
+**AI:** Split into three agents with a shared decision artifact. Agent 1 (analyst) reads pool+JD and produces a Markdown tailoring brief (selected roles, 2-3 projects, 3 core themes, cover-letter angle). Agents 2 and 3 (resume writer, CL writer) read the brief + pool + JD and run in parallel. Agents 2/3 use system prompts that point at the brief as source of truth for selections. Considered JSON for the brief — rejected because both consumers are LLMs and prose is native to them; schema-enforcement YAGNI.
+**Result:** Adopted. New `TailoringBriefService` sits in `src/service/`. `TailorApplicationService` exposes four methods — `tailor` (orchestrates all three), `analyze` (brief only), `writeResume`, `writeCoverLetter` — so users can run partial steps, edit `data/<jobId>/src/tailoring-brief.md`, and re-run writers without re-analyzing. Optional `hint.md` (with `//` header stripped by `stripComments`) lets users or outer AI agents steer the analyst before it runs. Cost: +1 AI call per job (~3s, Haiku-suitable for analyst). Consistency gain justifies it.

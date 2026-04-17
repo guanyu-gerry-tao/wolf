@@ -2,7 +2,7 @@
 import { Command } from 'commander';
 import { hunt } from '../commands/hunt/index.js';
 import { score } from '../commands/score/index.js';
-import { tailor } from '../commands/tailor/index.js';
+import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from '../commands/tailor/index.js';
 import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
 import { status } from '../commands/status/index.js';
@@ -80,22 +80,57 @@ program
     console.log(JSON.stringify(result, null, 2));
   });
 
-program
-  .command('tailor')
-  .description('Tailor resume to a job description')
-  .requiredOption('-j, --job <id>', 'Job ID')
+const tailorCmd = new Command('tailor')
+  .description('Tailor resume + cover letter for a job (runs the full pipeline when called without a subcommand)')
+  .option('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
-  .option('--no-cover-letter', 'Skip cover letter generation')
+  .option('--no-cover-letter', 'Skip cover letter in full pipeline')
+  .option('--hint <text>', 'Pre-analysis guidance for the analyst (written to hint.md)')
   .option('--diff', 'Show before/after comparison')
   .action(async (opts) => {
+    if (!opts.job) throw new Error('tailor: --job <id> is required');
     const result = await tailor({
       jobId: opts.job,
       profileId: opts.profile,
       coverLetter: opts.coverLetter,
+      hint: opts.hint,
       diff: opts.diff,
     });
     console.log(JSON.stringify(result, null, 2));
   });
+tailorCmd
+  .command('brief')
+  .description('Step 1: produce the tailoring brief only (writes data/<jobId>/src/tailoring-brief.md)')
+  .requiredOption('-j, --job <id>', 'Job ID')
+  .option('-p, --profile <id>', 'Profile to use')
+  .option('--hint <text>', 'Pre-analysis guidance for the analyst (written to hint.md)')
+  .action(async (opts) => {
+    const result = await tailorBrief({
+      jobId: opts.job,
+      profileId: opts.profile,
+      hint: opts.hint,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+tailorCmd
+  .command('resume')
+  .description('Step 2a: write resume HTML + PDF using the existing brief (requires `wolf tailor brief` first)')
+  .requiredOption('-j, --job <id>', 'Job ID')
+  .option('-p, --profile <id>', 'Profile to use')
+  .action(async (opts) => {
+    const result = await tailorResume({ jobId: opts.job, profileId: opts.profile });
+    console.log(JSON.stringify(result, null, 2));
+  });
+tailorCmd
+  .command('cover')
+  .description('Step 2b: write cover letter HTML + PDF using the existing brief (requires `wolf tailor brief` first)')
+  .requiredOption('-j, --job <id>', 'Job ID')
+  .option('-p, --profile <id>', 'Profile to use')
+  .action(async (opts) => {
+    const result = await tailorCoverLetter({ jobId: opts.job, profileId: opts.profile });
+    console.log(JSON.stringify(result, null, 2));
+  });
+program.addCommand(tailorCmd);
 
 program
   .command('fill')

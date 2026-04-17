@@ -27,6 +27,7 @@ import { InMemoryProfileRepositoryImpl } from '../repository/impl/inMemoryProfil
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
 import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
+import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { parseModelRef } from '../utils/parseModelRef.js';
@@ -39,6 +40,7 @@ import type { BatchService } from '../service/batchService.js';
 import type { JobProvider } from '../service/jobProvider.js';
 import type { RenderService } from '../service/renderService.js';
 import type { ResumeCoverLetterService } from '../service/resumeCoverLetterService.js';
+import type { TailoringBriefService } from '../service/tailoringBriefService.js';
 import type { TailorApplicationService } from '../application/tailorApplicationService.js';
 import type { AiConfig } from '../types/index.js';
 
@@ -53,6 +55,7 @@ export interface AppContext {
   jobProviders: JobProvider[];
   renderService: RenderService;
   rewriteService: ResumeCoverLetterService;
+  briefService: TailoringBriefService;
   // application services
   tailorApp: TailorApplicationService;
   // config
@@ -82,8 +85,10 @@ function wireContext(
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
   const renderService = new RenderServiceImpl();
   const rewriteService = new ResumeCoverLetterServiceImpl();
+  const briefService = new TailoringBriefServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
-    jobRepo, profileRepository, renderService, rewriteService, workspaceDir, defaultAiConfig, defaultCoverLetterTone,
+    jobRepo, profileRepository, renderService, rewriteService, briefService,
+    workspaceDir, defaultAiConfig, defaultCoverLetterTone,
   );
 
   return {
@@ -95,6 +100,7 @@ function wireContext(
     jobProviders: [],
     renderService,
     rewriteService,
+    briefService,
     tailorApp,
     defaultAiConfig,
   };
