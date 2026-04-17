@@ -69,8 +69,7 @@ export interface Job {
   status: JobStatus;
   error: JobError | null;          // set when status is "error"; null otherwise
   appliedProfileId: string | null; // which profile was used; null if not yet applied
-  tailoredResumeTexPath: string | null; // path to the .tex file generated
-  tailoredResumePdfPath: string | null; // path to the PDF generated
+  tailoredResumePdfPath: string | null; // path to the tailored resume PDF
   coverLetterHtmlPath: string | null; // path to the cover letter HTML file generated
   coverLetterPdfPath: string | null; // path to the PDF generated
   screenshotPath: string | null; // path to the screenshot folders when applying via browser
@@ -94,7 +93,6 @@ export interface JobUpdate {
   appliedProfileId?: string | null;
   score?: number | null;
   scoreJustification?: string | null;
-  tailoredResumeTexPath?: string | null;
   tailoredResumePdfPath?: string | null;
   coverLetterHtmlPath?: string | null;
   coverLetterPdfPath?: string | null;

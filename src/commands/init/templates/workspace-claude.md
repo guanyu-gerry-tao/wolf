@@ -14,30 +14,82 @@ wolf is a CLI tool that:
 
 ## Commands
 
+### Job lifecycle
 | Command | What it does |
 |---|---|
-| `wolf add` | Add a job manually (title, company, JD text) — returns a `jobId` |
-| `wolf tailor --job <jobId>` | AI-rewrite resume + generate cover letter for a job |
+| `wolf add` | Add a job manually (title, company, JD text) - returns a `jobId` |
+| `wolf hunt` | Auto-fetch job listings from online sources (requires Apify) |
 | `wolf score` | Score pending jobs against the profile |
 | `wolf status` | List all tracked jobs with status and scores |
-| `wolf hunt` | Auto-fetch job listings from online sources (requires Apify) |
-| `wolf fill --job <jobId>` | Auto-fill a job application form (requires Playwright) |
-| `wolf reach --job <jobId>` | Find hiring contacts and draft outreach emails |
-| `wolf env show` | Show which WOLF_* API keys are configured |
-| `wolf env set` | Interactively configure API keys in shell |
+
+### Tailor pipeline (3-agent flow with checkpoints)
+| Command | What it does |
+|---|---|
+| `wolf tailor --job <id>` | Full pipeline: analyst brief -> resume + cover letter (parallel) |
+| `wolf tailor brief --job <id>` | Step 1 only: produce the tailoring brief |
+| `wolf tailor resume --job <id>` | Step 2a only: write resume (requires existing brief) |
+| `wolf tailor cover --job <id>` | Step 2b only: write cover letter (requires existing brief) |
+
+All tailor commands accept `--hint "<text>"` to give the analyst pre-analysis guidance.
+
+### Apply & reach out
+| Command | What it does |
+|---|---|
+| `wolf fill --job <id>` | Auto-fill a job application form (requires Playwright) |
+| `wolf reach --job <id>` | Find hiring contacts and draft outreach emails |
+
+### Config & profile management
+| Command | What it does |
+|---|---|
+| `wolf config get/set <key> [value]` | Read or edit `wolf.toml` fields by dot-path (e.g. `tailor.model`) |
+| `wolf profile get/set <key> [value]` | Read or edit the default profile's fields |
+| `wolf profile list` | List all profiles (default marked with `*`) |
+| `wolf profile create <id> [--from <src>]` | Create a new profile (clones default unless --from given) |
+| `wolf profile use <id>` | Switch the default profile |
+| `wolf profile delete <id> --yes` | Delete a profile directory |
+| `wolf env show / set / clear` | Manage `WOLF_*` API keys in shell |
 
 ## Typical workflow
 
+### One-shot (trust the AI)
 ```
 wolf add --title "SWE" --company "Acme" --jd-text "..."   # returns jobId
-wolf tailor --job <jobId>                                   # resume.pdf + cover_letter.pdf
-wolf fill --job <jobId>                                     # optional: auto-fill form
-wolf reach --job <jobId>                                    # optional: outreach email
+wolf tailor --job <jobId>                                 # full 3-agent pipeline
 ```
 
-Output lands in `data/<jobId>/`:
-- `resume.pdf` — tailored resume
-- `cover_letter.pdf` — tailored cover letter
+### Iterative (human-in-the-loop)
+```
+wolf tailor brief --job <jobId> --hint "focus on ML ops"  # steer the analyst
+# inspect and optionally edit data/<jobId>/src/tailoring-brief.md
+wolf tailor resume --job <jobId>                          # write resume using the brief
+wolf tailor cover --job <jobId>                           # write cover letter using the brief
+# not happy? edit brief and re-run resume/cover; no need to re-analyze
+```
+
+## Output layout under `data/<jobId>/`
+
+```
+data/<company>_<title>_<jobId>/
+├── src/
+│   ├── hint.md                ← you/your agent edit this to steer the analyst
+│   ├── tailoring-brief.md     ← analyst output; edit to adjust selections/themes
+│   ├── resume.html            ← resume source (inspect / hand-tune if needed)
+│   └── cover_letter.html      ← cover letter source
+├── resume.pdf                 ← final PDF
+└── cover_letter.pdf           ← final PDF
+```
+
+**All `.md` and `.html` files under `src/` are editable checkpoints.** If the
+resume is off but the cover letter is fine, edit `tailoring-brief.md` (or
+`resume.html` directly) and re-run just `wolf tailor resume`. The analyst does
+not re-run unless you call `wolf tailor brief` again.
+
+### hint.md convention
+
+`hint.md` is created the first time you run any tailor step for a job. Lines
+starting with `//` are stripped before the analyst sees the file (same rule as
+`resume_pool.md`), so the comment header is self-documenting but ignored by AI.
+Write guidance as plain Markdown **below** the `//` header.
 
 ## Configuration files
 

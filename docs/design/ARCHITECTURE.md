@@ -144,20 +144,44 @@ src/
     └── schemas.ts        # Zod schemas for TOML validation
 ```
 
-### Example: tailor flow across layers
+### Example: tailor flow across layers (3-agent checkpoint pipeline)
 
 ```
-CLI parses --job abc123
-  → [Command] tailor({ jobId })
-      → ctx.jobRepository.get(jobId)
-      → ctx.profileRepository.getDefault()
-      → [Application] TailorApplicationService.tailor(job, profile)
-          → [Service] RewriteService.rewriteBullets(resume, jd)   # Claude API
-          → [Service] RenderService.compile(texPath)               # xelatex
-          → [Service] RenderService.fitToOnePage(texPath)          # binary search loop
-      → ctx.jobRepository.update(jobId, { tailoredResumePath, matchScore })
-      → return { tailoredTexPath, tailoredPdfPath, matchScore, changes }
-  → CLI formats and prints summary
+CLI parses --job abc123 [--hint "focus on ML ops"]
+  → [Command] tailor({ jobId, hint })
+      → [Application] TailorApplicationService.tailor({ jobId, hint })
+          → prepareContext → loadJob, loadProfile, loadResumePool, resolve paths
+          → ensureHintFile → write data/<jobId>/src/hint.md if absent or if --hint given
+          → [Service] TailoringBriefService.analyze(pool, jd, profile, aiConfig, hint)
+              → Anthropic API → returns Markdown brief
+          → writeFile data/<jobId>/src/tailoring-brief.md
+          → Promise.all:
+              → [Service] ResumeCoverLetterService.tailorResumeToHtml(pool, jd, profile, brief, ai)
+                  → Anthropic API → returns HTML body
+                  → [Service] RenderService.renderPdf(html)       # Playwright + fit() binary search
+                  → writeFile data/<jobId>/{src/resume.html, resume.pdf}
+              → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+                  → Anthropic API → returns HTML body
+                  → [Service] RenderService.renderCoverLetterPdf(html)
+                  → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
+      → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
+      → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
+  → CLI prints JSON summary
+```
+
+Each step can also be invoked standalone: `wolf tailor brief`, `wolf tailor resume`, `wolf tailor cover`.
+Writer-only steps read the brief from disk and error clearly if it is missing.
+
+### Output layout under `data/<company>_<title>_<jobId>/`
+
+```
+src/
+├── hint.md                ← user/agent edits to steer analyst (// lines are comments, stripped before prompt)
+├── tailoring-brief.md     ← analyst output; editable checkpoint
+├── resume.html            ← resume writer output; editable before render
+└── cover_letter.html      ← CL writer output; editable before render
+resume.pdf                 ← final
+cover_letter.pdf           ← final
 ```
 
 ## Design Principles
@@ -437,45 +461,33 @@ CLI parses args
   ← CLI prints batch summary; scoring completes in background
 ```
 
-### `wolf_templategen` (generate general-purpose resume template)
-
-```
-wolf_templategen({ type: "resume", prompt?: "..." })
-  → read data/resume/resume.txt         # full content pool (all experiences, projects, skills)
-  → check data/resume/style_ref.jpg     # optional visual reference image
-  → call Claude Vision (txt + image)    # generate content-filled resume.tex
-  → write data/resume/resume.tex        # active general-purpose template
-  → pdflatex(resume.tex)               # compile to PDF (two passes)
-  → pdftoppm(resume.pdf)               # first-page screenshot for review
-  → snapshotAsset(txt) + snapshotAsset(jpg) + snapshotAsset(tex)  # version all three assets
-  → return { texPath, pdfPath, screenshotPath, texSnapshot }
-← AI presents screenshot for user review; user may call again with additional prompt
-```
-
-### `wolf tailor --job <job_id>`
+### `wolf tailor --job <job_id> [--hint "..."]`
 
 ```
 CLI parses args
-  → tailor({ jobId: "abc123" })
-    → db.getJob(jobId)                        # fetch JD from local DB
-    → verify data/resume/resume.txt exists    # full content pool
-    → verify data/resume/resume.tex exists    # general-purpose template (run wolf_templategen first if missing)
-    → read tailor_notes.md (if present)       # per-job prompt layer (see issue #37)
-    → call Claude:
-        resume.tex (structure) + resume.txt (all content) + JD
-        → select most relevant experiences/projects from txt
-        → fill into tex structure with JD-tuned bullets
-    → validate returned .tex
-    → parse %WOLF_META for matchScore + changes
-    → writeFile(data/tailored/<jobId>.tex)    # save tailored .tex
-    → pdflatex(tailoredTexPath)              # compile to PDF (two passes)
-    → pdftoppm(tailoredPdfPath)             # first-page screenshot for visual review
-    → snapshotAsset(txt) + snapshotAsset(tex) + snapshotAsset(jpg if exists)
-    → db.updateJob(jobId, { tailoredResumePath, tailoredResumePdfPath, screenshotPath,
-                            resumeSnapshot, styleSnapshot, texSnapshot })
-    → return { tailoredTexPath, tailoredPdfPath, changes, matchScore }
-  ← CLI prints diff and summary
+  → tailor({ jobId, hint })
+    → prepareContext: loadJob + loadProfile + loadResumePool + resolve output paths
+    → ensureHintFile: write data/<jobId>/src/hint.md (header only if absent; overwrite if --hint given)
+    → analyst = TailoringBriefService.analyze(pool, jd, profile, ai, hint)
+        → Claude → Markdown brief
+        → writeFile data/<jobId>/src/tailoring-brief.md
+    → Promise.all:
+        → ResumeCoverLetterService.tailorResumeToHtml(pool, jd, profile, brief, ai)
+          → Claude → HTML body
+          → RenderService.renderPdf(html)  # Playwright + fit() binary search
+          → writeFile data/<jobId>/{src/resume.html, resume.pdf}
+        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+          → Claude → HTML body
+          → RenderService.renderCoverLetterPdf(html)
+          → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
+    → db.updateJob(jobId, { tailoredResumePdfPath, coverLetterPaths })
+    → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
+  ← CLI prints JSON summary
 ```
+
+Writer-only steps: `wolf tailor brief|resume|cover --job <id>` run just that
+phase. Brief is read from disk on resume/cover; missing brief produces a clear
+error directing the user to run `wolf tailor brief` first.
 
 ### `wolf fill --job <job_id> --dry-run`
 

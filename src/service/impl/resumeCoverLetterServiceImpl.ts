@@ -10,6 +10,7 @@ export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
     resumePool: string,
     jdText: string,
     profile: UserProfile,
+    brief: string,
     aiConfig: AiConfig,
   ): Promise<string> {
     const urls = [profile.firstUrl, profile.secondUrl, profile.thirdUrl]
@@ -22,13 +23,16 @@ Email: ${profile.email}
 Phone: ${profile.phone}
 URLs: ${urls || 'none'}
 
+## Tailoring Brief
+${brief}
+
 ## Resume Pool
 ${stripComments(resumePool)}
 
 ## Job Description
 ${jdText}
 
-Produce the tailored resume HTML body now.`;
+Produce the tailored resume HTML body now, following the brief's selections.`;
 
     const text = await aiClient(userPrompt, SYSTEM_PROMPT, {
       provider: aiConfig.provider,
@@ -44,6 +48,7 @@ Produce the tailored resume HTML body now.`;
     resumePool: string,
     jdText: string,
     profile: UserProfile,
+    brief: string,
     tone: string,
     aiConfig: AiConfig,
   ): Promise<string> {
@@ -58,13 +63,16 @@ Phone: ${profile.phone}
 URLs: ${urls || 'none'}
 Tone: ${tone}
 
+## Tailoring Brief
+${brief}
+
 ## Resume Pool
 ${stripComments(resumePool)}
 
 ## Job Description
 ${jdText}
 
-Produce the cover letter HTML body now.`;
+Produce the cover letter HTML body now, following the brief's angle and themes.`;
 
     const text = await aiClient(userPrompt, COVER_LETTER_SYSTEM_PROMPT, {
       provider: aiConfig.provider,

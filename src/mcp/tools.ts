@@ -93,15 +93,19 @@ Returns a batch ID immediately — scoring completes in the background.`,
   server.registerTool(
     'wolf_tailor',
     {
-      description: `Tailor the user's resume and optionally generate a cover letter for a specific job.
-Use this when the user wants to customize their application for a role, or says
-"tailor my resume", "write a cover letter", "help me apply to this job".
-Requires a jobId — if not provided, suggest running wolf_hunt first to get one.
-Ask user if they want a cover letter generated (coverLetter: true/false).`,
+      description: `Run the full tailor pipeline for a job: analyst produces a tailoring brief,
+then resume and cover letter are written in parallel from the same brief (so they
+tell a consistent story).
+Use when the user says "tailor my resume", "write a cover letter", "apply to this job".
+Requires a jobId - if not provided, suggest wolf_hunt or wolf_add first.
+Optional 'hint' lets you steer the analyst agent before it runs (e.g. "focus on
+distributed systems"). The hint is written to data/<jobId>/src/hint.md and also
+takes effect on subsequent tailor runs until overwritten.`,
       inputSchema: {
-        jobId: z.string().describe('Job ID from wolf_hunt results'),
-        coverLetter: z.boolean().optional().describe('Whether to generate a cover letter'),
+        jobId: z.string().describe('Job ID from wolf_hunt / wolf_add results'),
+        coverLetter: z.boolean().optional().describe('Whether to generate a cover letter (default true)'),
         profileId: z.string().optional().describe('Profile to use; defaults to defaultProfileId in wolf.toml'),
+        hint: z.string().optional().describe('Pre-analysis guidance for the analyst. Pass empty string to clear an existing hint.'),
       },
     },
     async (args) => {
@@ -112,6 +116,7 @@ Ask user if they want a cover letter generated (coverLetter: true/false).`,
         jobId: args.jobId as string,
         profileId: args.profileId as string | undefined,
         coverLetter: args.coverLetter as boolean | undefined,
+        hint: args.hint as string | undefined,
       });
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     }

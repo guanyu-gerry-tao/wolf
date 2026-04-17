@@ -50,10 +50,13 @@ export interface TailorOptions {
   coverLetter?: boolean;   // default true
   diff?: boolean;          // show before/after comparison
   aiModel?: string;   // overrides AppConfig.tailor.model for this call; format "<provider>/<model>"
+  // Pre-analysis guidance to steer the analyst agent for this job. When set,
+  // gets written to data/<jobId>/src/hint.md and treated as authoritative
+  // input by the analyst. Pass "" to clear an existing hint file.
+  hint?: string;
 }
 
 export interface TailorResult {
-  tailoredTexPath: string | null;    // null if resume was not re-tailored
   tailoredPdfPath: string | null;
   coverLetterHtmlPath: string | null;
   coverLetterPdfPath: string | null;

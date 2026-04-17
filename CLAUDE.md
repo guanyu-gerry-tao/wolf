@@ -9,6 +9,9 @@ AI-powered job hunting CLI + MCP server. Finds roles, tailors resumes, fills for
 ## Current milestone
 
 **Milestone 1 — Scaffolding & Skeleton** ✅ complete
+**Milestone 3 — Tailor** ✅ complete (HTML→PDF pipeline, 3-agent checkpoint flow, CLI tooling)
+
+Post-M3 enhancement batch done: E1 (willingToRelocate string), E2 (per-command model + combined provider/model format), E3 (wolf config/profile get/set + multi-profile management), E4 (prompts externalized to MD), E5/E6 (prompt polish), E7 (analyst + writers checkpoint architecture with hint.md).
 
 **Next: Milestone 2 — Hunter** (application layer + hunt/score commands)
 
