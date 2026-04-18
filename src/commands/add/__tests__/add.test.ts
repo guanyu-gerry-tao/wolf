@@ -8,8 +8,8 @@ import type { Company } from '../../../types/company.js';
 // Pass overrides to swap specific repos for different test scenarios.
 function makeCtx(overrides: Partial<AppContext> = {}): AppContext {
   return {
-    jobRepository: { save: vi.fn(), saveMany: vi.fn(), get: vi.fn(), query: vi.fn(), update: vi.fn(), updateMany: vi.fn(), countByStatus: vi.fn(), delete: vi.fn() },
-    companyRepository: { get: vi.fn(), getByName: vi.fn().mockResolvedValue(null), upsert: vi.fn(), update: vi.fn(), query: vi.fn() },
+    jobRepository: { save: vi.fn(), saveMany: vi.fn(), get: vi.fn(), query: vi.fn(), update: vi.fn(), updateMany: vi.fn(), countByStatus: vi.fn(), delete: vi.fn(), getWorkspaceDir: vi.fn(), readJdText: vi.fn(), writeJdText: vi.fn() },
+    companyRepository: { get: vi.fn(), getByName: vi.fn().mockResolvedValue(null), upsert: vi.fn(), update: vi.fn(), query: vi.fn(), getWorkspaceDir: vi.fn(), readInfo: vi.fn() },
     batchRepository: { save: vi.fn(), getPending: vi.fn(), markComplete: vi.fn(), markFailed: vi.fn() },
     profileRepository: { get: vi.fn(), getDefault: vi.fn(), list: vi.fn(), getResumePool: vi.fn() },
     batchService: { submit: vi.fn(), pollAll: vi.fn() },
@@ -46,9 +46,11 @@ describe('add()', () => {
     // starts with status 'new', and has no score yet (scoring is a separate step)
     const savedJob = vi.mocked(ctx.jobRepository.save).mock.calls[0][0];
     expect(savedJob.title).toBe('SWE');
-    expect(savedJob.description).toBe('Build things.');
     expect(savedJob.status).toBe('new');
     expect(savedJob.score).toBeNull();
+
+    // JD text is persisted to disk (jd.md) via writeJdText, not in the Job row.
+    expect(ctx.jobRepository.writeJdText).toHaveBeenCalledWith(savedJob.id, 'Build things.');
   });
 
   // When the company already exists in the database, add() should reuse it
@@ -63,7 +65,7 @@ describe('add()', () => {
 
     // getByName returns an existing company → company already in DB
     const ctx = makeCtx({
-      companyRepository: { get: vi.fn(), getByName: vi.fn().mockResolvedValue(existingCompany), upsert: vi.fn(), update: vi.fn(), query: vi.fn() },
+      companyRepository: { get: vi.fn(), getByName: vi.fn().mockResolvedValue(existingCompany), upsert: vi.fn(), update: vi.fn(), query: vi.fn(), getWorkspaceDir: vi.fn(), readInfo: vi.fn() },
     } as unknown as Partial<AppContext>);
 
     await add({ title: 'SWE', company: 'Acme', jdText: 'Build things.' }, ctx);

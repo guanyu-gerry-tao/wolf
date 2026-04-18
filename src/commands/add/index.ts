@@ -46,7 +46,6 @@ export async function add(
     companyId: company.id,
     url: options.url ?? '',
     source: 'Other',
-    description: options.jdText,
     location: '',
     remote: false,
     salary: null,
@@ -65,6 +64,9 @@ export async function add(
     createdAt: now,
     updatedAt: now,
   });
+
+  // JD text lives on disk (grep-friendly prose), not in SQLite.
+  await ctx.jobRepository.writeJdText(jobId, options.jdText);
 
   return { jobId };
 }

@@ -1,11 +1,34 @@
+import path from 'node:path';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { CompanyRepository } from '../companyRepository.js';
 import type { Company, CompanyQuery, CompanyUpdate } from '../../types/company.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { companies } from './schema.js';
+import { companyDir } from '../../utils/workspacePaths.js';
 
+// Self-documenting header for freshly created info.md files. Same `//` comment
+// convention as resume_pool.md and hint.md — stripComments filters these before
+// any AI sees the file.
+const INFO_FILE_HEADER = `// info.md - Free-form notes about this company.
+//
+// Any prose below the // header is stored per-company and carried forward for
+// future jobs at the same employer (e.g. interview feedback, product notes,
+// culture observations). Lines starting with // are comments and get stripped
+// before AI agents read this file.
+
+`;
+
+/**
+ * Persists company rows in SQLite and keeps a companion info.md file at
+ * `<workspace>/data/companies/<name>_<companyIdShort>/info.md`. The info.md
+ * is auto-created on upsert so users always have a well-known place to drop notes.
+ */
 export class SqliteCompanyRepositoryImpl implements CompanyRepository {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(
+    private readonly db: DrizzleDb,
+    private readonly workspaceDir: string,
+  ) {}
 
   async get(id: string): Promise<Company | null> {
     const rows = await this.db
@@ -42,6 +65,8 @@ export class SqliteCompanyRepositoryImpl implements CompanyRepository {
           updatedAt: company.updatedAt,
         },
       });
+    // Ensure info.md exists even for brand-new rows; preserve existing content.
+    await this.ensureInfoFile(company.id, company.name);
   }
 
   async update(id: string, patch: CompanyUpdate): Promise<void> {
@@ -79,6 +104,34 @@ export class SqliteCompanyRepositoryImpl implements CompanyRepository {
           .where(and(...conditions)));
 
     return rows.map(rowToCompany);
+  }
+
+  async getWorkspaceDir(id: string): Promise<string> {
+    const company = await this.get(id);
+    if (!company) throw new Error(`Company not found: ${id}`);
+    return companyDir(this.workspaceDir, company.name, id);
+  }
+
+  async readInfo(id: string): Promise<string> {
+    const dir = await this.getWorkspaceDir(id);
+    try {
+      return await readFile(path.join(dir, 'info.md'), 'utf-8');
+    } catch (err: unknown) {
+      // Missing file is expected when a company has no notes yet.
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return '';
+      throw err;
+    }
+  }
+
+  // Writes the header-only template if the file does not yet exist. Never
+  // overwrites user-authored content.
+  private async ensureInfoFile(companyId: string, companyName: string): Promise<void> {
+    const dir = companyDir(this.workspaceDir, companyName, companyId);
+    const infoPath = path.join(dir, 'info.md');
+    const exists = await access(infoPath).then(() => true).catch(() => false);
+    if (exists) return;
+    await mkdir(dir, { recursive: true });
+    await writeFile(infoPath, INFO_FILE_HEADER, 'utf-8');
   }
 }
 

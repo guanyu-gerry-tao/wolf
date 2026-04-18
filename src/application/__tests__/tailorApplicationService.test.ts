@@ -27,7 +27,6 @@ const FAKE_JOB: Job = {
   companyId: 'company-1',
   url: 'https://example.com',
   source: 'Other',
-  description: 'Build cool stuff with Go.',
   location: '',
   remote: false,
   salary: null,
@@ -62,6 +61,10 @@ function makeJobRepo(job: Job | null = FAKE_JOB): JobRepository {
     get: vi.fn().mockResolvedValue(job),
     save: vi.fn(), saveMany: vi.fn(), query: vi.fn(), update: vi.fn(),
     updateMany: vi.fn(), countByStatus: vi.fn(), delete: vi.fn(),
+    // File-backed accessors: JD text and workspace dir now live behind the repo.
+    readJdText: vi.fn().mockResolvedValue('Build cool stuff with Go.'),
+    writeJdText: vi.fn(),
+    getWorkspaceDir: vi.fn().mockResolvedValue('/workspace/data/jobs/company-1_SWE_job-1'),
   } as unknown as JobRepository;
 }
 
@@ -103,7 +106,6 @@ function makeSvc(overrides: {
     makeRenderSvc(),
     overrides.rewriteSvc ?? makeRewriteSvc(),
     overrides.briefSvc ?? makeBriefSvc(),
-    '/workspace',
     DEFAULT_AI,
     'professional',
   );

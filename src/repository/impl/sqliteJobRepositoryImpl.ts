@@ -1,9 +1,12 @@
-import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { JobRepository } from '../jobRepository.js';
+import type { CompanyRepository } from '../companyRepository.js';
 import type { Job, JobQuery, JobStatus, JobUpdate } from '../../types/job.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { jobs } from './schema.js';
+import { jobDir } from '../../utils/workspacePaths.js';
 
 const ALL_STATUSES: JobStatus[] = [
   'new',
@@ -18,8 +21,16 @@ const ALL_STATUSES: JobStatus[] = [
   'error',
 ];
 
+/**
+ * Persists job rows in SQLite and the JD text in `<workspace>/data/jobs/<dir>/jd.md`.
+ * Metadata stays in SQL; prose content (jd.md) lives on disk for greppability.
+ */
 export class SqliteJobRepositoryImpl implements JobRepository {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(
+    private readonly db: DrizzleDb,
+    private readonly companyRepository: CompanyRepository,
+    private readonly workspaceDir: string,
+  ) {}
 
   async get(id: string): Promise<Job | null> {
     const rows = await this.db
@@ -117,6 +128,25 @@ export class SqliteJobRepositoryImpl implements JobRepository {
   async delete(id: string): Promise<void> {
     await this.db.delete(jobs).where(eq(jobs.id, id));
   }
+
+  async getWorkspaceDir(id: string): Promise<string> {
+    const job = await this.get(id);
+    if (!job) throw new Error(`Job not found: ${id}`);
+    const company = await this.companyRepository.get(job.companyId);
+    if (!company) throw new Error(`Company not found for job ${id}: ${job.companyId}`);
+    return jobDir(this.workspaceDir, company.name, job.title, id);
+  }
+
+  async readJdText(id: string): Promise<string> {
+    const dir = await this.getWorkspaceDir(id);
+    return readFile(path.join(dir, 'jd.md'), 'utf-8');
+  }
+
+  async writeJdText(id: string, jdText: string): Promise<void> {
+    const dir = await this.getWorkspaceDir(id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'jd.md'), jdText, 'utf-8');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +162,6 @@ function rowToJob(row: JobRow): Job {
     companyId: row.companyId,
     url: row.url,
     source: row.source,
-    description: row.description,
     location: row.location,
     remote: row.remote,
     salary: row.salary ?? null,
@@ -160,7 +189,6 @@ function jobToRow(job: Job): typeof jobs.$inferInsert {
     companyId: job.companyId,
     url: job.url,
     source: job.source,
-    description: job.description,
     location: job.location,
     remote: job.remote,
     salary: job.salary ?? undefined,

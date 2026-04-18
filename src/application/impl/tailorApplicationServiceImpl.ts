@@ -20,11 +20,6 @@ import type { RenderService } from '../../service/renderService.js';
 import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../../service/tailoringBriefService.js';
 
-// Strip characters unsafe for directory names, collapse repeated underscores, cap length.
-function sanitize(s: string): string {
-  return s.replace(/[^a-zA-Z0-9-]/g, '_').replace(/_+/g, '_').slice(0, 40);
-}
-
 // Self-documenting header written to every fresh hint.md. Lines starting with //
 // are stripped before the file is shown to the analyst (same convention as
 // resume_pool.md), so this preamble never reaches the AI.
@@ -48,6 +43,7 @@ interface JobContext {
   job: Job;
   profile: UserProfile;
   resumePool: string;
+  jdText: string;
   aiConfig: AiConfig;
   srcDir: string;
   hintPath: string;
@@ -65,7 +61,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly renderService: RenderService,
     private readonly rewriteService: ResumeCoverLetterService,
     private readonly briefService: TailoringBriefService,
-    private readonly workspaceDir: string,
     private readonly defaultAiConfig: AiConfig,
     private readonly defaultCoverLetterTone: string,
   ) {}
@@ -143,9 +138,9 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       : await this.profileRepository.getDefault();
 
     const resumePool = await this.profileRepository.getResumePool(profile.id);
+    const jdText = await this.jobRepository.readJdText(jobId);
 
-    const dirName = `${sanitize(job.companyId)}_${sanitize(job.title)}_${jobId}`;
-    const outputDir = path.join(this.workspaceDir, 'data', dirName);
+    const outputDir = await this.jobRepository.getWorkspaceDir(jobId);
     const srcDir = path.join(outputDir, 'src');
     await mkdir(srcDir, { recursive: true });
 
@@ -153,6 +148,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       job,
       profile,
       resumePool,
+      jdText,
       aiConfig,
       srcDir,
       hintPath:             path.join(srcDir, 'hint.md'),
@@ -197,7 +193,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const hint = await this.readActiveHint(ctx.hintPath);
     const brief = await this.briefService.analyze(
       ctx.resumePool,
-      ctx.job.description,
+      ctx.jdText,
       ctx.profile,
       ctx.aiConfig,
       hint,
@@ -220,7 +216,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
   private async runResume(ctx: JobContext, brief: string): Promise<WriteStepResult> {
     const html = await this.rewriteService.tailorResumeToHtml(
       ctx.resumePool,
-      ctx.job.description,
+      ctx.jdText,
       ctx.profile,
       brief,
       ctx.aiConfig,
@@ -234,7 +230,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
   private async runCoverLetter(ctx: JobContext, brief: string): Promise<WriteStepResult> {
     const html = await this.rewriteService.generateCoverLetter(
       ctx.resumePool,
-      ctx.job.description,
+      ctx.jdText,
       ctx.profile,
       brief,
       this.defaultCoverLetterTone,

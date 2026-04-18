@@ -78,8 +78,10 @@ function wireContext(
   const db = drizzle(sqlite);
   initializeSchema(db);
 
-  const jobRepo = new SqliteJobRepositoryImpl(db);
-  const companyRepo = new SqliteCompanyRepositoryImpl(db);
+  // Order matters: jobRepo depends on companyRepo to resolve company names
+  // when composing `data/jobs/<name>_<title>_<shortId>/` paths.
+  const companyRepo = new SqliteCompanyRepositoryImpl(db, workspaceDir);
+  const jobRepo = new SqliteJobRepositoryImpl(db, companyRepo, workspaceDir);
   const batchRepo = new SqliteBatchRepositoryImpl(db);
 
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
@@ -88,7 +90,7 @@ function wireContext(
   const briefService = new TailoringBriefServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
     jobRepo, profileRepository, renderService, rewriteService, briefService,
-    workspaceDir, defaultAiConfig, defaultCoverLetterTone,
+    defaultAiConfig, defaultCoverLetterTone,
   );
 
   return {

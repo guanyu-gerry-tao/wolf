@@ -60,36 +60,50 @@ wolf tailor --job <jobId>                                 # full 3-agent pipelin
 ### Iterative (human-in-the-loop)
 ```
 wolf tailor brief --job <jobId> --hint "focus on ML ops"  # steer the analyst
-# inspect and optionally edit data/<jobId>/src/tailoring-brief.md
+# inspect and optionally edit data/jobs/<...>/src/tailoring-brief.md
 wolf tailor resume --job <jobId>                          # write resume using the brief
 wolf tailor cover --job <jobId>                           # write cover letter using the brief
 # not happy? edit brief and re-run resume/cover; no need to re-analyze
 ```
 
-## Output layout under `data/<jobId>/`
+## Data layout
+
+All generated artifacts live under `data/`, grouped by entity:
 
 ```
-data/<company>_<title>_<jobId>/
-├── src/
-│   ├── hint.md                ← you/your agent edit this to steer the analyst
-│   ├── tailoring-brief.md     ← analyst output; edit to adjust selections/themes
-│   ├── resume.html            ← resume source (inspect / hand-tune if needed)
-│   └── cover_letter.html      ← cover letter source
-├── resume.pdf                 ← final PDF
-└── cover_letter.pdf           ← final PDF
+data/
+├── wolf.sqlite                           ← metadata only (no prose)
+├── jobs/
+│   └── <company>_<title>_<jobIdShort>/   ← one dir per job
+│       ├── jd.md                         ← job description (source of truth)
+│       ├── src/
+│       │   ├── hint.md                   ← you/your agent edit to steer the analyst
+│       │   ├── tailoring-brief.md        ← analyst output; edit to adjust
+│       │   ├── resume.html               ← resume source (hand-tune if needed)
+│       │   └── cover_letter.html         ← cover letter source
+│       ├── resume.pdf                    ← final PDF
+│       └── cover_letter.pdf              ← final PDF
+└── companies/
+    └── <company>_<companyIdShort>/
+        └── info.md                       ← free-form notes about the employer
 ```
+
+**Prose lives on disk, not in SQLite.** `jd.md` and `info.md` are greppable
+from the shell and editable with any text editor. SQLite keeps only the
+structured fields (id, title, score, status, etc.) that need indexing.
 
 **All `.md` and `.html` files under `src/` are editable checkpoints.** If the
 resume is off but the cover letter is fine, edit `tailoring-brief.md` (or
 `resume.html` directly) and re-run just `wolf tailor resume`. The analyst does
 not re-run unless you call `wolf tailor brief` again.
 
-### hint.md convention
+### hint.md / info.md convention
 
-`hint.md` is created the first time you run any tailor step for a job. Lines
-starting with `//` are stripped before the analyst sees the file (same rule as
-`resume_pool.md`), so the comment header is self-documenting but ignored by AI.
-Write guidance as plain Markdown **below** the `//` header.
+`hint.md` is created the first time you run any tailor step for a job;
+`info.md` is created when a company is first recorded. Lines starting with `//`
+are stripped before AI sees the file (same rule as `resume_pool.md`), so the
+header is self-documenting but ignored. Write guidance/notes as plain Markdown
+**below** the `//` header.
 
 ## Configuration files
 
