@@ -211,3 +211,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** 原 tailor 只有一个 resume agent 和一个 cover-letter agent，两者各自读 pool+JD。结果产出不一致：resume 强调项目 A、B、C，CL 却强调 A、D、E——同一个候选人两种叙事。
 **AI：** 拆成三个 agent，共享一份决策文档。Agent 1（分析员）读 pool+JD，产出 Markdown tailoring brief（选定角色、2-3 个项目、3 个核心主题、CL 切入角度）。Agent 2、3（resume writer、CL writer）读 brief + pool + JD 并行运行。两个 writer 的 system prompt 把 brief 作为选择的真相来源。Brief 格式考虑过 JSON，但两个消费者都是 LLM，散文对它们更自然；schema 校验 YAGNI。
 **结果：** 采用。新增 `TailoringBriefService`（在 `src/service/` 下）。`TailorApplicationService` 暴露四个方法 —— `tailor`（编排三步）、`analyze`（只产 brief）、`writeResume`、`writeCoverLetter`，用户可以跑局部步骤，手动编辑 `data/<jobId>/src/tailoring-brief.md`，然后只重跑 writer 而不重跑分析员。可选的 `hint.md`（`//` 注释头被 `stripComments` 过滤）让用户或外部 AI agent 在分析员运行前对它进行引导。代价：每个 job 多一次 AI 调用（约 3 秒，可用 Haiku）。一致性收益足以抵消。
+
+---
+
+**2026-04-18 — 散文上磁盘，SQLite 只存元数据**
+**我：** JD 文本和公司简介一直存在 SQLite 的 text 列里。能跑，但把散文塞进数据库不自然：从文件系统 grep 不到、不能手动编辑、也不好做 diff。而 profile 层早就把散文放在磁盘上（`resume_pool.md`），SQL 只存结构化字段——jobs 和 companies 应该遵循同一模式。
+**AI：** 验证通过。JD 文本迁移到 `data/jobs/<dir>/jd.md`，公司信息迁移到 `data/companies/<dir>/info.md`。SQLite 只保留需要索引/查询的结构化字段。`JobRepository` 新增 `getWorkspaceDir` / `readJdText` / `writeJdText`；`CompanyRepository` 新增 `getWorkspaceDir` / `readInfo`。目录命名：`<safeLabel(company)>_<safeLabel(title)>_<shortId(jobId)>` 和 `<safeLabel(company)>_<shortId(companyId)>`——人类可读的标签加 8 位 hex 做消歧。`info.md` 在公司 upsert 时自动创建，带 `//` 自描述头，永不覆盖。拒绝方案：单独开一个 `JobDescriptionRepository`——按文件类型拆分，随着每个 job 的散文文件增多会组合爆炸。升级路径：如果此类 bloat 出现，再抽出 `JobWorkspaceRepository`。
+**结果：** 采用。`Job.description` 从类型和 schema 中移除。`SqliteJobRepositoryImpl` 构造参数变为 `(db, companyRepository, workspaceDir)`，这样它能通过 companyId 查到公司名用于目录拼装（aggregate-root 模式，与 `ProfileRepository` 一致）。路径拼装逻辑放在 `src/utils/workspacePaths.ts` 中，并带单元测试。

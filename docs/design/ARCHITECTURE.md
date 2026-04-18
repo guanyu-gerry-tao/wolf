@@ -150,20 +150,20 @@ src/
 CLI parses --job abc123 [--hint "focus on ML ops"]
   → [Command] tailor({ jobId, hint })
       → [Application] TailorApplicationService.tailor({ jobId, hint })
-          → prepareContext → loadJob, loadProfile, loadResumePool, resolve paths
-          → ensureHintFile → write data/<jobId>/src/hint.md if absent or if --hint given
+          → prepareContext → loadJob, loadProfile, loadResumePool, readJdText(jobId), getWorkspaceDir(jobId)
+          → ensureHintFile → write data/jobs/<dir>/src/hint.md if absent or if --hint given
           → [Service] TailoringBriefService.analyze(pool, jd, profile, aiConfig, hint)
               → Anthropic API → returns Markdown brief
-          → writeFile data/<jobId>/src/tailoring-brief.md
+          → writeFile data/jobs/<dir>/src/tailoring-brief.md
           → Promise.all:
               → [Service] ResumeCoverLetterService.tailorResumeToHtml(pool, jd, profile, brief, ai)
                   → Anthropic API → returns HTML body
                   → [Service] RenderService.renderPdf(html)       # Playwright + fit() binary search
-                  → writeFile data/<jobId>/{src/resume.html, resume.pdf}
+                  → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
               → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
                   → Anthropic API → returns HTML body
                   → [Service] RenderService.renderCoverLetterPdf(html)
-                  → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
+                  → writeFile data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
       → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
       → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
   → CLI prints JSON summary
@@ -172,17 +172,35 @@ CLI parses --job abc123 [--hint "focus on ML ops"]
 Each step can also be invoked standalone: `wolf tailor brief`, `wolf tailor resume`, `wolf tailor cover`.
 Writer-only steps read the brief from disk and error clearly if it is missing.
 
-### Output layout under `data/<company>_<title>_<jobId>/`
+### Data layout — prose on disk, metadata in SQLite
+
+`data/` is split by entity. SQLite holds structured fields only; any free-form
+prose (JD text, company notes, analyst brief, resume/cover HTML, PDFs) lives
+as plain files under a per-entity directory. This makes the workspace
+grep-friendly and lets users hand-edit any checkpoint.
 
 ```
-src/
-├── hint.md                ← user/agent edits to steer analyst (// lines are comments, stripped before prompt)
-├── tailoring-brief.md     ← analyst output; editable checkpoint
-├── resume.html            ← resume writer output; editable before render
-└── cover_letter.html      ← CL writer output; editable before render
-resume.pdf                 ← final
-cover_letter.pdf           ← final
+data/
+├── wolf.sqlite                             ← structured metadata only (no prose columns)
+├── jobs/
+│   └── <company>_<title>_<jobIdShort8>/
+│       ├── jd.md                           ← source of truth for the JD
+│       ├── src/
+│       │   ├── hint.md                     ← // comment header + user guidance
+│       │   ├── tailoring-brief.md          ← analyst output; editable checkpoint
+│       │   ├── resume.html                 ← resume writer output
+│       │   └── cover_letter.html           ← CL writer output
+│       ├── resume.pdf                      ← final
+│       └── cover_letter.pdf                ← final
+└── companies/
+    └── <company>_<companyIdShort8>/
+        └── info.md                         ← free-form employer notes (auto-created)
 ```
+
+Dir names embed the first 8 hex chars of the UUID for local disambiguation;
+non-alphanumeric chars in labels are replaced with `_`. Repositories resolve
+these paths internally: `JobRepository.getWorkspaceDir(jobId)`,
+`JobRepository.readJdText(jobId)`, `CompanyRepository.readInfo(companyId)`.
 
 ## Design Principles
 
@@ -466,16 +484,16 @@ CLI parses args
 ```
 CLI parses args
   → tailor({ jobId, hint })
-    → prepareContext: loadJob + loadProfile + loadResumePool + resolve output paths
-    → ensureHintFile: write data/<jobId>/src/hint.md (header only if absent; overwrite if --hint given)
+    → prepareContext: loadJob + loadProfile + loadResumePool + jobRepo.readJdText(jobId) + jobRepo.getWorkspaceDir(jobId)
+    → ensureHintFile: write data/jobs/<dir>/src/hint.md (header only if absent; overwrite if --hint given)
     → analyst = TailoringBriefService.analyze(pool, jd, profile, ai, hint)
         → Claude → Markdown brief
-        → writeFile data/<jobId>/src/tailoring-brief.md
+        → writeFile data/jobs/<dir>/src/tailoring-brief.md
     → Promise.all:
         → ResumeCoverLetterService.tailorResumeToHtml(pool, jd, profile, brief, ai)
           → Claude → HTML body
           → RenderService.renderPdf(html)  # Playwright + fit() binary search
-          → writeFile data/<jobId>/{src/resume.html, resume.pdf}
+          → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
         → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
           → Claude → HTML body
           → RenderService.renderCoverLetterPdf(html)
@@ -488,6 +506,10 @@ CLI parses args
 Writer-only steps: `wolf tailor brief|resume|cover --job <id>` run just that
 phase. Brief is read from disk on resume/cover; missing brief produces a clear
 error directing the user to run `wolf tailor brief` first.
+
+JD text lives at `data/jobs/<dir>/jd.md` (grep-friendly, hand-editable). The
+tailor app service reads it through `JobRepository.readJdText(jobId)` — the row
+in SQLite carries only structured metadata.
 
 ### `wolf fill --job <job_id> --dry-run`
 
@@ -528,14 +550,20 @@ This design aligns with how AI agents work: Claude Code's working context is the
 ├── .gitignore          # Auto-generated by wolf init
 ├── credentials/        # OAuth tokens (Gmail) — gitignored
 └── data/               # Generated artifacts — gitignored
-    ├── wolf.sqlite      # Job listings, statuses, scores (Drizzle + better-sqlite3)
-    └── <company>_<title>_<jobId>/   # One directory per tailor run
-        ├── resume.tex               # Tailored resume source
-        ├── resume.pdf               # Compiled PDF
-        ├── resume_p1.jpg            # Screenshot page 1
-        ├── resume_p2.jpg            # Screenshot page 2 (if exists)
-        ├── cover_letter.md          # Cover letter draft
-        └── cover_letter.pdf         # Cover letter PDF (if md-to-pdf installed)
+    ├── wolf.sqlite      # Structured metadata only (no prose columns)
+    ├── jobs/
+    │   └── <company>_<title>_<jobIdShort>/
+    │       ├── jd.md               # Job description (source of truth)
+    │       ├── src/
+    │       │   ├── hint.md
+    │       │   ├── tailoring-brief.md
+    │       │   ├── resume.html
+    │       │   └── cover_letter.html
+    │       ├── resume.pdf          # Final PDF
+    │       └── cover_letter.pdf    # Final PDF
+    └── companies/
+        └── <company>_<companyIdShort>/
+            └── info.md             # Free-form employer notes
 ```
 
 > API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env show` / `wolf env clear` to manage.
@@ -553,29 +581,35 @@ Commands do not call each other directly. **SQLite is the shared communication b
 Each command reads input from the database, does its work, and writes results back:
 
 ```
-hunt()   ── writes → [SQLite: jobs table] ── reads → tailor()
-tailor() ── writes → [SQLite: tailored_resume_path] ── reads → fill()
-fill()   ── writes → [SQLite: status="applied"] ── reads → reach()
+hunt()   ── writes → [SQLite: jobs row + data/jobs/<dir>/jd.md] ── reads → tailor()
+tailor() ── writes → [SQLite: tailored_resume_pdf_path + data/jobs/<dir>/resume.pdf] ── reads → fill()
+fill()   ── writes → [SQLite: status="applied" + screenshot_path] ── reads → reach()
 reach()  ── writes → [SQLite: outreach_draft_path]
 ```
 
 Concrete example:
 
 ```typescript
-// hunt: save discovered jobs (companyId references the Company table)
-db.saveJob({ id: "abc", title: "SDE", companyId: "company-uuid", status: "new", score: 0.9 })
+// add/hunt: metadata in SQL, JD prose on disk
+await jobRepo.save({ id: "abc", title: "SDE", companyId: "company-uuid", status: "new", score: 0.9, /* ...other fields */ })
+await jobRepo.writeJdText("abc", jdText)
 
-// tailor: read job, write tailored .tex + .pdf paths back
-const job = db.getJob("abc")
-db.updateJob("abc", { tailoredResumePath: "./data/tailored/abc.tex", tailoredResumePdfPath: "./data/tailored/abc.pdf" })
+// tailor: read JD from disk, write rendered PDF paths back to SQL
+const jdText    = await jobRepo.readJdText("abc")
+const outputDir = await jobRepo.getWorkspaceDir("abc")   // data/jobs/<company>_<title>_<shortId>/
+await jobRepo.update("abc", {
+  tailoredResumePdfPath: `${outputDir}/resume.pdf`,
+  coverLetterHtmlPath:   `${outputDir}/src/cover_letter.html`,
+  coverLetterPdfPath:    `${outputDir}/cover_letter.pdf`,
+})
 
-// fill: read job + resume path, update status
-const job = db.getJob("abc")  // has job.url + job.tailoredResumePath
-db.updateJob("abc", { status: "applied", screenshotPath: "./data/screenshots/abc.png" })
+// fill: read job, update status + screenshot path
+const job = await jobRepo.get("abc")  // has job.url + job.tailoredResumePdfPath
+await jobRepo.update("abc", { status: "applied", screenshotPath: `${outputDir}/screenshot.png` })
 
 // reach: read job, write outreach draft path
-const job = db.getJob("abc")  // has job.companyId, job.title
-db.updateJob("abc", { outreachDraftPath: "./data/outreach/abc.md" })
+const job = await jobRepo.get("abc")  // has job.companyId, job.title
+await jobRepo.update("abc", { outreachDraftPath: `${outputDir}/outreach.md` })
 ```
 
 This design means:

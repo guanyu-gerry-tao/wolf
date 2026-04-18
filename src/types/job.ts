@@ -1,4 +1,3 @@
-import type { CompanySize } from "./company.js";
 import { Sponsorship } from "./sponsorship.js";
 
 /** Where a job sits in the user's personal pipeline. */
@@ -55,7 +54,6 @@ export interface Job {
   companyId: string; // foreign key → Company.id
   url: string; // application or listing URL
   source: JobSource;
-  description: string; // full JD text
   location: string; // specific office location for this role
   remote: boolean;
   salary: Salary | null; // null if not listed

@@ -67,7 +67,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
   async runPipeline(jobId: string, profileId: string): Promise<TailorResult> {
     const job = await this.jobRepo.get(jobId);
     const profile = await this.profileRepo.get(profileId);
-    const rewritten = await this.rewriteService.rewriteBullets(profile.resumePool, job.description, profile.scoringNotes);
+    const jdText = await this.jobRepo.readJdText(jobId);
+    const rewritten = await this.rewriteService.rewriteBullets(profile.resumePool, jdText, profile.scoringNotes);
     const pdfPath = await this.fitToOnePage(rewritten);
     await this.jobRepo.update(jobId, { tailoredResumePdfPath: pdfPath });
     return { pdfPath, matchScore: /* ... */ };

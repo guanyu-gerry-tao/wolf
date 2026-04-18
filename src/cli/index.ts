@@ -100,7 +100,7 @@ const tailorCmd = new Command('tailor')
   });
 tailorCmd
   .command('brief')
-  .description('Step 1: produce the tailoring brief only (writes data/<jobId>/src/tailoring-brief.md)')
+  .description('Step 1: produce the tailoring brief only (writes data/jobs/<dir>/src/tailoring-brief.md)')
   .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
   .option('--hint <text>', 'Pre-analysis guidance for the analyst (written to hint.md)')

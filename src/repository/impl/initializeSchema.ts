@@ -37,7 +37,6 @@ export function initializeSchema(db: DrizzleDb): void {
       company_id                  TEXT    NOT NULL,
       url                         TEXT    NOT NULL,
       source                      TEXT    NOT NULL,
-      description                 TEXT    NOT NULL,
       location                    TEXT    NOT NULL,
       remote                      INTEGER NOT NULL,
       salary                      TEXT,

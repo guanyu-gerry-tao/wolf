@@ -9,4 +9,17 @@ export interface JobRepository {
   updateMany(ids: string[], patch: JobUpdate): Promise<void>;
   countByStatus(): Promise<Record<JobStatus, number>>;
   delete(id: string): Promise<void>;
+
+  /**
+   * Resolve the absolute workspace directory for a job — the place on disk
+   * where jd.md, the tailor src/ folder, and the rendered PDFs all live.
+   * Layout: `<workspace>/data/jobs/<company>_<title>_<jobIdShort>/`.
+   */
+  getWorkspaceDir(id: string): Promise<string>;
+
+  /** Read the job description stored at `<workspaceDir>/jd.md`. */
+  readJdText(id: string): Promise<string>;
+
+  /** Write the job description to `<workspaceDir>/jd.md`, creating the dir if needed. */
+  writeJdText(id: string, jdText: string): Promise<void>;
 }

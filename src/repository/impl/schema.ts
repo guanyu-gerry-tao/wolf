@@ -43,7 +43,6 @@ export const jobs = sqliteTable('jobs', {
   companyId: text('company_id').notNull(),
   url: text('url').notNull(),
   source: text('source').$type<JobSource>().notNull(),
-  description: text('description').notNull(),
   location: text('location').notNull(),
   remote: integer('remote', { mode: 'boolean' }).notNull(),
   salary: text('salary', { mode: 'json' }).$type<Salary>(),
