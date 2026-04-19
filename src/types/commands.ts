@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from "./job.js";
+import type { JobSource, JobStatus } from "./job.js";
 
 export interface HuntOptions {
   profileId?: string;      // defaults to defaultProfileId
@@ -107,15 +107,48 @@ export interface ReachResult {
   sent: boolean;
 }
 
-export interface StatusOptions {
-  status?: JobStatus;
-  companyIds?: string[];
+// `wolf status` is the dashboard — aggregate counters only, no filters.
+// List-style inspection moved to `wolf job list`. The result type is
+// StatusSummary, defined in src/application/statusApplicationService.ts
+// alongside the service that produces it.
+export interface StatusOptions {}
+
+export interface JobListOptions {
+  status?: JobStatus | JobStatus[];
   minScore?: number;
-  since?: string;       // ISO 8601
+  /** Lower bound on createdAt (ISO 8601 or YYYY-MM-DD). */
+  start?: string;
+  /** Upper bound on createdAt (ISO 8601 or YYYY-MM-DD). */
+  end?: string;
+  source?: JobSource;
+  /**
+   * Free-form search terms, each case-insensitive substring match against
+   * `jobs.title`, `jobs.location`, or the joined `companies.name`. Terms
+   * are OR'd at the top level — multiple terms widens the match.
+   */
+  search?: string[];
+  /** Max rows; default DEFAULT_JOB_LIST_LIMIT. No escape hatch — no `--all`. */
+  limit?: number;
 }
 
-export interface StatusResult {
-  jobs: Job[];
-  total: number;
-  byStatus: Record<JobStatus, number>;
+export const DEFAULT_JOB_LIST_LIMIT = 20;
+
+/**
+ * One row in the `wolf job list` output. Deliberately slimmer than `Job` —
+ * the full Job record carries dozens of fields the list view never uses.
+ * Callers wanting every field can fetch the Job directly via its id.
+ */
+export interface JobListItem {
+  id: string;
+  company: string;         // resolved name, not the id
+  title: string;
+  status: JobStatus;
+  score: number | null;
+  createdAt: string;
+}
+
+export interface JobListResult {
+  jobs: JobListItem[];
+  totalMatching: number;   // total rows matching filters, ignoring the limit
+  limited: boolean;        // true when totalMatching > jobs.length
 }

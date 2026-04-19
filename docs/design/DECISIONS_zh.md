@@ -225,3 +225,29 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** M2 开始之前需要一个真正的 logger。一开始纠结于日志级别列表（`debug` / `info` / `warn` / `error` 够不够，要不要加 `trace` / `critical`），但更关键的问题其实是*日志放哪里*。我考虑过在 SQLite 里开一张日志表——跟业务数据同库，能用 SQL 查询。
 **AI：** 反对把日志塞进 SQLite。两件事关注点完全不同、写入画像完全不同。SQLite 日志表会带来：(1) schema 僵化——多一个字段就要 ALTER TABLE；(2) 写竞争——SQLite 在写时锁整个文件，MCP server 和 CLI 命令会互抢日志写锁；(3) 生命周期纠缠——截断日志就得碰业务数据；(4) 崩溃安全——SQL 事务写了一半 vs. 仅丢一行 JSONL；(5) 生态不匹配——Loki、Datadog、CloudWatch 等所有可观测性工具都期望 line-delimited JSON。提议：一个 logger，两个 sink。控制台 sink 写 **stderr**（不走 stdout——stdout 留给命令的实际输出，`wolf job ls | grep open` 才不会被日志污染；而且 MCP 用 stdout 传协议帧）。文件 sink 写 `data/logs/wolf.log.jsonl`——每行一个 JSON 对象，`jq` / `grep` 友好，将来能直接对接真的日志系统。采用四级（`debug` / `info` / `warn` / `error`）；`fatal` / `critical` 合并进 `error`，因为"是否终止"是调用方的决定，不是日志级别的属性。事件从一开始就结构化：`logger.info('msg', { jobId, ... })` 产出 `{ts, level, msg, ...fields}`——JSON 是内部事件形态，pretty 渲染只是其中一种投影。
 **结果：** 采用。`src/utils/logger.ts` 定义 `Logger` / `LogEvent` / `LogSink` 接口，外加 `createConsoleSink`、`createFileSink`、`createMemorySink`（测试用）、`createSilentLogger`（测试 AppContext 用）。生产环境 `AppContext.logger` 同时挂 console + file 两个 sink；`createTestAppContext()` 用 silent logger。环境变量：`WOLF_LOG=debug|info|warn|error`（默认 `info`）、`WOLF_LOG_FORMAT=pretty|json`（默认 `pretty`，文件 sink 永远是 JSON）。SQLite schema 不动——日志按设计就是纯文件。
+
+---
+
+**2026-04-18 — Nouns over god-views：把 `wolf status` 拆成 dashboard + 各 noun 的 `list`**
+**我：** 担心每加一个新功能（outreach、hunt、fill 等）都要改 `wolf status` 把自己那部分状态塞进去——典型的"什么都往里塞"的 god-view，很快就会腐烂。也担心终端溢出：hunt 回来 1000 条 job 一股脑打到 shell 里就没法看了。
+**AI：** 两个问题一个解法——不要让 `status` 随功能增长。让"名词"（noun）增长。`wolf status` 变成**聚合计数仪表盘**，每个模块往 registry 里注册一个 `StatusCounter`（`{ label, count: () => Promise<number> }`）。新功能 = 往 registry 加一条；status 命令、service、其他计数器都不用改。各 noun 的 list 命令（`wolf job list`，之后 `wolf company list`、`wolf outreach list`）各自负责"带过滤的查询"。所有成熟 CLI（`git`、`kubectl`、`docker`、`gh`）都是这个形状。至于溢出：`wolf job list` 默认 limit 20，`--all` 明确 opt-in 全量，`--json` 用来对接管道。在当前规模下 SQL 聚合查询是微秒级——不要过早优化。
+**结果：** 采用。`src/application/statusApplicationService.ts` 定义 `StatusApplicationService`、`StatusCounter`、`StatusSummary`。`StatusApplicationServiceImpl` 用 `Promise.all` 并行跑 registry；单个 counter 抛异常时返回 `count: 0` + 内联 `error` 字符串（同时 warn 一条日志），不会因为一个坏了的 counter 把整个 dashboard 搞挂。Registry 在 `appContext.ts` 组装——起步三个：`tracked` / `tailored` / `applied`；hunt / fill / reach 上线时自行注册。`wolf job list` 取代老 `wolf status` 的列表语义，具体 flag 形态见下面的 2026-04-18 条目。
+
+---
+
+**2026-04-18 — `wolf <noun> list` 命令的统一形态**
+**我：** `wolf job list` 刚落地，`wolf company list` / `wolf outreach list` 显然接下来也要做，我不想每个 list 命令都自己发明一套 flag。另外 `wolf job list` 的第一版有两个会蔓延的味儿要趁早止住：per-field 过滤 flag（`--company`，之后还会有 `--title` 等等，无限增长），以及 `--company` 的实现居然把所有公司全 load 到 JS 里做 substring 过滤。
+**AI：** 所有未来的 `wolf <noun> list` 共用一套约定：
+
+*通用 flag：*
+- `--search <text>` —— 不区分大小写的子串匹配，**可重复**。多个 `--search` 在顶层 OR。**不**引入 query-language 语法（`|`、`&` 等）—— 一是 shell 冲突，二是容易滑坡成自制 DSL。要多个词就写多个 `--search`。
+- `--start <date>`、`--end <date>` —— 接受 ISO-8601 或 `YYYY-MM-DD`；命令边界规整为标准 ISO。
+- `--limit <n>` —— 默认 **20**。**不提供** `--all` 逃生通道。真想看全量：先 `wolf status` 看总数，再 `--limit <n>`。
+- `--json` —— 机器可读输出。
+
+*各命令的可搜字段：* `--search` 只匹配**散文型文本字段** —— 名称、标题、地点、描述等。枚举 / ID / URL / 结构化字段用各自专门的 flag（只在需要时再加）。`wolf job list`：`jobs.title`、`companies.name`（通过 LEFT JOIN）、`jobs.location`。`wolf company list`（未来）：`companies.name`、`companies.industry`、`companies.headquartersLocation`。JD 文本（`data/jobs/<dir>/jd.md`）**不**搜 —— data-layout 重构把 JD 放在磁盘上了，真要搜 `grep -l X data/jobs/*/jd.md` 一行解决。
+
+*过滤永远走 SQL。*  绝不 `repository.query({})` + JS substring。`JobQuery.search: string[]` 和 `CompanyQuery.nameContains: string` 是仓储层新增字段；`sqliteJobRepositoryImpl.ts` 的 `buildConditionsWithSearch()` 把每个搜索词包成 `or(like(title), like(location), like(companies.name))`，只有在有 search 时才 JOIN companies 表，没有 search 的查询仍是纯 `SELECT FROM jobs`。
+
+*命令边界做输入校验。* 坏输入（`--status bogus`、`--start not-a-date`、空的 `--search ""`）直接抛清晰错误，**绝不**静默返回零行。`types/job.ts` 的 `ALL_JOB_STATUSES` 是唯一真相；派生的 `JobStatus` 类型和校验器共享它，typo 没法和 union 漂移。
+**结果：** 采用。`wolf job list` 今天就按这个形态发货（见 AC-08）。未来的 list 命令引用此约定继承。升级路径延迟到需要时再做：把每个命令的校验器 Zod 化；SQLite FTS5 做 JD 全文搜索；如果 `--limit` 上限开始掣肘再上 cursor 分页。

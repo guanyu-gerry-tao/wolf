@@ -83,7 +83,8 @@ wolf/
 | `wolf tailor` | Tailor resume to a JD |
 | `wolf fill` | Auto-fill job application form |
 | `wolf reach` | Find HR contacts and send outreach |
-| `wolf status` | List tracked jobs with status/score |
+| `wolf status` | Dashboard summary: one count per module (tracked, tailored, applied, ...) |
+| `wolf job list` | List tracked jobs with `--search` (repeatable), `--status`, `--min-score`, `--source`, `--start`/`--end` range; default limit 20 |
 | `wolf env show` | List WOLF_* keys and whether they are set |
 | `wolf env clear` | Remove WOLF_* export lines from shell RC files |
 

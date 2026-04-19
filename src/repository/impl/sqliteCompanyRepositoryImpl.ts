@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, like } from 'drizzle-orm';
 import type { CompanyRepository } from '../companyRepository.js';
 import type { Company, CompanyQuery, CompanyUpdate } from '../../types/company.js';
 import type { DrizzleDb } from './drizzleDb.js';
@@ -92,16 +92,18 @@ export class SqliteCompanyRepositoryImpl implements CompanyRepository {
       conditions.push(eq(companies.industry, q.industry));
     }
 
-    const rows = await (q.limit !== undefined
-      ? this.db
-          .select()
-          .from(companies)
-          .where(and(...conditions))
-          .limit(q.limit)
-      : this.db
-          .select()
-          .from(companies)
-          .where(and(...conditions)));
+    // Substring match on name — pushes the filter to SQL instead of the
+    // old pattern of loading every row and filtering in JS. `like` on a
+    // TEXT column in SQLite is case-insensitive for ASCII by default.
+    if (q.nameContains !== undefined && q.nameContains.length > 0) {
+      const pattern = `%${q.nameContains}%`;
+      conditions.push(like(companies.name, pattern));
+    }
+
+    const baseQuery = this.db.select().from(companies).where(and(...conditions));
+    const rows = q.limit !== undefined
+      ? await baseQuery.limit(q.limit)
+      : await baseQuery;
 
     return rows.map(rowToCompany);
   }

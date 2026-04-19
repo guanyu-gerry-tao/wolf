@@ -28,6 +28,7 @@ import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
 import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
 import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefServiceImpl.js';
+import { StatusApplicationServiceImpl } from '../application/impl/statusApplicationServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import {
@@ -48,6 +49,10 @@ import type { JobProvider } from '../service/jobProvider.js';
 import type { RenderService } from '../service/renderService.js';
 import type { ResumeCoverLetterService } from '../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../service/tailoringBriefService.js';
+import type {
+  StatusApplicationService,
+  StatusCounter,
+} from '../application/statusApplicationService.js';
 import type { TailorApplicationService } from '../application/tailorApplicationService.js';
 import type { AiConfig } from '../types/index.js';
 
@@ -65,6 +70,7 @@ export interface AppContext {
   briefService: TailoringBriefService;
   // application services
   tailorApp: TailorApplicationService;
+  statusApp: StatusApplicationService;
   // config
   defaultAiConfig: AiConfig;
   // infrastructure
@@ -103,6 +109,17 @@ function wireContext(
     defaultAiConfig, defaultCoverLetterTone,
   );
 
+  // Each entry here is one module's contribution to the `wolf status`
+  // dashboard. Adding a feature (hunt, fill, reach) = add one entry; the
+  // command and service layers don't change. See docs/design/DECISIONS.md
+  // "Nouns over god-views" (2026-04-18).
+  const statusCounters: StatusCounter[] = [
+    { label: 'tracked',  count: () => jobRepo.countAll() },
+    { label: 'tailored', count: () => jobRepo.countWithTailoredResume() },
+    { label: 'applied',  count: async () => (await jobRepo.countByStatus()).applied },
+  ];
+  const statusApp = new StatusApplicationServiceImpl(statusCounters, logger);
+
   return {
     jobRepository: jobRepo,
     companyRepository: companyRepo,
@@ -114,6 +131,7 @@ function wireContext(
     rewriteService,
     briefService,
     tailorApp,
+    statusApp,
     defaultAiConfig,
     logger,
   };

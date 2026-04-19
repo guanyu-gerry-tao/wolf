@@ -1,25 +1,14 @@
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, like, lte, or, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { JobRepository } from '../jobRepository.js';
 import type { CompanyRepository } from '../companyRepository.js';
 import type { Job, JobQuery, JobStatus, JobUpdate } from '../../types/job.js';
+import { ALL_JOB_STATUSES } from '../../types/job.js';
 import type { DrizzleDb } from './drizzleDb.js';
-import { jobs } from './schema.js';
+import { companies, jobs } from './schema.js';
 import { jobDir } from '../../utils/workspacePaths.js';
-
-const ALL_STATUSES: JobStatus[] = [
-  'new',
-  'reviewed',
-  'ignored',
-  'filtered',
-  'applied',
-  'interview',
-  'offer',
-  'rejected',
-  'closed',
-  'error',
-];
 
 /**
  * Persists job rows in SQLite and the JD text in `<workspace>/data/jobs/<dir>/jd.md`.
@@ -52,44 +41,37 @@ export class SqliteJobRepositoryImpl implements JobRepository {
   }
 
   async query(q: JobQuery): Promise<Job[]> {
-    const conditions = [];
-
-    if (q.status !== undefined) {
-      if (Array.isArray(q.status)) {
-        conditions.push(inArray(jobs.status, q.status));
-      } else {
-        conditions.push(eq(jobs.status, q.status));
-      }
+    // Two paths so the non-search case stays a plain SELECT FROM jobs —
+    // no pointless join. Search needs the companies table to match
+    // company names in the same OR group as title/location.
+    if (hasSearch(q)) {
+      return this.querySearch(q);
     }
 
-    if (q.companyIds !== undefined && q.companyIds.length > 0) {
-      conditions.push(inArray(jobs.companyId, q.companyIds));
-    }
-
-    if (q.minScore !== undefined) {
-      conditions.push(gte(jobs.score, q.minScore));
-    }
-
-    if (q.since !== undefined) {
-      conditions.push(gte(jobs.createdAt, q.since));
-    }
-
-    if (q.source !== undefined) {
-      conditions.push(eq(jobs.source, q.source));
-    }
-
-    const rows = await (q.limit !== undefined
-      ? this.db
-          .select()
-          .from(jobs)
-          .where(and(...conditions))
-          .limit(q.limit)
-      : this.db
-          .select()
-          .from(jobs)
-          .where(and(...conditions)));
-
+    const conditions = buildBaseConditions(q);
+    const baseQuery = conditions.length > 0
+      ? this.db.select().from(jobs).where(and(...conditions))
+      : this.db.select().from(jobs);
+    const rows = q.limit !== undefined
+      ? await baseQuery.limit(q.limit)
+      : await baseQuery;
     return rows.map(rowToJob);
+  }
+
+  // Search path — joins companies so LIKE can match against company.name.
+  // Select wraps the job row in `{ job: jobs }` because Drizzle needs an
+  // explicit projection once a join is present.
+  private async querySearch(q: JobQuery): Promise<Job[]> {
+    const conditions = buildConditionsWithSearch(q);
+    const base = this.db
+      .select({ job: jobs })
+      .from(jobs)
+      .leftJoin(companies, eq(jobs.companyId, companies.id))
+      .where(and(...conditions));
+    const rows = q.limit !== undefined
+      ? await base.limit(q.limit)
+      : await base;
+    return rows.map((r) => rowToJob(r.job));
   }
 
   async update(id: string, patch: JobUpdate): Promise<void> {
@@ -113,7 +95,7 @@ export class SqliteJobRepositoryImpl implements JobRepository {
       .groupBy(jobs.status);
 
     const result = Object.fromEntries(
-      ALL_STATUSES.map((s) => [s, 0])
+      ALL_JOB_STATUSES.map((s) => [s, 0])
     ) as Record<JobStatus, number>;
 
     for (const row of rows) {
@@ -123,6 +105,41 @@ export class SqliteJobRepositoryImpl implements JobRepository {
     }
 
     return result;
+  }
+
+  async countAll(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(jobs);
+    return Number(row?.count ?? 0);
+  }
+
+  async countWithTailoredResume(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(jobs)
+      .where(isNotNull(jobs.tailoredResumePdfPath));
+    return Number(row?.count ?? 0);
+  }
+
+  async countMatching(q: JobQuery): Promise<number> {
+    // Mirror query()'s two paths so the two helpers can't drift — the parity
+    // tests in __tests__/sqliteJobRepositoryImpl.test.ts enforce this.
+    if (hasSearch(q)) {
+      const conditions = buildConditionsWithSearch(q);
+      const [row] = await this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(jobs)
+        .leftJoin(companies, eq(jobs.companyId, companies.id))
+        .where(and(...conditions));
+      return Number(row?.count ?? 0);
+    }
+
+    const conditions = buildBaseConditions(q);
+    const [row] = conditions.length > 0
+      ? await this.db.select({ count: sql<number>`count(*)` }).from(jobs).where(and(...conditions))
+      : await this.db.select({ count: sql<number>`count(*)` }).from(jobs);
+    return Number(row?.count ?? 0);
   }
 
   async delete(id: string): Promise<void> {
@@ -147,6 +164,92 @@ export class SqliteJobRepositoryImpl implements JobRepository {
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, 'jd.md'), jdText, 'utf-8');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Query helpers
+// ---------------------------------------------------------------------------
+
+// True when the query requires a join with `companies` to evaluate the
+// search predicate against company name. Decides which code path in
+// query() / countMatching() to take.
+function hasSearch(q: JobQuery): boolean {
+  return q.search !== undefined && q.search.length > 0;
+}
+
+// Base conditions that only reference the jobs table — no join needed.
+// Used directly by the non-search path and wrapped inside
+// buildConditionsWithSearch() for the search path.
+function buildBaseConditions(q: JobQuery): SQL[] {
+  const conditions: SQL[] = [];
+
+  if (q.status !== undefined) {
+    if (Array.isArray(q.status)) {
+      conditions.push(inArray(jobs.status, q.status));
+    } else {
+      conditions.push(eq(jobs.status, q.status));
+    }
+  }
+
+  if (q.companyIds !== undefined && q.companyIds.length > 0) {
+    conditions.push(inArray(jobs.companyId, q.companyIds));
+  }
+
+  if (q.minScore !== undefined) {
+    conditions.push(gte(jobs.score, q.minScore));
+  }
+
+  if (q.start !== undefined) {
+    conditions.push(gte(jobs.createdAt, q.start));
+  }
+
+  if (q.end !== undefined) {
+    conditions.push(lte(jobs.createdAt, q.end));
+  }
+
+  if (q.source !== undefined) {
+    conditions.push(eq(jobs.source, q.source));
+  }
+
+  return conditions;
+}
+
+// Conditions for the search path. Same base conditions PLUS a search OR
+// that spans title / location / company.name. Assumes the caller has
+// joined `companies` onto `jobs`.
+function buildConditionsWithSearch(q: JobQuery): SQL[] {
+  const conditions = buildBaseConditions(q);
+
+  if (!hasSearch(q)) return conditions;
+
+  // Each term becomes its own (title OR location OR company.name) predicate.
+  // Multiple terms are OR'd at the top level, so `--search A --search B`
+  // widens the match to rows matching either.
+  const perTermPredicates: SQL[] = [];
+  for (const rawTerm of q.search!) {
+    const term = rawTerm.trim();
+    if (term.length === 0) continue;
+    const pattern = `%${term}%`;
+    const termPredicate = or(
+      like(jobs.title, pattern),
+      like(jobs.location, pattern),
+      like(companies.name, pattern),
+    );
+    if (termPredicate !== undefined) {
+      perTermPredicates.push(termPredicate);
+    }
+  }
+
+  if (perTermPredicates.length === 1) {
+    conditions.push(perTermPredicates[0]);
+  } else if (perTermPredicates.length > 1) {
+    const combined = or(...perTermPredicates);
+    if (combined !== undefined) {
+      conditions.push(combined);
+    }
+  }
+
+  return conditions;
 }
 
 // ---------------------------------------------------------------------------
