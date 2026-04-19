@@ -118,10 +118,12 @@ export async function jobList(
   };
 
   // Kick off the data fetch and the match count in parallel so the overflow
-  // footer stays accurate without adding user-visible latency.
+  // footer stays accurate without adding user-visible latency. `countMatching`
+  // ignores `limit` by contract (asserted in the repo tests), so we pass the
+  // same query through to both calls.
   const [rows, totalMatching] = await Promise.all([
     ctx.jobRepository.query(query),
-    ctx.jobRepository.countMatching({ ...query, limit: undefined }),
+    ctx.jobRepository.countMatching(query),
   ]);
 
   // Resolve each row's company name for display. Cache per-call so a page

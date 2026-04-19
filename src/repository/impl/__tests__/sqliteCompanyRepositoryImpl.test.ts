@@ -103,6 +103,14 @@ describe('SqliteCompanyRepositoryImpl', () => {
       const rows = await repo.query({ nameContains: '' });
       expect(rows.length).toBe(4);
     });
+
+    // Whitespace-only input must trim to empty and be treated the same way.
+    // Without the trim it becomes `LIKE '%   %'`, which silently matches
+    // only rows whose name contains three spaces — a latent footgun.
+    it('ignores a whitespace-only nameContains value', async () => {
+      const rows = await repo.query({ nameContains: '   ' });
+      expect(rows.length).toBe(4);
+    });
   });
 
   describe('query() filter composition', () => {

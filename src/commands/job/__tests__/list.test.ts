@@ -8,8 +8,8 @@ import type { JobListResult } from '../../../types/commands.js';
 // `wolf job list` is the single place where filters, limits, and company-name
 // resolution meet. Tests here cover both the happy path (SQL filters pass
 // through, slim items returned) and the boundary behaviors that protect the
-// dashboard/list split: default limit, --all override, empty-match short-
-// circuit for company substring, and "N more" footer accounting.
+// dashboard/list split: default limit, search pass-through, "N more" footer
+// accounting, and validator rejection of bad input.
 
 function makeJob(overrides: Partial<Job> = {}): Job {
   return {
@@ -160,7 +160,7 @@ describe('jobList()', () => {
 
   // When the DB has more matching rows than the returned page, limited=true
   // and totalMatching reflects the real total — that's what powers the
-  // "... N more — use --all" footer in the CLI layer.
+  // "... N more — use --limit <n>" footer in the CLI layer.
   it('reports limited=true and the full match count when result is truncated', async () => {
     const ctx = makeCtx({
       jobs: [makeJob({ id: 'j1' })],

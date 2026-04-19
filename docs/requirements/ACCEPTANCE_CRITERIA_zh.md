@@ -229,6 +229,11 @@
 - When 命令运行
 - Then 匹配任一搜索词（标题、公司名、或地点）的职位都会显示 —— 多个 `--search` 在顶层做 OR
 
+**AC-08-6b — 搜索与结构化过滤以 AND 组合**
+- Given 用户运行 `wolf job list --search acme --status applied --min-score 0.7`
+- When 命令运行
+- Then 仅显示同时满足搜索 **以及** 每个结构化过滤的职位 —— 搜索 OR 组与每个结构化过滤在顶层用 AND 组合
+
 **AC-08-7 — 时间范围**
 - Given 用户运行 `wolf job list --start 2026-04-01 --end 2026-04-18`
 - When 命令运行

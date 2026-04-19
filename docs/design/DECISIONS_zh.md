@@ -230,7 +230,7 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 
 **2026-04-18 — Nouns over god-views：把 `wolf status` 拆成 dashboard + 各 noun 的 `list`**
 **我：** 担心每加一个新功能（outreach、hunt、fill 等）都要改 `wolf status` 把自己那部分状态塞进去——典型的"什么都往里塞"的 god-view，很快就会腐烂。也担心终端溢出：hunt 回来 1000 条 job 一股脑打到 shell 里就没法看了。
-**AI：** 两个问题一个解法——不要让 `status` 随功能增长。让"名词"（noun）增长。`wolf status` 变成**聚合计数仪表盘**，每个模块往 registry 里注册一个 `StatusCounter`（`{ label, count: () => Promise<number> }`）。新功能 = 往 registry 加一条；status 命令、service、其他计数器都不用改。各 noun 的 list 命令（`wolf job list`，之后 `wolf company list`、`wolf outreach list`）各自负责"带过滤的查询"。所有成熟 CLI（`git`、`kubectl`、`docker`、`gh`）都是这个形状。至于溢出：`wolf job list` 默认 limit 20，`--all` 明确 opt-in 全量，`--json` 用来对接管道。在当前规模下 SQL 聚合查询是微秒级——不要过早优化。
+**AI：** 两个问题一个解法——不要让 `status` 随功能增长。让"名词"（noun）增长。`wolf status` 变成**聚合计数仪表盘**，每个模块往 registry 里注册一个 `StatusCounter`（`{ label, count: () => Promise<number> }`）。新功能 = 往 registry 加一条；status 命令、service、其他计数器都不用改。各 noun 的 list 命令（`wolf job list`，之后 `wolf company list`、`wolf outreach list`）各自负责"带过滤的查询"。所有成熟 CLI（`git`、`kubectl`、`docker`、`gh`）都是这个形状。溢出由下面的 list 命令约定处理（默认 limit 20，明确 `--limit`，`--json` 对接管道）。在当前规模下 SQL 聚合查询是微秒级——不要过早优化。
 **结果：** 采用。`src/application/statusApplicationService.ts` 定义 `StatusApplicationService`、`StatusCounter`、`StatusSummary`。`StatusApplicationServiceImpl` 用 `Promise.all` 并行跑 registry；单个 counter 抛异常时返回 `count: 0` + 内联 `error` 字符串（同时 warn 一条日志），不会因为一个坏了的 counter 把整个 dashboard 搞挂。Registry 在 `appContext.ts` 组装——起步三个：`tracked` / `tailored` / `applied`；hunt / fill / reach 上线时自行注册。`wolf job list` 取代老 `wolf status` 的列表语义，具体 flag 形态见下面的 2026-04-18 条目。
 
 ---

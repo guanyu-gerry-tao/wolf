@@ -229,6 +229,11 @@ Follows the standard shape for `wolf <noun> list` commands — see DECISIONS.md 
 - When the command runs
 - Then jobs matching EITHER search term (across title, company name, or location) are shown — multiple `--search` flags OR at the top level
 
+**AC-08-6b — Search composes with structured filters via AND**
+- Given the user runs `wolf job list --search acme --status applied --min-score 0.7`
+- When the command runs
+- Then only jobs matching the search AND every structured filter are shown — the search OR group and each structured filter are combined with AND at the top level
+
 **AC-08-7 — Time range**
 - Given the user runs `wolf job list --start 2026-04-01 --end 2026-04-18`
 - When the command runs

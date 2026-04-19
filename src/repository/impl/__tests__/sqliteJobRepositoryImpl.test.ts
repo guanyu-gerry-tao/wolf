@@ -309,9 +309,17 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
       { status: 'applied' },
       { minScore: 0.7 },
       { start: '2026-04-13T00:00:00.000Z' },
+      { end: '2026-04-12T00:00:00.000Z' },
       { source: 'LinkedIn' },
       { companyIds: ['c-acme', 'c-beta'] },
       { status: 'new', minScore: 0.4 },
+      // Search shapes exercise the join path — countMatching and query must
+      // still agree when LEFT JOIN is in scope. If the search branch and
+      // non-search branch drift, this catches it.
+      { search: ['acme'] },
+      { search: ['acme', 'beta'] },
+      { search: ['acme'], status: 'applied' },
+      { search: ['engineer'], minScore: 0.5 },
     ];
 
     for (const q of filterShapes) {

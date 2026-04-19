@@ -95,9 +95,16 @@ export class SqliteCompanyRepositoryImpl implements CompanyRepository {
     // Substring match on name — pushes the filter to SQL instead of the
     // old pattern of loading every row and filtering in JS. `like` on a
     // TEXT column in SQLite is case-insensitive for ASCII by default.
-    if (q.nameContains !== undefined && q.nameContains.length > 0) {
-      const pattern = `%${q.nameContains}%`;
-      conditions.push(like(companies.name, pattern));
+    //
+    // Trim first so callers passing whitespace-only input (e.g. a future
+    // `wolf company list --name "   "`) don't end up with `LIKE '%   %'`
+    // silently matching rows whose name happens to contain spaces.
+    if (q.nameContains !== undefined) {
+      const needle = q.nameContains.trim();
+      if (needle.length > 0) {
+        const pattern = `%${needle}%`;
+        conditions.push(like(companies.name, pattern));
+      }
     }
 
     const baseQuery = this.db.select().from(companies).where(and(...conditions));
