@@ -187,7 +187,17 @@ jobCmd
       '--status / --min-score / --source for structured filters; ' +
       '--start / --end for time range; --json for machine-readable output.',
   )
-  .option('--search <text>', 'Substring search across title, company name, and location. Repeatable — multiple terms are OR\'d.', collectSearchTerms, [])
+  .option(
+    '--search <text>',
+    'Substring search across title, company name, and location. ' +
+      'Repeatable — multiple terms are OR\'d. ' +
+      'Terms are matched as SQL LIKE patterns — we wrap your input as %<term>%, ' +
+      'so `%` and `_` in the term act as wildcards ' +
+      '(`%` = any sequence, `_` = exactly one character). ' +
+      'Useful for AI callers; human users rarely need to care.',
+    collectSearchTerms,
+    [],
+  )
   .option('-s, --status <status>', 'Filter by status (e.g. new, applied, interview)')
   .option('--min-score <n>', 'Filter by minimum score', parseFloat)
   .option('--start <date>', 'Lower bound on createdAt (ISO 8601 or YYYY-MM-DD)')

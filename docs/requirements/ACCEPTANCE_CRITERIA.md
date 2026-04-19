@@ -234,6 +234,12 @@ Follows the standard shape for `wolf <noun> list` commands — see DECISIONS.md 
 - When the command runs
 - Then only jobs matching the search AND every structured filter are shown — the search OR group and each structured filter are combined with AND at the top level
 
+**AC-08-6c — Search terms are SQL LIKE patterns with `%`/`_` as wildcards**
+- Given the user's `--search <term>` value contains `%` or `_`
+- When the command runs
+- Then `%` matches any sequence and `_` matches any single character — i.e. `--search "C_Dev"` matches `CADev`, `C1Dev`, …, and `--search "50%"` matches `50`, `500`, `50abc`, etc.
+- This is documented behavior, not a bug — AI callers can use it deliberately. Human callers who don't know about wildcards see more matches than expected, never fewer (no silent-empty failure)
+
 **AC-08-7 — Time range**
 - Given the user runs `wolf job list --start 2026-04-01 --end 2026-04-18`
 - When the command runs
