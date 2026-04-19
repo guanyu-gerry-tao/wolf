@@ -187,29 +187,88 @@ Each section corresponds to a User Story and Use Case.
 
 ---
 
-## AC-08 · Job Tracking (`wolf status`)
+## AC-08 · Job Tracking (`wolf status` + `wolf job list`)
 
 **Story:** US-08 · **Use case:** UC-08
 
-**AC-08-1 — Table output**
+Job tracking split into two commands (see DECISIONS.md 2026-04-18 · "Nouns over god-views"). `wolf status` is the aggregate dashboard that never grows with new features; `wolf job list` owns filtered inspection of individual rows.
+
+### `wolf status` — dashboard summary
+
+**AC-08-1 — Counter output**
 - Given at least one job exists in the DB
 - When the user runs `wolf status`
-- Then a table is printed with columns: job title, company, score, status, date added
+- Then one count per registered module is printed (e.g. `tracked`, `tailored`, `applied`), one per line, labels left-aligned
 
-**AC-08-2 — Status filter**
-- Given the user runs `wolf status --status applied`
-- When the command runs
-- Then only jobs with `status: applied` are shown
-
-**AC-08-3 — Score filter**
-- Given the user runs `wolf status --score 0.7`
-- When the command runs
-- Then only jobs with score ≥ 0.7 are shown
-
-**AC-08-4 — Empty state**
-- Given no jobs exist in the DB
+**AC-08-2 — Resilient aggregation**
+- Given one module's counter throws (e.g. DB error for that specific count)
 - When the user runs `wolf status`
-- Then wolf prints a helpful message (e.g. "No jobs tracked yet. Run `wolf hunt` to get started.") instead of an empty table
+- Then the remaining counters are still printed; the failed counter shows `0 [error: ...]` inline so the dashboard is not lost to a single fault
+
+### `wolf job list` — filtered list view
+
+Follows the standard shape for `wolf <noun> list` commands — see DECISIONS.md 2026-04-18 · "Standard shape for `wolf <noun> list` commands".
+
+**AC-08-3 — Default table output**
+- Given at least one job exists in the DB
+- When the user runs `wolf job list`
+- Then a table is printed with columns: id (short), company, title, status, score; default limit of 20 rows
+
+**AC-08-4 — Structured filters (AND semantics)**
+- Given the user runs `wolf job list --status applied --min-score 0.7 --source LinkedIn`
+- When the command runs
+- Then only jobs matching all three structured filters are shown
+
+**AC-08-5 — Search filter**
+- Given the user runs `wolf job list --search acme`
+- When the command runs
+- Then only jobs whose title OR company name OR location contain "acme" (case-insensitive substring) are shown
+
+**AC-08-6 — Repeatable search for OR**
+- Given the user runs `wolf job list --search google --search apple`
+- When the command runs
+- Then jobs matching EITHER search term (across title, company name, or location) are shown — multiple `--search` flags OR at the top level
+
+**AC-08-6b — Search composes with structured filters via AND**
+- Given the user runs `wolf job list --search acme --status applied --min-score 0.7`
+- When the command runs
+- Then only jobs matching the search AND every structured filter are shown — the search OR group and each structured filter are combined with AND at the top level
+
+**AC-08-6c — Search terms are SQL LIKE patterns with `%`/`_` as wildcards**
+- Given the user's `--search <term>` value contains `%` or `_`
+- When the command runs
+- Then `%` matches any sequence and `_` matches any single character — i.e. `--search "C_Dev"` matches `CADev`, `C1Dev`, …, and `--search "50%"` matches `50`, `500`, `50abc`, etc.
+- This is documented behavior, not a bug — AI callers can use it deliberately. Human callers who don't know about wildcards see more matches than expected, never fewer (no silent-empty failure)
+
+**AC-08-7 — Time range**
+- Given the user runs `wolf job list --start 2026-04-01 --end 2026-04-18`
+- When the command runs
+- Then only jobs with `createdAt` between the two dates inclusive are shown; invalid dates produce a clear error
+
+**AC-08-8 — Overflow footer**
+- Given the total matching rows exceed the limit
+- When the command runs
+- Then after the table wolf prints a `... N more — use --limit <n> to see more` footer with the accurate remaining count
+
+**AC-08-9 — Empty state**
+- Given no jobs match the filters (or no jobs exist)
+- When the user runs `wolf job list`
+- Then wolf prints `No jobs match.` instead of an empty table
+
+**AC-08-10 — Machine-readable output**
+- Given the user runs `wolf job list --json`
+- When the command runs
+- Then wolf prints the full result object as pretty-printed JSON (jobs array plus `totalMatching` and `limited`); no table, no overflow footer
+
+**AC-08-11 — Invalid input is rejected, not silently empty**
+- Given the user runs `wolf job list --status bogus` (or `--min-score abc`, `--start not-a-date`, `--search ""`, `--limit 0`)
+- When the command runs
+- Then wolf throws with a clear error message (listing valid statuses, or naming the offending flag); it does NOT silently return zero rows
+
+**AC-08-12 — No `--all`, no JD content search**
+- Given the user wants to dump every row or search JD text
+- When the user looks for a flag
+- Then there is no `--all` flag (use `--limit <n>` explicitly); JD content is not searchable via the CLI (`grep -l X data/jobs/*/jd.md` is the escape hatch)
 
 ---
 

@@ -187,29 +187,88 @@
 
 ---
 
-## AC-08 · 求职进度追踪（`wolf status`）
+## AC-08 · 求职进度追踪（`wolf status` + `wolf job list`）
 
 **故事：** US-08 · **用例：** UC-08
 
-**AC-08-1 — 表格输出**
+求职追踪拆成两个命令（见 DECISIONS.md 2026-04-18 · "Nouns over god-views"）。`wolf status` 是聚合仪表盘，永远不会随着新功能增长；`wolf job list` 负责带过滤的单条记录查询。
+
+### `wolf status` —— 仪表盘汇总
+
+**AC-08-1 — 计数器输出**
 - Given 数据库中至少存在一条职位记录
 - When 用户运行 `wolf status`
-- Then 打印包含以下列的表格：职位名称、公司、评分、状态、添加日期
+- Then 每个已注册的模块打印一行计数（如 `tracked`、`tailored`、`applied`），label 左对齐
 
-**AC-08-2 — 状态过滤**
-- Given 用户运行 `wolf status --status applied`
-- When 命令运行
-- Then 仅显示 `status: applied` 的职位
-
-**AC-08-3 — 评分过滤**
-- Given 用户运行 `wolf status --score 0.7`
-- When 命令运行
-- Then 仅显示评分 ≥ 0.7 的职位
-
-**AC-08-4 — 空状态提示**
-- Given 数据库中不存在任何职位
+**AC-08-2 — 容错聚合**
+- Given 某一个计数器抛异常（例如该计数的 DB 查询失败）
 - When 用户运行 `wolf status`
-- Then wolf 打印引导性提示（如"暂无已追踪的职位，运行 `wolf hunt` 开始搜索。"），而非空表格
+- Then 其他计数器仍正常打印；失败的那一行显示 `0 [error: ...]`，不会因为单点故障丢掉整个仪表盘
+
+### `wolf job list` —— 过滤列表视图
+
+遵循所有 `wolf <noun> list` 命令的统一形态 —— 见 DECISIONS.md 2026-04-18 · "Standard shape for `wolf <noun> list` commands"。
+
+**AC-08-3 — 默认表格输出**
+- Given 数据库中至少存在一条职位记录
+- When 用户运行 `wolf job list`
+- Then 打印包含以下列的表格：id（短）、公司、职位、状态、评分；默认显示 20 条
+
+**AC-08-4 — 结构化过滤（AND 语义）**
+- Given 用户运行 `wolf job list --status applied --min-score 0.7 --source LinkedIn`
+- When 命令运行
+- Then 仅显示同时满足三个结构化过滤的职位
+
+**AC-08-5 — 搜索过滤**
+- Given 用户运行 `wolf job list --search acme`
+- When 命令运行
+- Then 仅显示职位标题、公司名、或地点中（不区分大小写）包含 "acme" 子串的职位
+
+**AC-08-6 — 可重复的 --search（OR 语义）**
+- Given 用户运行 `wolf job list --search google --search apple`
+- When 命令运行
+- Then 匹配任一搜索词（标题、公司名、或地点）的职位都会显示 —— 多个 `--search` 在顶层做 OR
+
+**AC-08-6b — 搜索与结构化过滤以 AND 组合**
+- Given 用户运行 `wolf job list --search acme --status applied --min-score 0.7`
+- When 命令运行
+- Then 仅显示同时满足搜索 **以及** 每个结构化过滤的职位 —— 搜索 OR 组与每个结构化过滤在顶层用 AND 组合
+
+**AC-08-6c — 搜索词按 SQL LIKE 模式处理，`%` / `_` 为通配符**
+- Given 用户的 `--search <term>` 中包含 `%` 或 `_`
+- When 命令运行
+- Then `%` 匹配任意字符序列，`_` 匹配任意单个字符 —— 即 `--search "C_Dev"` 会命中 `CADev`、`C1Dev` 等；`--search "50%"` 会命中 `50`、`500`、`50abc` 等
+- 这是**文档化行为**，不是 bug —— AI 调用方可以有意识地使用。人类调用方即使不知道通配符，最坏情况只会看到比预期更多的匹配，**不会**出现静默空集
+
+**AC-08-7 — 时间范围**
+- Given 用户运行 `wolf job list --start 2026-04-01 --end 2026-04-18`
+- When 命令运行
+- Then 仅显示 `createdAt` 落在两个日期之间（包含两端）的职位；非法日期产生清晰错误
+
+**AC-08-8 — 溢出提示**
+- Given 符合条件的总行数超过 limit
+- When 命令运行
+- Then 在表格下方打印 `... N more — use --limit <n> to see more`，N 为剩余条数
+
+**AC-08-9 — 空状态提示**
+- Given 没有任何职位匹配过滤条件（或数据库为空）
+- When 用户运行 `wolf job list`
+- Then wolf 打印 `No jobs match.`，而非空表格
+
+**AC-08-10 — 机器可读输出**
+- Given 用户运行 `wolf job list --json`
+- When 命令运行
+- Then wolf 打印完整结果对象的 pretty-printed JSON（jobs 数组加 `totalMatching`、`limited`）；不打印表格和溢出提示
+
+**AC-08-11 — 非法输入会报错，而不是静默返回空**
+- Given 用户运行 `wolf job list --status bogus`（或 `--min-score abc`、`--start not-a-date`、`--search ""`、`--limit 0`）
+- When 命令运行
+- Then wolf 抛清晰错误（列出合法 status，或指出具体有问题的 flag）；**不**静默返回零行
+
+**AC-08-12 — 不提供 `--all`，不搜 JD 文本**
+- Given 用户想 dump 全部行或搜 JD 文本
+- When 用户找对应 flag
+- Then 没有 `--all`（想看全部请用 `--limit <n>`）；JD 文本不通过 CLI 搜（想搜走 `grep -l X data/jobs/*/jd.md`）
 
 ---
 

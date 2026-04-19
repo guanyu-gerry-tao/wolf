@@ -29,6 +29,11 @@ export interface Company {
 export interface CompanyQuery {
   size?: CompanySize | CompanySize[];
   industry?: string;
+  /**
+   * Case-insensitive substring match on `name`. Implemented in SQL via
+   * `LIKE '%...%'` so callers don't have to load-and-filter in memory.
+   */
+  nameContains?: string;
   limit?: number;
 }
 

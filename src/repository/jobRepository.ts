@@ -8,6 +8,19 @@ export interface JobRepository {
   update(id: string, patch: JobUpdate): Promise<void>;
   updateMany(ids: string[], patch: JobUpdate): Promise<void>;
   countByStatus(): Promise<Record<JobStatus, number>>;
+
+  /** Total number of jobs in the DB, regardless of status. */
+  countAll(): Promise<number>;
+
+  /**
+   * Number of jobs whose tailor pipeline has produced a resume PDF.
+   * Used by the status dashboard's "tailored" counter.
+   */
+  countWithTailoredResume(): Promise<number>;
+
+  /** Total number of rows matching a query, ignoring the query's `limit`. */
+  countMatching(q: JobQuery): Promise<number>;
+
   delete(id: string): Promise<void>;
 
   /**

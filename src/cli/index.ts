@@ -5,7 +5,8 @@ import { score } from '../commands/score/index.js';
 import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from '../commands/tailor/index.js';
 import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
-import { status } from '../commands/status/index.js';
+import { status, formatStatus } from '../commands/status/index.js';
+import { jobList, formatJobList } from '../commands/job/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
 import { envShow, envSet, envClear } from '../commands/env/index.js';
@@ -164,18 +165,69 @@ program
 
 program
   .command('status')
-  .description('List tracked jobs with status and score')
-  .option('-s, --status <status>', 'Filter by status')
+  .description('Dashboard summary: one count per module (tracked, tailored, applied, ...)')
+  .action(async () => {
+    const result = await status();
+    console.log(formatStatus(result));
+  });
+
+// Commander's collector for repeatable flags. Each occurrence of --search
+// appends one term to the accumulator. Needs to live at module scope so the
+// initial empty array is captured per option definition.
+function collectSearchTerms(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
+const jobCmd = new Command('job').description('Inspect tracked jobs');
+jobCmd
+  .command('list')
+  .description(
+    'List tracked jobs with filters. Default limit 20. ' +
+      'Use --search (repeatable) for free-form substring match; ' +
+      '--status / --min-score / --source for structured filters; ' +
+      '--start / --end for time range; --json for machine-readable output.',
+  )
+  .option(
+    '--search <text>',
+    'Substring search across title, company name, and location. ' +
+      'Repeatable — multiple terms are OR\'d. ' +
+      'Terms are matched as SQL LIKE patterns — we wrap your input as %<term>%, ' +
+      'so `%` and `_` in the term act as wildcards ' +
+      '(`%` = any sequence, `_` = exactly one character). ' +
+      'Useful for AI callers; human users rarely need to care.',
+    collectSearchTerms,
+    [],
+  )
+  .option('-s, --status <status>', 'Filter by status (e.g. new, applied, interview)')
   .option('--min-score <n>', 'Filter by minimum score', parseFloat)
-  .option('--since <date>', 'Filter by date (ISO 8601)')
+  .option('--start <date>', 'Lower bound on createdAt (ISO 8601 or YYYY-MM-DD)')
+  .option('--end <date>', 'Upper bound on createdAt (ISO 8601 or YYYY-MM-DD)')
+  .option('--source <source>', 'Filter by source (LinkedIn, Indeed, ...)')
+  .option('-n, --limit <n>', 'Maximum rows to show (default 20)', (v) => parseInt(v, 10))
+  .option('--json', 'Machine-readable output')
   .action(async (opts) => {
-    const result = await status({
+    // Normalize --search: the collector defaults to [] even when no flag is
+    // given, but passing an empty array through to the repo is wasted work,
+    // so we hand `undefined` through to keep JobQuery's contract clean.
+    const search: string[] | undefined = opts.search.length > 0 ? opts.search : undefined;
+
+    const result = await jobList({
+      search,
       status: opts.status,
       minScore: opts.minScore,
-      since: opts.since,
+      start: opts.start,
+      end: opts.end,
+      source: opts.source,
+      limit: opts.limit,
     });
-    console.log(JSON.stringify(result, null, 2));
+
+    if (opts.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(formatJobList(result));
+    }
   });
+program.addCommand(jobCmd);
 
 const configCmd = new Command('config').description('Get or set wolf.toml fields by dot-path key');
 configCmd

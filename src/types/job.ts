@@ -1,18 +1,41 @@
 import { Sponsorship } from "./sponsorship.js";
 
+/**
+ * Every value a job's status column can hold — the single source of truth.
+ * The `JobStatus` type below is derived from this array, so adding or
+ * removing a value automatically updates the type with zero drift risk.
+ *
+ * Semantics per value:
+ *   new                 just found by wolf, not yet reviewed
+ *   reviewed            user has seen it, not dismissed — next step is to apply
+ *   ignored             user manually dismissed; kept for recovery
+ *   filtered            auto-dismissed by dealbreaker rules; kept for recovery
+ *   applied             application submitted by wolf
+ *   applied_previously  fill detected the role was already applied to before
+ *                       wolf processed it; skipped
+ *   interview           company reached out for interview
+ *   offer               received an offer
+ *   rejected            company passed, or user withdrew
+ *   closed              role is closed, or user marked it closed after no
+ *                       response for a long time
+ *   error               something went wrong during processing
+ */
+export const ALL_JOB_STATUSES = [
+  'new',
+  'reviewed',
+  'ignored',
+  'filtered',
+  'applied',
+  'applied_previously',
+  'interview',
+  'offer',
+  'rejected',
+  'closed',
+  'error',
+] as const;
+
 /** Where a job sits in the user's personal pipeline. */
-export type JobStatus =
-  | "new" // just found by wolf, not yet reviewed
-  | "reviewed" // user has seen it, not dismissed — next step is to apply
-  | "ignored" // user manually dismissed; kept for recovery
-  | "filtered" // auto-dismissed by dealbreaker rules; kept for recovery
-  | "applied" // application submitted by wolf
-  | "applied_previously" // fill detected the role was already applied to before wolf processed it; skipped
-  | "interview" // company reached out for interview
-  | "offer" // received an offer
-  | "rejected" // company passed, or user withdrew
-  | "closed" // role is closed, or user marked it as closed after no response for a long time
-  | "error"; // something went wrong during processing
+export type JobStatus = (typeof ALL_JOB_STATUSES)[number];
 
 export type JobError =
   // score
@@ -80,8 +103,17 @@ export interface JobQuery {
   status?: JobStatus | JobStatus[];
   companyIds?: string[];
   minScore?: number;
-  since?: string; // ISO 8601
+  /** Lower bound on createdAt (ISO 8601). Rows created on/after are included. */
+  start?: string;
+  /** Upper bound on createdAt (ISO 8601). Rows created on/before are included. */
+  end?: string;
   source?: JobSource;
+  /**
+   * Free-form search terms. Each term is substring-matched (case-insensitive)
+   * against the job's title, location, and its company's name. Terms are
+   * OR'd together at the top level — giving multiple terms widens the match.
+   */
+  search?: string[];
   limit?: number;
 }
 
