@@ -30,8 +30,15 @@ import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterS
 import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
+import {
+  createConsoleSink,
+  createFileSink,
+  createLogger,
+  createSilentLogger,
+} from '../utils/logger.js';
 import { parseModelRef } from '../utils/parseModelRef.js';
 
+import type { Logger } from '../utils/logger.js';
 import type { JobRepository } from '../repository/jobRepository.js';
 import type { CompanyRepository } from '../repository/companyRepository.js';
 import type { BatchRepository } from '../repository/batchRepository.js';
@@ -60,6 +67,8 @@ export interface AppContext {
   tailorApp: TailorApplicationService;
   // config
   defaultAiConfig: AiConfig;
+  // infrastructure
+  logger: Logger;
 }
 
 /**
@@ -74,6 +83,7 @@ function wireContext(
   workspaceDir: string,
   defaultAiConfig: AiConfig,
   defaultCoverLetterTone: string,
+  logger: Logger,
 ): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
@@ -105,6 +115,7 @@ function wireContext(
     briefService,
     tailorApp,
     defaultAiConfig,
+    logger,
   };
 }
 
@@ -130,7 +141,19 @@ export function createAppContext(): AppContext {
   const defaultAiConfig: AiConfig = parseModelRef(config.tailor.model);
   const defaultCoverLetterTone = config.tailor.defaultCoverLetterTone;
 
-  return wireContext(sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone);
+  // Console to stderr + JSONL file sink under data/logs/. Level and console
+  // format come from WOLF_LOG / WOLF_LOG_FORMAT env vars (info + pretty by
+  // default). See src/utils/logger.ts.
+  const logger = createLogger({
+    sinks: [
+      createConsoleSink(process.env.WOLF_LOG_FORMAT === 'json' ? 'json' : 'pretty'),
+      createFileSink(path.join(dataDir, 'logs', 'wolf.log.jsonl')),
+    ],
+  });
+
+  return wireContext(
+    sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone, logger,
+  );
 }
 
 /**
@@ -144,5 +167,8 @@ export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
   const profileRepository = new InMemoryProfileRepositoryImpl();
   const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
-  return wireContext(sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, 'professional');
+  return wireContext(
+    sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, 'professional',
+    createSilentLogger(),
+  );
 }
