@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RenderServiceImpl } from '../impl/renderServiceImpl.js';
 import { CannotFitError, CannotFillError } from '../impl/render/fit.js';
+import { createSilentLogger } from '../../utils/logger.js';
 import type { FitResult } from '../impl/render/fit.js';
 
 const FAKE_PDF = Buffer.from('fake-pdf-bytes');

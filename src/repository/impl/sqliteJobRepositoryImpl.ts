@@ -258,6 +258,10 @@ function buildConditionsWithSearch(q: JobQuery): SQL[] {
 
 type JobRow = typeof jobs.$inferSelect;
 
+// Drizzle's `$inferSelect` already types every nullable column as `T | null`,
+// so the rowToJob mapper can pass those fields through directly — no
+// defensive `?? null` needed. The insert-side mapper below still coalesces
+// to `undefined` because `$inferInsert` shapes optional columns that way.
 function rowToJob(row: JobRow): Job {
   return {
     id: row.id,
@@ -267,19 +271,19 @@ function rowToJob(row: JobRow): Job {
     source: row.source,
     location: row.location,
     remote: row.remote,
-    salary: row.salary ?? null,
+    salary: row.salary,
     workAuthorizationRequired: row.workAuthorizationRequired,
     clearanceRequired: row.clearanceRequired,
-    score: row.score ?? null,
-    scoreJustification: row.scoreJustification ?? null,
+    score: row.score,
+    scoreJustification: row.scoreJustification,
     status: row.status,
-    error: row.error ?? null,
-    appliedProfileId: row.appliedProfileId ?? null,
-    tailoredResumePdfPath: row.tailoredResumePdfPath ?? null,
-    coverLetterHtmlPath: row.coverLetterHtmlPath ?? null,
-    coverLetterPdfPath: row.coverLetterPdfPath ?? null,
-    screenshotPath: row.screenshotPath ?? null,
-    outreachDraftPath: row.outreachDraftPath ?? null,
+    error: row.error,
+    appliedProfileId: row.appliedProfileId,
+    tailoredResumePdfPath: row.tailoredResumePdfPath,
+    coverLetterHtmlPath: row.coverLetterHtmlPath,
+    coverLetterPdfPath: row.coverLetterPdfPath,
+    screenshotPath: row.screenshotPath,
+    outreachDraftPath: row.outreachDraftPath,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

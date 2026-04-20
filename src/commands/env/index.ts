@@ -218,6 +218,10 @@ const RC_FILES = [
   path.join(os.homedir(), '.profile'),
 ];
 
+// Matches a shell `export WOLF_...=...` line. Used both to find existing
+// entries (envClear preview) and to remove them (envClear action).
+const WOLF_EXPORT_LINE_RE = /^export\s+WOLF_/;
+
 /**
  * Removes all WOLF_* export lines from shell RC files and instructs the user
  * to reload their shell. On Windows (no RC files), prints manual instructions.
@@ -230,28 +234,18 @@ export async function envClear(): Promise<void> {
     return;
   }
 
-  const matches: { file: string; lines: string[] }[] = [];
-  for (const rc of RC_FILES) {
-    let content: string;
-    try {
-      content = await fs.readFile(rc, 'utf-8');
-    } catch {
-      continue;
-    }
-    const wolfLines = content
-      .split('\n')
-      .filter(l => /^export\s+WOLF_/.test(l.trim()));
-    if (wolfLines.length > 0) {
-      matches.push({ file: rc, lines: wolfLines });
-    }
-  }
+  // Scan every candidate RC file for `export WOLF_...` lines. Missing files
+  // are normal — a user may have only .zshrc or only .bashrc, never both.
+  const matches = await findWolfExportsAcrossRcFiles();
 
+  // Bail out with a helpful hint when nothing's there to clean up.
   if (matches.length === 0) {
     console.log('\nNo WOLF_* export lines found in shell RC files.\n');
     console.log(dim('If you set them another way (e.g. /etc/environment), remove them manually.\n'));
     return;
   }
 
+  // Show the user exactly which files and lines will be touched.
   console.log(`\n${bold('Found WOLF_* exports in:')}\n`);
   for (const { file, lines } of matches) {
     console.log(`  ${file}`);
@@ -261,6 +255,7 @@ export async function envClear(): Promise<void> {
   }
   console.log('');
 
+  // Destructive edit — require an explicit confirmation.
   const confirmed = await confirm({
     message: red('Remove all WOLF_* export lines from the files above?'),
     default: false,
@@ -270,13 +265,9 @@ export async function envClear(): Promise<void> {
     return;
   }
 
+  // Rewrite each file with matching lines removed.
   for (const { file } of matches) {
-    const content = await fs.readFile(file, 'utf-8');
-    const cleaned = content
-      .split('\n')
-      .filter(l => !/^export\s+WOLF_/.test(l.trim()))
-      .join('\n');
-    await fs.writeFile(file, cleaned, 'utf-8');
+    await removeWolfExportsFromRcFile(file);
     console.log(`  ${green('✓')} Cleaned ${file}`);
   }
 
@@ -286,4 +277,35 @@ ${bold('Done.')} Reload your shell to apply:
 
 Current session still has the keys in memory — open a new terminal to fully clear them.
 `);
+}
+
+// Returns the RC files that contain at least one `export WOLF_...` line,
+// with the matching lines for preview. Missing files are skipped.
+async function findWolfExportsAcrossRcFiles(): Promise<{ file: string; lines: string[] }[]> {
+  const matches: { file: string; lines: string[] }[] = [];
+  for (const rc of RC_FILES) {
+    let content: string;
+    try {
+      content = await fs.readFile(rc, 'utf-8');
+    } catch {
+      // File doesn't exist — not every user has every RC file.
+      continue;
+    }
+    const wolfLines = content.split('\n').filter((l) => WOLF_EXPORT_LINE_RE.test(l.trim()));
+    if (wolfLines.length > 0) {
+      matches.push({ file: rc, lines: wolfLines });
+    }
+  }
+  return matches;
+}
+
+// Rewrite `file` with every `export WOLF_...` line removed. Non-matching
+// lines (comments, non-wolf exports, blank lines) are preserved verbatim.
+async function removeWolfExportsFromRcFile(file: string): Promise<void> {
+  const content = await fs.readFile(file, 'utf-8');
+  const cleaned = content
+    .split('\n')
+    .filter((l) => !WOLF_EXPORT_LINE_RE.test(l.trim()))
+    .join('\n');
+  await fs.writeFile(file, cleaned, 'utf-8');
 }

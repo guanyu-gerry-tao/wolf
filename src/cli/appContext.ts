@@ -2,15 +2,21 @@
  * appContext.ts — Manual dependency injection container for wolf.
  *
  * Construction order:
- *   1. Open SQLite (real path or :memory: for tests)
- *   2. Wrap with Drizzle
- *   3. initializeSchema — creates tables if not exist
- *   4. Construct repositories (each receives DrizzleDb only)
- *   5. Construct services (each receives repository interfaces only)
- *   6. Construct application services (receive repositories + services)
+ *   1. Install the default logger (before any service is constructed)
+ *   2. Open SQLite (real path or :memory: for tests)
+ *   3. Wrap with Drizzle
+ *   4. initializeSchema — creates tables if not exist
+ *   5. Construct repositories (each receives DrizzleDb only)
+ *   6. Construct services (each receives repository interfaces only)
+ *   7. Construct application services (receive repositories + services)
  *
  * Swap any implementation by changing this file only.
  * No service or repository knows about this file.
+ *
+ * The logger is an exception to strict DI — services import `log` directly
+ * from `src/utils/logger.ts` rather than receiving it as a ctor arg. Keeps
+ * service signatures focused on their domain dependencies while still
+ * allowing tests to swap the default with `setDefaultLogger(memoryLogger)`.
  */
 
 import fs from 'node:fs';
@@ -31,15 +37,9 @@ import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefService
 import { StatusApplicationServiceImpl } from '../application/impl/statusApplicationServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
-import {
-  createConsoleSink,
-  createFileSink,
-  createLogger,
-  createSilentLogger,
-} from '../utils/logger.js';
+import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
 import { parseModelRef } from '../utils/parseModelRef.js';
 
-import type { Logger } from '../utils/logger.js';
 import type { JobRepository } from '../repository/jobRepository.js';
 import type { CompanyRepository } from '../repository/companyRepository.js';
 import type { BatchRepository } from '../repository/batchRepository.js';
@@ -73,15 +73,14 @@ export interface AppContext {
   statusApp: StatusApplicationService;
   // config
   defaultAiConfig: AiConfig;
-  // infrastructure
-  logger: Logger;
 }
 
 /**
  * Wires repositories, services, and application services around an open SQLite connection.
  * Extracted so both createAppContext() and createTestAppContext() share the same
  * construction logic, differing only in their SQLite instance, ProfileRepository,
- * workspaceDir, and defaultAiConfig.
+ * workspaceDir, and defaultAiConfig. The default logger must already be installed
+ * before calling this.
  */
 function wireContext(
   sqlite: BetterSqlite3.Database,
@@ -89,7 +88,6 @@ function wireContext(
   workspaceDir: string,
   defaultAiConfig: AiConfig,
   defaultCoverLetterTone: string,
-  logger: Logger,
 ): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
@@ -100,6 +98,10 @@ function wireContext(
   const jobRepo = new SqliteJobRepositoryImpl(db, companyRepo, workspaceDir);
   const batchRepo = new SqliteBatchRepositoryImpl(db);
 
+  // Services don't take `logger` through constructors — they import the `log`
+  // facade directly from src/utils/logger.ts. The default logger was installed
+  // via setDefaultLogger() in createAppContext / createTestAppContext before
+  // we got here.
   const batchService = new BatchServiceImpl(batchRepo, jobRepo);
   const renderService = new RenderServiceImpl();
   const rewriteService = new ResumeCoverLetterServiceImpl();
@@ -118,7 +120,7 @@ function wireContext(
     { label: 'tailored', count: () => jobRepo.countWithTailoredResume() },
     { label: 'applied',  count: async () => (await jobRepo.countByStatus()).applied },
   ];
-  const statusApp = new StatusApplicationServiceImpl(statusCounters, logger);
+  const statusApp = new StatusApplicationServiceImpl(statusCounters);
 
   return {
     jobRepository: jobRepo,
@@ -133,7 +135,6 @@ function wireContext(
     tailorApp,
     statusApp,
     defaultAiConfig,
-    logger,
   };
 }
 
@@ -150,6 +151,14 @@ export function createAppContext(): AppContext {
   const dataDir = path.join(workspaceDir, 'data');
   fs.mkdirSync(dataDir, { recursive: true });
 
+  // Install the real pino logger into the module slot BEFORE constructing
+  // any service. Pretty console output to stderr (or JSON when
+  // WOLF_LOG_FORMAT=json is set) and an always-on JSONL file sink under
+  // data/logs/wolf.log.jsonl. Level comes from WOLF_LOG (default info).
+  setDefaultLogger(createDefaultLogger({
+    filePath: path.join(dataDir, 'logs', 'wolf.log.jsonl'),
+  }));
+
   const dbPath = path.join(dataDir, 'wolf.sqlite');
   const sqlite = new BetterSqlite3(dbPath);
   const profileRepository = new FileProfileRepositoryImpl(workspaceDir);
@@ -159,34 +168,27 @@ export function createAppContext(): AppContext {
   const defaultAiConfig: AiConfig = parseModelRef(config.tailor.model);
   const defaultCoverLetterTone = config.tailor.defaultCoverLetterTone;
 
-  // Console to stderr + JSONL file sink under data/logs/. Level and console
-  // format come from WOLF_LOG / WOLF_LOG_FORMAT env vars (info + pretty by
-  // default). See src/utils/logger.ts.
-  const logger = createLogger({
-    sinks: [
-      createConsoleSink(process.env.WOLF_LOG_FORMAT === 'json' ? 'json' : 'pretty'),
-      createFileSink(path.join(dataDir, 'logs', 'wolf.log.jsonl')),
-    ],
-  });
-
   return wireContext(
-    sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone, logger,
+    sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone,
   );
 }
 
 /**
  * Test AppContext.
  *
- * Uses an in-memory SQLite database — no files are created.
- * Use in unit tests and integration tests that should not touch real files or
- * the network.
+ * Uses an in-memory SQLite database — no files are created. The default
+ * logger is reset to silent so test output stays clean.
  */
 export function createTestAppContext(): AppContext {
+  // Every test context starts silent. Individual tests that want to
+  // capture events override this with setDefaultLogger(memoryLogger) in
+  // their beforeEach, and restore it in afterEach.
+  setDefaultLogger(createSilentLogger());
+
   const sqlite = new BetterSqlite3(':memory:');
   const profileRepository = new InMemoryProfileRepositoryImpl();
   const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
   return wireContext(
     sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, 'professional',
-    createSilentLogger(),
   );
 }
