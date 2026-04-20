@@ -14,6 +14,7 @@ import type {
   UserProfile,
   Job,
 } from '../../types/index.js';
+import { log } from '../../utils/logger.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
@@ -72,13 +73,25 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     // Make sure hint.md is in place before the analyst runs.
     await this.ensureHintFile(ctx.hintPath, options.hint);
 
+    const writeCoverLetter = options.coverLetter !== false;
+    const pipelineStartedAt = Date.now();
+    log.info('tailor.pipeline.start', {
+      jobId: ctx.job.id,
+      profileId: ctx.profile.id,
+      coverLetterIncluded: writeCoverLetter,
+    });
+
     // Analyst first (serial) so both writers see the same brief.
+    const analyzeStartedAt = Date.now();
     const brief = await this.runAnalysis(ctx);
+    log.info('tailor.analyze.done', {
+      jobId: ctx.job.id,
+      durationMs: Date.now() - analyzeStartedAt,
+    });
 
     // Resume + cover letter depend only on (brief + pool + jd), so they run
     // in parallel. Skip the cover letter entirely when --no-cover-letter was
     // passed — use a resolved null so the Promise.all shape stays the same.
-    const writeCoverLetter = options.coverLetter !== false;
     const coverLetterPromise = writeCoverLetter
       ? this.runCoverLetter(ctx, brief)
       : Promise.resolve(null);
@@ -99,6 +112,13 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       tailoredResumePdfPath,
       coverLetterHtmlPath,
       coverLetterPdfPath,
+    });
+
+    log.info('tailor.pipeline.done', {
+      jobId: ctx.job.id,
+      tailoredResumePdfPath,
+      coverLetterPdfPath,
+      durationMs: Date.now() - pipelineStartedAt,
     });
 
     return {
@@ -146,7 +166,12 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       : this.defaultAiConfig;
 
     const job = await this.jobRepository.get(jobId);
-    if (!job) throw new Error(`Job not found: ${jobId}`);
+    if (!job) {
+      // Log before throwing so the failure leaves a structured breadcrumb
+      // in data/logs/wolf.log.jsonl even when the caller re-raises.
+      log.error('tailor.context.job_missing', { jobId });
+      throw new Error(`Job not found: ${jobId}`);
+    }
 
     const profile = profileId
       ? (await this.profileRepository.get(profileId)) ?? (await this.profileRepository.getDefault())
@@ -221,6 +246,12 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     try {
       return await readFile(ctx.briefPath, 'utf-8');
     } catch {
+      // Log before throwing — users typically see the message only once the
+      // process exits, but the log file lets us debug recurring failures.
+      log.error('tailor.brief.read_failed', {
+        jobId: ctx.job.id,
+        briefPath: ctx.briefPath,
+      });
       throw new Error(
         `Tailoring brief not found at ${ctx.briefPath}. ` +
         `Run \`wolf tailor brief --job ${ctx.job.id}\` first.`,

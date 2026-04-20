@@ -1,4 +1,5 @@
 import { aiClient } from '../../utils/ai/index.js';
+import { log } from '../../utils/logger.js';
 import { stripComments } from '../../utils/stripComments.js';
 import SYSTEM_PROMPT from './prompts/tailor-system.md';
 import COVER_LETTER_SYSTEM_PROMPT from './prompts/cover-letter-system.md';
@@ -22,12 +23,27 @@ export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
 
     const userPrompt = [contactSection, briefSection, poolSection, jdSection, instruction].join('\n\n');
 
-    // Send to the configured AI provider and require a non-empty response.
+    // Bracket the AI call with start/done events so cost signals (durationMs,
+    // responseLength) end up in data/logs/wolf.log.jsonl for post-hoc analysis.
+    log.debug('ai.resume.start', {
+      profileId: profile.id,
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+    });
+    const startedAt = Date.now();
     const raw = await aiClient(userPrompt, SYSTEM_PROMPT, {
       provider: aiConfig.provider,
       model: aiConfig.model,
     });
-    return validateNonEmptyResponse(raw, 'resume');
+    log.info('ai.resume.done', {
+      profileId: profile.id,
+      durationMs: Date.now() - startedAt,
+      responseLength: raw.length,
+    });
+
+    // Validate-or-throw. Log before the throw so the failure leaves a
+    // structured breadcrumb even when the process exits.
+    return validateAndLogOrThrow(raw, 'resume', profile.id);
   }
 
   async generateCoverLetter(
@@ -47,12 +63,41 @@ export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
 
     const userPrompt = [contactSection, briefSection, poolSection, jdSection, instruction].join('\n\n');
 
-    // Send to the configured AI provider and require a non-empty response.
+    // Bracket the AI call with start/done events — same shape as the resume path.
+    log.debug('ai.cover.start', {
+      profileId: profile.id,
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+    });
+    const startedAt = Date.now();
     const raw = await aiClient(userPrompt, COVER_LETTER_SYSTEM_PROMPT, {
       provider: aiConfig.provider,
       model: aiConfig.model,
     });
-    return validateNonEmptyResponse(raw, 'cover letter');
+    log.info('ai.cover.done', {
+      profileId: profile.id,
+      durationMs: Date.now() - startedAt,
+      responseLength: raw.length,
+    });
+
+    return validateAndLogOrThrow(raw, 'cover letter', profile.id);
+  }
+}
+
+// Validate + log-on-failure wrapper. Produces the same thrown Error as
+// the pure validateNonEmptyResponse helper, but emits a structured
+// `error` event first so the failure is visible in the log file.
+function validateAndLogOrThrow(
+  raw: string,
+  what: 'resume' | 'cover letter',
+  profileId: string,
+): string {
+  try {
+    return validateNonEmptyResponse(raw, what);
+  } catch (err) {
+    const eventName = what === 'resume' ? 'ai.resume.empty_response' : 'ai.cover.empty_response';
+    log.error(eventName, { profileId });
+    throw err;
   }
 }
 

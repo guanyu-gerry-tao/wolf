@@ -1,4 +1,4 @@
-import type { Logger } from '../../utils/logger.js';
+import { log } from '../../utils/logger.js';
 import type {
   StatusApplicationService,
   StatusCount,
@@ -16,7 +16,6 @@ import type {
 export class StatusApplicationServiceImpl implements StatusApplicationService {
   constructor(
     private readonly counters: StatusCounter[],
-    private readonly logger: Logger,
   ) {}
 
   async getSummary(): Promise<StatusSummary> {
@@ -25,8 +24,11 @@ export class StatusApplicationServiceImpl implements StatusApplicationService {
         try {
           return { label, count: await count() };
         } catch (err) {
+          // Each failed counter logs a warn event (visible in data/logs/wolf.log.jsonl)
+          // and still returns count: 0 + an inline error so the dashboard
+          // keeps rendering. One broken counter must not kill the whole view.
           const message = err instanceof Error ? err.message : String(err);
-          this.logger.warn('Status counter failed', { label, error: message });
+          log.warn('status.counter.failed', { label, error: message });
           return { label, count: 0, error: message };
         }
       }),

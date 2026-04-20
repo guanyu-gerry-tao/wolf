@@ -1,192 +1,122 @@
 /**
- * Structured logger for wolf.
+ * Structured logging for wolf — backed by pino.
  *
- * Design:
- *   - Four levels: debug / info / warn / error.
- *   - All events are structured: (msg: string, fields?: Record<string, unknown>).
- *   - Sinks decide where events go; renderers decide how they look.
- *   - Console sink writes to stderr — stdout is reserved for command deliverables
- *     (parseable output, JSON payloads, MCP protocol frames).
- *   - File sink always writes JSONL — one event per line, grep/jq-friendly.
+ * Public API (what service code uses):
+ *   - `log`: facade object with `debug` / `info` / `warn` / `error` methods.
+ *   - `setDefaultLogger(logger)`: swap the underlying pino instance. Called
+ *     once by AppContext; used by tests to install a capture stream.
+ *   - `createSilentLogger()` / `createDefaultLogger()`: ready-made pino
+ *     instances for tests and production.
  *
- * Level filter:
- *   - WOLF_LOG=debug|info|warn|error (default: info).
- *   - Events below the threshold are dropped before any sink sees them.
+ * Why a facade over bare pino?
+ *   - Lets services call `log.info('event.name', { fields })` with message
+ *     first — matches the rest of our codebase and reads naturally. Pino's
+ *     native API is `(fields, msg)`, which we flip inside the facade.
+ *   - Lets us swap the underlying logger at runtime (test setup, capture
+ *     streams) without every service needing to import `pino` directly.
  *
- * Format (console only):
- *   - WOLF_LOG_FORMAT=pretty|json (default: pretty).
- *   - File sink is always json — mixing rendered text and structured data is pointless.
- *
- * Testing:
- *   - createMemorySink() captures events in memory for assertions.
- *   - createSilentLogger() discards everything — for test AppContexts.
+ * Safety in tests: Vitest sets `NODE_ENV=test` automatically. The module
+ * default picks up a silent pino, so log calls from any test run produce
+ * zero output and zero disk writes. Tests that want to assert on events
+ * install their own pino instance backed by `pino-test`'s `sink()`.
  */
-import fs from 'node:fs';
-import path from 'node:path';
+import pino, { type Logger as PinoLogger } from 'pino';
 
+// Map our level strings to pino's level strings (they match).
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-export interface LogEvent {
-  ts: string;
-  level: LogLevel;
-  msg: string;
-  [key: string]: unknown;
-}
-
-export interface Logger {
-  debug(msg: string, fields?: Record<string, unknown>): void;
-  info(msg: string, fields?: Record<string, unknown>): void;
-  warn(msg: string, fields?: Record<string, unknown>): void;
-  error(msg: string, fields?: Record<string, unknown>): void;
-}
-
-export interface LogSink {
-  write(event: LogEvent): void;
-}
-
-export interface CreateLoggerOptions {
-  level?: LogLevel;
-  sinks?: LogSink[];
-}
-
-// Level ordering — events below the logger's threshold are silently dropped.
-const LEVEL_ORDER: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-};
-
-class LoggerImpl implements Logger {
-  constructor(
-    private level: LogLevel,
-    private sinks: LogSink[],
-  ) {}
-
-  debug(msg: string, fields?: Record<string, unknown>): void {
-    this.emit('debug', msg, fields);
-  }
-  info(msg: string, fields?: Record<string, unknown>): void {
-    this.emit('info', msg, fields);
-  }
-  warn(msg: string, fields?: Record<string, unknown>): void {
-    this.emit('warn', msg, fields);
-  }
-  error(msg: string, fields?: Record<string, unknown>): void {
-    this.emit('error', msg, fields);
-  }
-
-  private emit(level: LogLevel, msg: string, fields?: Record<string, unknown>): void {
-    if (LEVEL_ORDER[level] < LEVEL_ORDER[this.level]) return;
-    const event: LogEvent = {
-      ts: new Date().toISOString(),
-      level,
-      msg,
-      ...(fields ?? {}),
-    };
-    for (const sink of this.sinks) sink.write(event);
-  }
-}
-
-type Renderer = (event: LogEvent) => string;
-
-// Glyphs tag each event visually in pretty mode without costing a color escape.
-const GLYPHS: Record<LogLevel, string> = {
-  debug: '·',
-  info: '•',
-  warn: '⚠',
-  error: '✖',
-};
-
-// Pretty renderer drops ts/level from the inline string — the glyph already
-// carries the level, and timestamps add noise to interactive CLIs.
-const prettyRenderer: Renderer = (event) => {
-  const { ts: _ts, level, msg, ...fields } = event;
-  const fieldsStr = Object.keys(fields).length > 0
-    ? ' ' + Object.entries(fields).map(([k, v]) => `${k}=${formatValue(v)}`).join(' ')
-    : '';
-  return `${GLYPHS[level]} ${msg}${fieldsStr}`;
-};
-
-const jsonRenderer: Renderer = (event) => JSON.stringify(event);
-
-function formatValue(v: unknown): string {
-  if (v === null || v === undefined) return String(v);
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
-
 /**
- * Writes events to stderr. Stdout is intentionally left clean so commands
- * can pipe their deliverable output (job lists, JSON payloads) without
- * log noise contaminating the stream.
+ * Builds a silent pino instance — every event is discarded. Used as the
+ * module default so any log call that happens before setDefaultLogger
+ * runs (or in a test that doesn't configure a logger) is a no-op.
  */
-export function createConsoleSink(format: 'pretty' | 'json' = 'pretty'): LogSink {
-  const renderer = format === 'json' ? jsonRenderer : prettyRenderer;
-  return {
-    write(event) {
-      process.stderr.write(renderer(event) + '\n');
-    },
-  };
+export function createSilentLogger(): PinoLogger {
+  return pino({ level: 'silent' });
 }
 
 /**
- * Appends one JSON event per line to a file. Creates the parent directory
- * on construction. Uses synchronous append so crash mid-command still flushes
- * the last event — we pay a small I/O cost for that guarantee.
- */
-export function createFileSink(filePath: string): LogSink {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  return {
-    write(event) {
-      fs.appendFileSync(filePath, JSON.stringify(event) + '\n');
-    },
-  };
-}
-
-/**
- * Captures events in an in-memory array. For tests that want to assert on
- * what was logged.
- */
-export interface MemorySink extends LogSink {
-  readonly events: LogEvent[];
-  clear(): void;
-}
-export function createMemorySink(): MemorySink {
-  const events: LogEvent[] = [];
-  return {
-    events,
-    write(event) { events.push(event); },
-    clear() { events.length = 0; },
-  };
-}
-
-/**
- * Constructs a logger. Precedence for level and format:
- *   explicit option → WOLF_LOG / WOLF_LOG_FORMAT env var → default.
+ * Builds the production logger: level from WOLF_LOG env var (default info),
+ * pretty-printed to stderr unless WOLF_LOG_FORMAT=json is set. Pass
+ * `filePath` to also persist every event as JSONL.
  *
- * Default sink is a pretty-format console sink on stderr. Pass `sinks` to
- * compose multiple sinks (console + file) or to redirect output entirely.
+ * In tests (NODE_ENV=test), returns a silent logger instead — no matter
+ * what the caller asks for. Belt-and-suspenders safety against a test
+ * accidentally installing a real-sink logger.
  */
-export function createLogger(opts: CreateLoggerOptions = {}): Logger {
-  const level = opts.level ?? parseLevel(process.env.WOLF_LOG) ?? 'info';
-  const sinks = opts.sinks ?? [createConsoleSink(parseFormat(process.env.WOLF_LOG_FORMAT))];
-  return new LoggerImpl(level, sinks);
+export function createDefaultLogger(options: { filePath?: string } = {}): PinoLogger {
+  if (process.env.NODE_ENV === 'test') {
+    return createSilentLogger();
+  }
+
+  const level = process.env.WOLF_LOG ?? 'info';
+  const useJson = process.env.WOLF_LOG_FORMAT === 'json';
+
+  // Console transport: pretty for humans (default), JSON for pipes/log-shippers.
+  const consoleTransport = useJson
+    ? { target: 'pino/file', options: { destination: 2 } }      // 2 = stderr fd
+    : { target: 'pino-pretty', options: { destination: 2 } };
+
+  const targets: pino.TransportTargetOptions[] = [consoleTransport];
+
+  // File sink is optional so callers without a workspace (e.g. wolf --help)
+  // can still construct a logger.
+  if (options.filePath !== undefined) {
+    targets.push({
+      target: 'pino/file',
+      options: { destination: options.filePath, mkdir: true },
+      level,
+    });
+  }
+
+  return pino({ level }, pino.transport({ targets }));
+}
+
+// Module-level slot holding the currently active logger. Starts silent so
+// any log call that fires before setDefaultLogger has run (module-level
+// init code, tests that don't configure logging) is a no-op.
+let _default: PinoLogger = createSilentLogger();
+
+/**
+ * Install a new pino instance as the default. Called once by AppContext
+ * at startup. Tests may call it in a test body to install a capture
+ * stream; Vitest isolates module state per test file, so there's no
+ * cross-file leakage.
+ */
+export function setDefaultLogger(logger: PinoLogger): void {
+  _default = logger;
+}
+
+/** Returns the current default pino logger. Rarely needed — prefer `log`. */
+export function getLogger(): PinoLogger {
+  return _default;
 }
 
 /**
- * A logger that drops every event. Useful for test AppContexts where log
- * output would be noise in the test runner.
+ * Ergonomic facade. Services import this and call e.g.
+ *   log.info('tailor.pipeline.start', { jobId })
+ *
+ * Each method re-reads `_default` on every call so setDefaultLogger swaps
+ * take effect immediately — critical for the test pattern where a test
+ * installs a capture stream just before invoking the service.
+ *
+ * Argument order here (message, fields) is the reverse of pino's native
+ * (fields, message) because message-first reads more naturally in prose.
+ * The facade flips the arguments when calling through.
  */
-export function createSilentLogger(): Logger {
-  return new LoggerImpl('error', []);
+export const log = {
+  debug: (msg: string, fields?: Record<string, unknown>): void => emit('debug', msg, fields),
+  info:  (msg: string, fields?: Record<string, unknown>): void => emit('info',  msg, fields),
+  warn:  (msg: string, fields?: Record<string, unknown>): void => emit('warn',  msg, fields),
+  error: (msg: string, fields?: Record<string, unknown>): void => emit('error', msg, fields),
+};
+
+function emit(level: LogLevel, msg: string, fields?: Record<string, unknown>): void {
+  if (fields !== undefined) {
+    _default[level](fields, msg);
+  } else {
+    _default[level](msg);
+  }
 }
 
-function parseLevel(s: string | undefined): LogLevel | undefined {
-  if (s === 'debug' || s === 'info' || s === 'warn' || s === 'error') return s;
-  return undefined;
-}
-
-function parseFormat(s: string | undefined): 'pretty' | 'json' {
-  return s === 'json' ? 'json' : 'pretty';
-}
+/** Alias for consumers that want to name the type. */
+export type Logger = PinoLogger;

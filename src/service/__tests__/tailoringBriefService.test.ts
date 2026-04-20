@@ -1,5 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import pino from 'pino';
+import { sink } from 'pino-test';
 import { TailoringBriefServiceImpl } from '../impl/tailoringBriefServiceImpl.js';
+import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
 import type { UserProfile, AiConfig } from '../../types/index.js';
 
 // Mock aiClient so tests never touch the network.
@@ -21,6 +24,11 @@ const AI: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
 
 describe('TailoringBriefService', () => {
   beforeEach(() => vi.clearAllMocks());
+  // Restore silent default after each test — the event-capture test below
+  // installs a memory-sink logger and without this afterEach, later tests
+  // in this file would inherit it. Vitest file-level isolation means
+  // unrelated test files need no logger setup at all.
+  afterEach(() => setDefaultLogger(createSilentLogger()));
 
   // Happy path: without a hint, the user prompt does not include a User Guidance section.
   // This guards against spurious "## User Guidance" showing up in the analyst prompt.
@@ -57,5 +65,30 @@ describe('TailoringBriefService', () => {
     vi.mocked(aiClient).mockResolvedValue('');
     const svc = new TailoringBriefServiceImpl();
     await expect(svc.analyze(POOL, JD, PROFILE, AI)).rejects.toThrow('empty brief');
+  });
+
+  // Logger retrofit — error-path capture. Proves that an empty brief from
+  // the AI produces a structured error event BEFORE the thrown exception
+  // bubbles out. This is the breadcrumb that lets us diagnose recurring
+  // failures from data/logs/wolf.log.jsonl without re-running the pipeline.
+  it('emits ai.brief.empty_response before rethrowing on empty AI output', async () => {
+    vi.mocked(aiClient).mockResolvedValue('');
+
+    // Install a pino-test sink and collect emitted events so we can find
+    // the error event by msg rather than by position (start/done fire
+    // first, then the error during validation).
+    const stream = sink();
+    setDefaultLogger(pino({ level: 'debug' }, stream));
+    const events: Record<string, unknown>[] = [];
+    stream.on('data', (line) => events.push(line));
+
+    const svc = new TailoringBriefServiceImpl();
+    await expect(svc.analyze(POOL, JD, PROFILE, AI)).rejects.toThrow('empty brief');
+
+    // Find the error event by message, assert its shape.
+    const errEvent = events.find((e) => e.msg === 'ai.brief.empty_response');
+    expect(errEvent).toBeDefined();
+    expect(errEvent?.level).toBe(50); // pino numeric for `error`
+    expect(errEvent?.profileId).toBe(PROFILE.id);
   });
 });

@@ -1,4 +1,5 @@
 import { aiClient } from '../../utils/ai/index.js';
+import { log } from '../../utils/logger.js';
 import { stripComments } from '../../utils/stripComments.js';
 import ANALYST_SYSTEM_PROMPT from './prompts/analyst-system.md';
 import type { TailoringBriefService } from '../tailoringBriefService.js';
@@ -24,12 +25,33 @@ export class TailoringBriefServiceImpl implements TailoringBriefService {
     const sections = [candidateSection, poolSection, jdSection, guidanceSection, instruction];
     const userPrompt = sections.filter((s) => s.length > 0).join('\n\n');
 
-    // Send to the configured AI provider and require a non-empty response.
+    // Bracket the AI call with start/done events. `hintProvided` captures
+    // whether the analyst was steered — useful when debugging brief quality.
+    log.debug('ai.brief.start', {
+      profileId: profile.id,
+      provider: aiConfig.provider,
+      model: aiConfig.model,
+      hintProvided: guidanceSection.length > 0,
+    });
+    const startedAt = Date.now();
     const raw = await aiClient(userPrompt, ANALYST_SYSTEM_PROMPT, {
       provider: aiConfig.provider,
       model: aiConfig.model,
     });
-    return validateNonEmptyBrief(raw);
+    log.info('ai.brief.done', {
+      profileId: profile.id,
+      durationMs: Date.now() - startedAt,
+      responseLength: raw.length,
+    });
+
+    // Validate-or-throw. Log before the throw so the failure leaves a
+    // structured breadcrumb in data/logs/wolf.log.jsonl.
+    try {
+      return validateNonEmptyBrief(raw);
+    } catch (err) {
+      log.error('ai.brief.empty_response', { profileId: profile.id });
+      throw err;
+    }
   }
 }
 

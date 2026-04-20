@@ -1,24 +1,27 @@
 import { chromium } from 'playwright';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fit } from './render/fit.js';
+import { CannotFillError, CannotFitError, fit } from './render/fit.js';
+import { log } from '../../utils/logger.js';
 import type { Page } from 'playwright';
 import type { RenderService } from '../renderService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHELL_PATH = path.join(__dirname, 'render', 'shell.html');
 
+type RenderKind = 'resume' | 'cover';
+
 export class RenderServiceImpl implements RenderService {
   async renderPdf(htmlBody: string): Promise<Buffer> {
     // Resume rendering is a one-page fit job — identical browser lifecycle
     // and PDF path as the cover letter. Delegate to the shared helper.
-    return renderHtmlToPdf(htmlBody);
+    return renderHtmlToPdf(htmlBody, 'resume');
   }
 
   async renderCoverLetterPdf(htmlBody: string): Promise<Buffer> {
     // Cover letters are also one page, and `fit()` handles both overflow
     // and underflow, so they share the exact same code path.
-    return renderHtmlToPdf(htmlBody);
+    return renderHtmlToPdf(htmlBody, 'cover');
   }
 }
 
@@ -28,7 +31,10 @@ export class RenderServiceImpl implements RenderService {
 // both public entrypoints stay at the "one obvious line" level.
 // ---------------------------------------------------------------------------
 
-async function renderHtmlToPdf(htmlBody: string): Promise<Buffer> {
+async function renderHtmlToPdf(htmlBody: string, kind: RenderKind): Promise<Buffer> {
+  log.debug('render.start', { kind, contentLength: htmlBody.length });
+  const startedAt = Date.now();
+
   // Each render spawns a fresh browser — simpler state model than a pool,
   // and Playwright cold-start is only a few hundred ms.
   const browser = await chromium.launch();
@@ -44,12 +50,42 @@ async function renderHtmlToPdf(htmlBody: string): Promise<Buffer> {
     await injectHtmlIntoShell(page, htmlBody);
     await waitForFontsReady(page);
 
-    // Run the binary-search fit loop and return the resulting single-page PDF.
-    const result = await fit(page);
+    // Run the binary-search fit loop. On failure, log the fit-specific
+    // diagnostics before rethrowing so the caller only gets the one error.
+    const result = await runFitWithLogging(page, kind);
+    log.info('render.done', {
+      kind,
+      iterations: result.iterations,
+      finalFontSize: result.finalParams.fontSize,
+      pdfSizeBytes: result.pdf.length,
+      durationMs: Date.now() - startedAt,
+    });
     return result.pdf;
   } finally {
     // Always close the browser, even on fit/render errors.
     await browser.close();
+  }
+}
+
+// Runs fit() and translates its typed errors into warn-level log events
+// before rethrowing. Keeps renderHtmlToPdf readable by keeping the
+// error-translation logic out of its main flow.
+async function runFitWithLogging(page: Page, kind: RenderKind) {
+  try {
+    return await fit(page);
+  } catch (err) {
+    if (err instanceof CannotFitError) {
+      log.warn('render.fit.cannot_fit', {
+        kind,
+        iterations: err.lastAttempt.iterations,
+      });
+    } else if (err instanceof CannotFillError) {
+      log.warn('render.fit.cannot_fill', {
+        kind,
+        iterations: err.lastAttempt.iterations,
+      });
+    }
+    throw err;
   }
 }
 
