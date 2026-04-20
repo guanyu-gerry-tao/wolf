@@ -66,30 +66,45 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
   ) {}
 
   async tailor(options: TailorOptions): Promise<TailorResult> {
+    // Resolve job/profile/paths once; every step below works against this context.
     const ctx = await this.prepareContext(options);
+
+    // Make sure hint.md is in place before the analyst runs.
     await this.ensureHintFile(ctx.hintPath, options.hint);
 
     // Analyst first (serial) so both writers see the same brief.
     const brief = await this.runAnalysis(ctx);
 
-    // Resume + CL depend only on (brief + pool + jd), so they run in parallel.
-    // Skip the CL step if the caller passed --no-cover-letter.
+    // Resume + cover letter depend only on (brief + pool + jd), so they run
+    // in parallel. Skip the cover letter entirely when --no-cover-letter was
+    // passed — use a resolved null so the Promise.all shape stays the same.
     const writeCoverLetter = options.coverLetter !== false;
+    const coverLetterPromise = writeCoverLetter
+      ? this.runCoverLetter(ctx, brief)
+      : Promise.resolve(null);
     const [resumeStep, clStep] = await Promise.all([
       this.runResume(ctx, brief),
-      writeCoverLetter ? this.runCoverLetter(ctx, brief) : Promise.resolve(null),
+      coverLetterPromise,
     ]);
 
+    // Pre-compute the paths we'll hand to both the DB update and the result
+    // so the two sites can't drift.
+    const tailoredResumePdfPath = resumeStep.pdfPath;
+    const coverLetterHtmlPath = clStep?.htmlPath ?? null;
+    const coverLetterPdfPath = clStep?.pdfPath ?? null;
+
+    // Persist the generated paths on the Job row so downstream commands
+    // (wolf job list, wolf fill, wolf reach) can find the artifacts.
     await this.jobRepository.update(ctx.job.id, {
-      tailoredResumePdfPath: resumeStep.pdfPath,
-      coverLetterHtmlPath: clStep?.htmlPath ?? null,
-      coverLetterPdfPath:  clStep?.pdfPath  ?? null,
+      tailoredResumePdfPath,
+      coverLetterHtmlPath,
+      coverLetterPdfPath,
     });
 
     return {
-      tailoredPdfPath: resumeStep.pdfPath,
-      coverLetterHtmlPath: clStep?.htmlPath ?? null,
-      coverLetterPdfPath:  clStep?.pdfPath  ?? null,
+      tailoredPdfPath: tailoredResumePdfPath,
+      coverLetterHtmlPath,
+      coverLetterPdfPath,
       changes: [],
       matchScore: 0,
     };
