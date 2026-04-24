@@ -251,3 +251,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 
 *命令边界做输入校验。* 坏输入（`--status bogus`、`--start not-a-date`、空的 `--search ""`）直接抛清晰错误，**绝不**静默返回零行。`types/job.ts` 的 `ALL_JOB_STATUSES` 是唯一真相；派生的 `JobStatus` 类型和校验器共享它，typo 没法和 union 漂移。
 **结果：** 采用。`wolf job list` 今天就按这个形态发货（见 AC-08）。未来的 list 命令引用此约定继承。升级路径延迟到需要时再做：把每个命令的校验器 Zod 化；SQLite FTS5 做 JD 全文搜索；如果 `--limit` 上限开始掣肘再上 cursor 分页。
+
+---
+
+**2026-04-24 — 为 AI 编排验收测试隔离 dev/stable**
+**我：** 验收测试需要让 AI agent 从 shell 层运行 `wolf` 命令，但同一台机器上也有真实 dogfood 数据。测试绝不能碰 `~/wolf`、`~/wolf-dev`、repo `data/` 或 shell RC 文件。
+**AI：** 采用两个 build mode 和不同默认值。Stable build 来自 `npm run build`，读取 `WOLF_*`，默认 workspace 是 `~/wolf` 或 `WOLF_HOME`。Dev build 来自 `npm run build:dev`，优先读取 `WOLF_DEV_*`，再 fallback 到 `WOLF_*`，默认 workspace 是 `~/wolf-dev` 或 `WOLF_DEV_HOME`。本地 dev 调用方式是 `npm run wolf -- <command>`。自动化验收测试必须始终设置 `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`，并且只能在 `/tmp/wolf-at-*` 下创建和删除文件。
+**结果：** 采用。`src/utils/instance.ts` 统一负责 build mode、workspace、环境变量命名空间和 dev warning。`wolf init --empty --dev` 为 agent 创建 schema-valid 的 dev workspace。Dev CLI 输出带 warning，dev MCP 工具使用 `wolfdev_*` 名称并在响应里包含结构化 warning。

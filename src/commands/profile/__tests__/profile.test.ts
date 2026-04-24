@@ -35,6 +35,7 @@ const PROFILE: UserProfile = {
 
 let tmpDir: string;
 let logSpy: ReturnType<typeof vi.spyOn>;
+const originalEnv = { ...process.env };
 
 async function writeProfile(profile: UserProfile): Promise<void> {
   const dir = path.join(tmpDir, 'profiles', profile.id);
@@ -57,6 +58,7 @@ async function writeProfile(profile: UserProfile): Promise<void> {
 
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wolf-profile-'));
+  process.env.WOLF_HOME = tmpDir;
   vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   await saveConfig(CONFIG);
   await writeProfile(PROFILE);
@@ -65,6 +67,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  process.env = { ...originalEnv };
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 

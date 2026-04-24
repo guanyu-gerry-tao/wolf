@@ -3,6 +3,7 @@ import path from 'node:path';
 import { parse, stringify } from 'smol-toml';
 import { loadConfig, saveConfig, backupConfig } from '../../utils/config.js';
 import { getByPath, setByPath, coerceToShape } from '../../utils/dotPath.js';
+import { resolveWorkspaceDir } from '../../utils/instance.js';
 import { UserProfileSchema } from '../../utils/schemas.js';
 import type { UserProfile } from '../../types/index.js';
 
@@ -11,7 +12,7 @@ import type { UserProfile } from '../../types/index.js';
 const READ_ONLY_KEYS = new Set(['id']);
 
 function profileTomlPath(profileId: string): string {
-  return path.join(process.cwd(), 'profiles', profileId, 'profile.toml');
+  return path.join(resolveWorkspaceDir(), 'profiles', profileId, 'profile.toml');
 }
 
 async function readProfile(profileId: string): Promise<{ profile: UserProfile; tomlPath: string }> {
@@ -120,7 +121,7 @@ async function writeProfile(profileDir: string, profile: UserProfile): Promise<v
  * Unreadable profile.toml files show as "(unreadable)" instead of crashing the whole list.
  */
 export async function profileList(): Promise<void> {
-  const profilesDir = path.join(process.cwd(), 'profiles');
+  const profilesDir = path.join(resolveWorkspaceDir(), 'profiles');
   let entries: string[] = [];
   try {
     entries = await fs.readdir(profilesDir);
@@ -160,7 +161,8 @@ export async function profileList(): Promise<void> {
 export async function profileCreate(id: string, opts: { from?: string } = {}): Promise<void> {
   assertValidProfileId(id);
 
-  const targetDir = path.join(process.cwd(), 'profiles', id);
+  const workspaceDir = resolveWorkspaceDir();
+  const targetDir = path.join(workspaceDir, 'profiles', id);
   const targetExists = await fs.access(targetDir).then(() => true).catch(() => false);
   if (targetExists) {
     throw new Error(`Profile "${id}" already exists at ${targetDir}`);
@@ -170,7 +172,7 @@ export async function profileCreate(id: string, opts: { from?: string } = {}): P
     .then(c => c.defaultProfileId)
     .catch(() => { throw new Error('No wolf.toml yet. Run `wolf init` first.'); }));
 
-  const srcDir = path.join(process.cwd(), 'profiles', srcId);
+  const srcDir = path.join(workspaceDir, 'profiles', srcId);
   const srcTomlPath = path.join(srcDir, 'profile.toml');
   let srcRaw: string;
   try {
@@ -202,7 +204,7 @@ export async function profileCreate(id: string, opts: { from?: string } = {}): P
  * Verifies the target profile directory exists first so users don't break lookups.
  */
 export async function profileUse(id: string): Promise<void> {
-  const targetDir = path.join(process.cwd(), 'profiles', id);
+  const targetDir = path.join(resolveWorkspaceDir(), 'profiles', id);
   const exists = await fs.access(targetDir).then(() => true).catch(() => false);
   if (!exists) {
     throw new Error(`Profile "${id}" not found at ${targetDir}`);
@@ -227,7 +229,7 @@ export async function profileDelete(id: string, opts: { yes?: boolean } = {}): P
     );
   }
 
-  const targetDir = path.join(process.cwd(), 'profiles', id);
+  const targetDir = path.join(resolveWorkspaceDir(), 'profiles', id);
   const exists = await fs.access(targetDir).then(() => true).catch(() => false);
   if (!exists) {
     throw new Error(`Profile "${id}" not found at ${targetDir}`);

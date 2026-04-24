@@ -105,6 +105,21 @@ export interface AppContext {
 }
 ```
 
+### Dev and stable instances
+
+wolf has two build modes so development and acceptance testing cannot mutate
+real dogfood state by accident.
+
+| Mode | Build | Invocation | Default workspace | Env namespace | MCP tools |
+|---|---|---|---|---|---|
+| stable | `npm run build` | `wolf ...` | `~/wolf` or `WOLF_HOME` | `WOLF_*` | `wolf_*` |
+| dev | `npm run build:dev` | `npm run wolf -- ...` | `~/wolf-dev` or `WOLF_DEV_HOME` | `WOLF_DEV_*`, fallback `WOLF_*` | `wolfdev_*` |
+
+`src/utils/instance.ts` is the source of truth for build mode, workspace
+resolution, env-var lookup, and the dev warning. Acceptance tests must override
+the dev workspace with `WOLF_DEV_HOME=/tmp/wolf-at-<ID>` for every command and
+must only create/delete `/tmp/wolf-at-*` paths.
+
 ### Directory structure
 
 ```

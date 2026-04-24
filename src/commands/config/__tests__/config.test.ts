@@ -20,10 +20,13 @@ const BASELINE: AppConfig = {
 
 let tmpDir: string;
 let logSpy: ReturnType<typeof vi.spyOn>;
+const originalEnv = { ...process.env };
 
 beforeEach(async () => {
-  // Each test gets a fresh temp workspace; chdir so loadConfig/saveConfig hit it.
+  // Each test gets a fresh temp workspace; WOLF_HOME makes the new stable
+  // workspace resolution hit it instead of the user's real ~/wolf.
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wolf-config-'));
+  process.env.WOLF_HOME = tmpDir;
   vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   await saveConfig(BASELINE);
   // Capture console.log so tests can assert printed output.
@@ -32,6 +35,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  process.env = { ...originalEnv };
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 

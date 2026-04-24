@@ -78,7 +78,9 @@ wolf/
 
 | Command | Description |
 |---|---|
-| `wolf init` | Interactive setup wizard |
+| `wolf init` | Interactive setup wizard; defaults to `~/wolf` |
+| `wolf init --empty` | Non-interactive skeleton workspace |
+| `wolf init --dev --empty` | Dev skeleton workspace (dev build only; use `WOLF_DEV_HOME=/tmp/wolf-at-*` for tests) |
 | `wolf hunt` | Find and score jobs |
 | `wolf tailor` | Tailor resume to a JD |
 | `wolf fill` | Auto-fill job application form |
@@ -90,7 +92,7 @@ wolf/
 
 ## MCP tools
 
-`wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`
+Stable: `wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`. Dev builds expose `wolfdev_*` names.
 
 ## Environment variables
 
@@ -101,6 +103,9 @@ WOLF_ANTHROPIC_API_KEY=
 WOLF_APIFY_API_TOKEN=
 WOLF_GMAIL_CLIENT_ID=
 WOLF_GMAIL_CLIENT_SECRET=
+WOLF_HOME=
+WOLF_DEV_HOME=
+WOLF_DEV_ANTHROPIC_API_KEY=
 ```
 
 Add to `~/.zshrc` (Mac/Linux) or User Environment Variables (Windows).
@@ -135,6 +140,8 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - e.g. `src/commands/env/__tests__/env.test.ts` tests `src/commands/env/index.ts`
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
+- CLI behavior added or changed → add an entry to `docs/dev/ACCEPTANCE_TESTS.md` and `docs/dev/ACCEPTANCE_TESTS_zh.md` in the same PR.
+- Automated acceptance tests must only use `/tmp/wolf-at-*` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`.
 
 ### Comment style
 
@@ -149,7 +156,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - Layer / directory / data flow changed → `ARCHITECTURE.md` + `ARCHITECTURE_zh.md`
   - Architectural decision made → `DECISIONS.md` + `DECISIONS_zh.md`
   - Milestone status changed → `AGENTS.md`
-  - Testing conventions changed → `TESTING.md` + `TESTING_zh.md`
+  - Testing conventions changed → `ACCEPTANCE_TESTS.md` + `ACCEPTANCE_TESTS_zh.md`
 
 ## Implementation plans
 

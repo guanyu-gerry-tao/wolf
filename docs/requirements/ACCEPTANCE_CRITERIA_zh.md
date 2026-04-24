@@ -29,6 +29,21 @@
 - When wolf 打开 `resume_pool.md`
 - Then 文件在用户默认编辑器中打开；wolf 等待编辑器关闭后再继续
 
+**AC-01-5 — 可脚本化的空初始化**
+- Given 自动化 agent 需要一个非交互式 workspace
+- When 它运行 `wolf init --empty`
+- Then wolf 写入 schema-valid 的 `wolf.toml`、`profiles/default/profile.toml`、空的 `profiles/default/resume_pool.md` 和 `data/`，且不触发任何 prompt
+
+**AC-01-6 — Dev 初始化隔离**
+- Given dev build 以 `npm run wolf -- init --dev --empty` 调用
+- When 设置了 `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`
+- Then 所有 workspace 文件都创建在 `/tmp/wolf-at-<ID>` 下，且 `wolf.toml` 包含 `[instance].mode = "dev"`
+
+**AC-01-7 — Stable build 拒绝 dev workspace**
+- Given 当前运行的是 stable build
+- When 用户传入 `wolf init --dev`
+- Then wolf 用清晰错误退出，提示用户在 clone 内运行 `npm run build:dev`
+
 ---
 
 ## AC-02 · 职位搜索（`wolf hunt`）

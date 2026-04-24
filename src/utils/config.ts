@@ -4,9 +4,10 @@ import path from 'node:path';
 import { parse, stringify } from 'smol-toml';
 import type { AppConfig } from '../types/index.js';
 import { AppConfigSchema } from './schemas.js';
+import { resolveWorkspaceDir } from './instance.js';
 
-/** Returns the path to wolf.toml in the current working directory. Evaluated lazily so tests can control cwd. */
-const configPath = () => path.join(process.cwd(), 'wolf.toml');
+/** Returns the path to wolf.toml in the resolved stable/dev workspace. */
+const configPath = (workspaceDir = resolveWorkspaceDir()) => path.join(workspaceDir, 'wolf.toml');
 
 /**
  * Synchronous variant used by createAppContext() which must remain sync
@@ -51,8 +52,9 @@ export async function loadConfig(): Promise<AppConfig> {
  *
  * @param config - The full config object to persist.
  */
-export async function saveConfig(config: AppConfig): Promise<void> {
-  await fs.writeFile(configPath(), stringify(config as unknown as Record<string, unknown>), 'utf-8');
+export async function saveConfig(config: AppConfig, workspaceDir?: string): Promise<void> {
+  await fs.mkdir(workspaceDir ?? resolveWorkspaceDir(), { recursive: true });
+  await fs.writeFile(configPath(workspaceDir), stringify(config as unknown as Record<string, unknown>), 'utf-8');
 }
 
 /**
@@ -63,11 +65,11 @@ export async function saveConfig(config: AppConfig): Promise<void> {
  *
  * Call this before saveConfig() whenever you are overwriting an existing config.
  */
-export async function backupConfig(): Promise<void> {
+export async function backupConfig(workspaceDir?: string): Promise<void> {
   for (let i = 4; i >= 1; i--) {
-    const src = `${configPath()}.backup${i}`;
-    const dst = `${configPath()}.backup${i + 1}`;
+    const src = `${configPath(workspaceDir)}.backup${i}`;
+    const dst = `${configPath(workspaceDir)}.backup${i + 1}`;
     try { await fs.rename(src, dst); } catch { /* slot empty, skip */ }
   }
-  try { await fs.copyFile(configPath(), `${configPath()}.backup1`); } catch { /* no wolf.toml yet */ }
+  try { await fs.copyFile(configPath(workspaceDir), `${configPath(workspaceDir)}.backup1`); } catch { /* no wolf.toml yet */ }
 }

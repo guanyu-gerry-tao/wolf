@@ -18,7 +18,7 @@ export const UserProfileSchema = z.object({
   id: z.string(),
   label: z.string(),
   name: z.string(),
-  email: z.string().email(),
+  email: z.union([z.literal(''), z.string().email()]),
   phone: z.string(),
   // Empty string is treated as absent — written as "" when null so the field
   // always appears in profile.toml, making it visible and easy to fill in later.
@@ -48,6 +48,9 @@ const DEFAULT_SONNET = 'anthropic/claude-sonnet-4-6';
 const DEFAULT_HAIKU  = 'anthropic/claude-haiku-4-5-20251001';
 
 export const AppConfigSchema = z.object({
+  instance: z.object({
+    mode: z.enum(['stable', 'dev']),
+  }).optional(),
   defaultProfileId: z.string(),
   hunt: z.object({
     minScore: z.number().min(0).max(1).default(0.5),

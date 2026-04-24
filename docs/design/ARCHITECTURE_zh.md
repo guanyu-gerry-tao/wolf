@@ -104,6 +104,17 @@ export interface AppContext {
 }
 ```
 
+### Dev 和 stable 实例
+
+wolf 有两个 build mode，避免开发和验收测试误伤真实 dogfood 数据。
+
+| Mode | Build | 调用方式 | 默认 workspace | 环境变量命名空间 | MCP tools |
+|---|---|---|---|---|---|
+| stable | `npm run build` | `wolf ...` | `~/wolf` 或 `WOLF_HOME` | `WOLF_*` | `wolf_*` |
+| dev | `npm run build:dev` | `npm run wolf -- ...` | `~/wolf-dev` 或 `WOLF_DEV_HOME` | `WOLF_DEV_*`，fallback 到 `WOLF_*` | `wolfdev_*` |
+
+`src/utils/instance.ts` 是 build mode、workspace 解析、环境变量读取和 dev warning 的唯一真相来源。验收测试必须每次命令都设置 `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`，并且只能创建/删除 `/tmp/wolf-at-*` 路径。
+
 ### 目录结构
 
 ```

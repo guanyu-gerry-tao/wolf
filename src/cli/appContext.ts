@@ -37,6 +37,7 @@ import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefService
 import { StatusApplicationServiceImpl } from '../application/impl/statusApplicationServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
+import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
 import { parseModelRef } from '../utils/parseModelRef.js';
 
@@ -147,7 +148,7 @@ function wireContext(
  * wolf.sqlite inside it.
  */
 export function createAppContext(): AppContext {
-  const workspaceDir = process.cwd();
+  const workspaceDir = resolveWorkspaceDir();
   const dataDir = path.join(workspaceDir, 'data');
   fs.mkdirSync(dataDir, { recursive: true });
 

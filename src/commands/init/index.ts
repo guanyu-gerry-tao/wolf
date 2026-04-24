@@ -6,6 +6,7 @@ import claudeTemplate from './templates/workspace-claude.md';
 import { stringify } from 'smol-toml';
 import { backupConfig, saveConfig } from '../../utils/config.js';
 import { envSet } from '../env/index.js';
+import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir } from '../../utils/instance.js';
 import type { AppConfig } from '../../types/index.js';
 import type { UserProfile } from '../../types/index.js';
 import type { Status } from '../../types/index.js';
@@ -13,6 +14,12 @@ import type { Status } from '../../types/index.js';
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
+
+export interface InitOptions {
+  empty?: boolean;
+  dev?: boolean;
+  here?: boolean;
+}
 
 // Generates the starter resume_pool.md template so the user knows what format to fill in.
 function buildResumePoolTemplate(name: string): string {
@@ -126,11 +133,102 @@ TypeScript, Python, SQL, ...
 `;
 }
 
+function buildDefaultConfig(mode?: 'stable' | 'dev'): AppConfig {
+  return {
+    ...(mode ? { instance: { mode } } : {}),
+    defaultProfileId: 'default',
+    hunt: { minScore: 0.5, maxResults: 50 },
+    tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
+    score: { model: 'anthropic/claude-sonnet-4-6' },
+    reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+    fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
+  };
+}
+
+function buildEmptyProfile(): UserProfile {
+  return {
+    id: 'default',
+    label: 'Default',
+    name: '',
+    email: '',
+    phone: '',
+    firstUrl: null,
+    secondUrl: null,
+    thirdUrl: null,
+    immigrationStatus: 'no limit',
+    willingToRelocate: 'no',
+    targetRoles: [],
+    targetLocations: [],
+    scoringNotes: null,
+  };
+}
+
+function serializableProfile(profile: UserProfile): Record<string, unknown> {
+  return {
+    ...profile,
+    firstUrl:     profile.firstUrl     ?? '',
+    secondUrl:    profile.secondUrl    ?? '',
+    thirdUrl:     profile.thirdUrl     ?? '',
+    scoringNotes: profile.scoringNotes ?? '',
+  };
+}
+
+async function writeWorkspace(options: {
+  workspaceDir: string;
+  config: AppConfig;
+  profile: UserProfile;
+  resumePool: string;
+  overwriteConfig: boolean;
+}): Promise<void> {
+  const { workspaceDir, config, profile, resumePool, overwriteConfig } = options;
+  await fs.mkdir(workspaceDir, { recursive: true });
+
+  const configPath = path.join(workspaceDir, 'wolf.toml');
+  const configExists = await fs.access(configPath).then(() => true).catch(() => false);
+  if (!configExists || overwriteConfig) {
+    await saveConfig(config, workspaceDir);
+  }
+
+  const profileDir = path.join(workspaceDir, 'profiles', 'default');
+  await fs.mkdir(profileDir, { recursive: true });
+  const profilePath = path.join(profileDir, 'profile.toml');
+  const profileExists = await fs.access(profilePath).then(() => true).catch(() => false);
+  if (!profileExists || overwriteConfig) {
+    await fs.writeFile(profilePath, stringify(serializableProfile(profile)), 'utf-8');
+  }
+
+  const resumePoolPath = path.join(profileDir, 'resume_pool.md');
+  const resumePoolExists = await fs.access(resumePoolPath).then(() => true).catch(() => false);
+  if (!resumePoolExists || overwriteConfig) {
+    await fs.writeFile(resumePoolPath, resumePool, 'utf-8');
+  }
+  await fs.mkdir(path.join(workspaceDir, 'data'), { recursive: true });
+
+  const gitignorePath = path.join(workspaceDir, '.gitignore');
+  const wolfIgnoreBlock = '\n# wolf\ndata/\nprofiles/\n';
+  try {
+    const existing = await fs.readFile(gitignorePath, 'utf-8');
+    if (!existing.includes('# wolf')) {
+      await fs.appendFile(gitignorePath, wolfIgnoreBlock, 'utf-8');
+    }
+  } catch {
+    await fs.writeFile(gitignorePath, wolfIgnoreBlock.trimStart(), 'utf-8');
+  }
+
+  for (const filename of ['CLAUDE.md', 'AGENTS.md']) {
+    const dest = path.join(workspaceDir, filename);
+    const exists = await fs.access(dest).then(() => true).catch(() => false);
+    if (!exists) {
+      await fs.writeFile(dest, claudeTemplate, 'utf-8');
+    }
+  }
+}
+
 /**
  * Interactive setup wizard. Run once in a dedicated workspace directory before
  * using any other wolf command.
  *
- * Creates in the current working directory:
+ * Creates in the resolved workspace directory:
  * - `wolf.toml`                          — workspace config
  * - `profiles/default/profile.toml`      — user profile (identity + job prefs)
  * - `profiles/default/resume_pool.md`    — full experience bank for AI tailoring
@@ -138,14 +236,30 @@ TypeScript, Python, SQL, ...
  *
  * API keys are NOT stored here — set them as WOLF_* shell environment variables.
  */
-export async function init(): Promise<void> {
+export async function init(options: InitOptions = {}): Promise<void> {
+  if (options.dev) assertDevBuildForDevFlag();
+
+  const workspaceDir = resolveWorkspaceDir({ here: options.here });
+
+  if (options.empty) {
+    await writeWorkspace({
+      workspaceDir,
+      config: buildDefaultConfig(options.dev ? 'dev' : undefined),
+      profile: buildEmptyProfile(),
+      resumePool: '',
+      overwriteConfig: false,
+    });
+    console.log(`Initialized empty workspace at ${workspaceDir}. Run 'wolf profile set <key> <value>' to populate.`);
+    return;
+  }
+
   // ── Pre-check: workspace exists but keys not active yet ───────────────────
   const alreadyInit = await fs
-    .access(path.join(process.cwd(), 'wolf.toml'))
+    .access(path.join(workspaceDir, 'wolf.toml'))
     .then(() => true)
     .catch(() => false);
 
-  if (alreadyInit && !process.env.WOLF_ANTHROPIC_API_KEY) {
+  if (alreadyInit && !getEnvValue('ANTHROPIC_API_KEY')) {
     const missing = ['WOLF_ANTHROPIC_API_KEY', 'WOLF_APIFY_API_TOKEN', 'WOLF_GMAIL_CLIENT_ID', 'WOLF_GMAIL_CLIENT_SECRET']
       .filter(k => !process.env[k]);
 
@@ -172,7 +286,7 @@ ${bold('If you already set them but haven\'t restarted yet:')}
   }
 
   // ── Step 0a: Warn if running in home directory ────────────────────────────
-  if (process.cwd() === os.homedir()) {
+  if (workspaceDir === os.homedir()) {
     console.log(`
 ${red('⚠️  You are in your Home directory (~).')}
 wolf will create wolf.toml and a profiles/ folder here — your profile data will live here too.
@@ -193,7 +307,7 @@ Consider cd-ing to a dedicated folder first, e.g.:
 
   // ── Step 0b: Check for existing wolf.toml ────────────────────────────────
   const configExists = await fs
-    .access(path.join(process.cwd(), 'wolf.toml'))
+    .access(path.join(workspaceDir, 'wolf.toml'))
     .then(() => true)
     .catch(() => false);
 
@@ -208,7 +322,7 @@ Consider cd-ing to a dedicated folder first, e.g.:
       console.log('Cancelled. Existing config unchanged.');
       return;
     }
-    await backupConfig();
+    await backupConfig(workspaceDir);
     console.log(dim('Backed up existing config to wolf.toml.backup1'));
   }
 
@@ -268,18 +382,11 @@ Consider cd-ing to a dedicated folder first, e.g.:
   const targetLocationsRaw = await input({ message: 'Target locations (comma-separated):', default: 'Remote' });
 
   // ── Step 2: Write wolf.toml ───────────────────────────────────────────────
-  const config: AppConfig = {
-    defaultProfileId: 'default',
-    hunt: { minScore: 0.5, maxResults: 50 },
-    tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
-    score: { model: 'anthropic/claude-sonnet-4-6' },
-    reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
-    fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
-  };
-  await saveConfig(config);
+  const config = buildDefaultConfig(options.dev ? 'dev' : undefined);
+  await saveConfig(config, workspaceDir);
 
   // ── Step 3: Write profiles/default/profile.toml ──────────────────────────
-  const profileDir = path.join(process.cwd(), 'profiles', 'default');
+  const profileDir = path.join(workspaceDir, 'profiles', 'default');
   await fs.mkdir(profileDir, { recursive: true });
 
   const profile: UserProfile = {
@@ -304,16 +411,7 @@ Consider cd-ing to a dedicated folder first, e.g.:
     console.log(dim('profiles/default/profile.toml already exists — skipping (edit manually to update)'));
   } else {
     // Replace null with "" so optional fields always appear in the file.
-    // smol-toml skips null entirely (TOML has no null type), which would hide
-    // fields from users who want to fill them in later.
-    const serializable = {
-      ...profile,
-      firstUrl:     profile.firstUrl     ?? '',
-      secondUrl:    profile.secondUrl    ?? '',
-      thirdUrl:     profile.thirdUrl     ?? '',
-      scoringNotes: profile.scoringNotes ?? '',
-    };
-    await fs.writeFile(profileTomlPath, stringify(serializable as unknown as Record<string, unknown>), 'utf-8');
+    await fs.writeFile(profileTomlPath, stringify(serializableProfile(profile)), 'utf-8');
   }
 
   // ── Step 4: Write profiles/default/resume_pool.md (only if absent) ───────
@@ -323,9 +421,11 @@ Consider cd-ing to a dedicated folder first, e.g.:
     await fs.writeFile(resumePoolPath, buildResumePoolTemplate(name), 'utf-8');
   }
 
+  await fs.mkdir(path.join(workspaceDir, 'data'), { recursive: true });
+
   // ── Step 5: Update .gitignore ─────────────────────────────────────────────
   // Exclude data/ (auto-managed DB) and profiles/ (contains PII) from version control.
-  const gitignorePath = path.join(process.cwd(), '.gitignore');
+  const gitignorePath = path.join(workspaceDir, '.gitignore');
   const wolfIgnoreBlock = '\n# wolf\ndata/\nprofiles/\n';
   try {
     const existing = await fs.readFile(gitignorePath, 'utf-8');
@@ -340,7 +440,7 @@ Consider cd-ing to a dedicated folder first, e.g.:
   // These tell AI assistants (Claude, OpenClaw, etc.) how to operate in this
   // workspace. Both files share the same content from the bundled template.
   for (const filename of ['CLAUDE.md', 'AGENTS.md']) {
-    const dest = path.join(process.cwd(), filename);
+    const dest = path.join(workspaceDir, filename);
     const exists = await fs.access(dest).then(() => true).catch(() => false);
     if (!exists) {
       await fs.writeFile(dest, claudeTemplate, 'utf-8');
@@ -361,7 +461,7 @@ Next: edit ${bold('profiles/default/resume_pool.md')}, then run:
   wolf tailor --job <jobId>
 `);
 
-  if (!process.env.WOLF_ANTHROPIC_API_KEY) {
+  if (!getEnvValue('ANTHROPIC_API_KEY')) {
     console.log(`${bold('One more step — set up your API keys.')}\n`);
     await envSet();
   }

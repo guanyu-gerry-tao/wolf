@@ -29,6 +29,21 @@ Each section corresponds to a User Story and Use Case.
 - When wolf opens `resume_pool.md`
 - Then the file opens in the user's default editor; wolf waits for the editor to close before continuing
 
+**AC-01-5 — Scriptable empty init**
+- Given an automated agent needs a non-interactive workspace
+- When it runs `wolf init --empty`
+- Then wolf writes schema-valid `wolf.toml`, `profiles/default/profile.toml`, an empty `profiles/default/resume_pool.md`, and `data/` without prompting
+
+**AC-01-6 — Dev init isolation**
+- Given a dev build invoked as `npm run wolf -- init --dev --empty`
+- When `WOLF_DEV_HOME=/tmp/wolf-at-<ID>` is set
+- Then all workspace files are created under `/tmp/wolf-at-<ID>` and `wolf.toml` contains `[instance].mode = "dev"`
+
+**AC-01-7 — Stable build rejects dev workspaces**
+- Given the stable build is running
+- When the user passes `wolf init --dev`
+- Then wolf exits with a clear error telling the user to run `npm run build:dev` from the clone
+
 ---
 
 ## AC-02 · Job Discovery (`wolf hunt`)

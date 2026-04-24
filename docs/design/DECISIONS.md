@@ -251,3 +251,10 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 
 *Input validation at the command boundary.* Bad input (`--status bogus`, `--start not-a-date`, blank `--search ""`) throws with a clear message, never silently returns zero rows. `ALL_JOB_STATUSES` from `types/job.ts` is the source of truth; the derived `JobStatus` type and the validator share it so typos can't drift from the union.
 **Result:** Adopted. `wolf job list` ships with this exact shape today (see AC-08). Future list commands inherit the convention by reference. Escalation paths deferred until they're needed: Zod-izing validators across every command; SQLite FTS5 for JD content search; cursor pagination if `--limit` ceiling starts biting.
+
+---
+
+**2026-04-24 — Dev/stable isolation for AI-orchestrated acceptance tests**
+**Me:** Acceptance tests need to run shell-level `wolf` commands through AI agents, but the same machine also has real dogfood data. Tests must not touch `~/wolf`, `~/wolf-dev`, repo `data/`, or shell RC files.
+**AI:** Adopted two build modes with separate defaults. Stable builds come from `npm run build`, read `WOLF_*`, and default to `~/wolf` or `WOLF_HOME`. Dev builds come from `npm run build:dev`, read `WOLF_DEV_*` first with fallback to `WOLF_*`, and default to `~/wolf-dev` or `WOLF_DEV_HOME`. Local dev invocation is `npm run wolf -- <command>`. Automated acceptance tests must always set `WOLF_DEV_HOME=/tmp/wolf-at-<ID>` and only create/delete paths under `/tmp/wolf-at-*`.
+**Result:** Adopted. `src/utils/instance.ts` owns build-mode, workspace, env namespace, and dev warning behavior. `wolf init --empty --dev` creates schema-valid dev workspaces for agents. Dev CLI output includes a warning, and dev MCP tools use `wolfdev_*` names plus a structured warning field.

@@ -13,8 +13,13 @@ import { envShow, envSet, envClear } from '../commands/env/index.js';
 import { configGet, configSet } from '../commands/config/index.js';
 import { profileGet, profileSet, profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
 import { startMcpServer } from '../mcp/server.js';
+import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
 
 const program = new Command();
+
+if (isDevBuild()) {
+  console.error(DEV_WARNING);
+}
 
 program
   .name('wolf')
@@ -24,8 +29,11 @@ program
 program
   .command('init')
   .description('Interactive setup wizard')
-  .action(async () => {
-    await init();
+  .option('--empty', 'Non-interactive: create skeleton only, no prompts')
+  .option('--dev', 'Create a dev workspace (requires npm run build:dev)')
+  .option('--here', 'Create the workspace in the current directory')
+  .action(async (opts) => {
+    await init({ empty: opts.empty, dev: opts.dev, here: opts.here });
   });
 
 program
