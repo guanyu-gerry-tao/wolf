@@ -61,6 +61,17 @@ WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>
 
 优先使用确定性断言，其次使用 AI 产物评审；只有涉及外部副作用或最终主观判断时，才引入人类。
 
+## Runner 交互规则
+
+按 agent runner 的正常执行模式运行测试套件。尽量走最低交互路径：
+
+- 不要每条命令都要求人类批准。
+- runner 允许时，把相关安全命令批量执行。
+- 只有在 runner 权限边界要求时，或即将产生外部副作用前，才请求人类批准。
+- 如果 runner 需要先给一个短计划或 checklist，这是允许的，但同一个任务里必须继续执行。
+- 不要只返回 plan 就停止。一次测试运行必须以报告结束。
+- 如果 approval 被拒绝或不可用，写 `BLOCKED` 报告，说明哪条 command 需要 approval、为什么需要、哪些内容没有运行。
+
 ## 必须写报告
 
 每个 group 都必须写持久化报告：

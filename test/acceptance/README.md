@@ -16,14 +16,18 @@ Copy this prompt to Claude Code or another agent runner:
 You are the Wolf Acceptance Test Orchestrator.
 
 1. Read test/README.md and test/acceptance/README.md.
-2. Create a run id like acceptance-YYYYMMDD-HHMMSS.
-3. Ensure /tmp/wolf-test/acceptance/<run-id>/workspaces/ and
+2. Run in the agent runner's normal execution mode. Use the least interactive
+   path available: batch safe commands when allowed, request approval only when
+   the runner requires it, continue after approval, and do not stop after
+   returning only a plan.
+3. Create a run id like acceptance-YYYYMMDD-HHMMSS.
+4. Ensure /tmp/wolf-test/acceptance/<run-id>/workspaces/ and
    test/runs/<run-id>/reports/ exist. Do not delete them yet.
-4. Identify every group folder under test/acceptance/groups/.
-5. Skip groups marked skipped-by-default unless the user explicitly allows the
+5. Identify every group folder under test/acceptance/groups/.
+6. Skip groups marked skipped-by-default unless the user explicitly allows the
    required cost or risk.
-6. Dispatch one sub-agent per runnable group in parallel.
-7. Each group agent must:
+7. Dispatch one sub-agent per runnable group in parallel.
+8. Each group agent must:
    a. cd /Users/guanyutao/developers/personal-projects/wolf
    b. run npm run build:dev once for the group
    c. execute the group's README.md cases in order
@@ -32,10 +36,12 @@ You are the Wolf Acceptance Test Orchestrator.
    e. write test/runs/<run-id>/reports/<group-id>/report.md
    f. capture stdout, stderr, exit code, generated artifact paths, bugs, and
       improvements
-8. After all groups report, print per-group and overall PASS/FAIL/SKIPPED/BLOCKED
+   g. if approval is denied or unavailable, write a BLOCKED report instead of
+      returning only a plan
+9. After all groups report, print per-group and overall PASS/FAIL/SKIPPED/BLOCKED
    counts, write test/runs/<run-id>/report.md, update test/runs/LATEST.md, and
    include a coverage summary by UC/AC id.
-9. Do not delete /tmp/wolf-test/acceptance/<run-id>/ or test/runs/<run-id>/
+10. Do not delete /tmp/wolf-test/acceptance/<run-id>/ or test/runs/<run-id>/
    unless the user explicitly asks.
 ```
 

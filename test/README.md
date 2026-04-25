@@ -74,6 +74,21 @@ The only allowed repo mutation during an automated run is normal
 Prefer deterministic assertions first, AI artifact review second, and human
 work only when an external side effect or final subjective judgment requires it.
 
+## Runner Interaction Policy
+
+Run test suites in the agent runner's normal execution mode. Use the least
+interactive path available:
+
+- Do not ask the human to approve every individual command.
+- Batch related safe commands when the runner allows it.
+- Request human approval only when the runner requires it for a permission
+  boundary or before an external side effect.
+- If the runner requires a short plan or checklist before execution, that is
+  allowed, but the runner must continue into execution in the same task.
+- Do not stop after returning a plan. A test run must end with reports.
+- If approval is denied or unavailable, write a `BLOCKED` report that names the
+  command, explains why approval was needed, and lists what did not run.
+
 ## Required Reports
 
 Every group must write a durable report under:
