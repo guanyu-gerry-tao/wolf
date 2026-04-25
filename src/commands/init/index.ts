@@ -458,7 +458,7 @@ ${bold('✅ wolf workspace initialized!')}
 
 Next: edit ${bold('profiles/default/resume_pool.md')}, then run:
   wolf add --title "Job Title" --company "Company" --jd-text "paste JD here"
-  wolf tailor --job <jobId>
+  wolf tailor full --job <jobId>
 `);
 
   if (!getEnvValue('ANTHROPIC_API_KEY')) {

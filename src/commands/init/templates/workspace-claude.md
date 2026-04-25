@@ -25,7 +25,7 @@ wolf is a CLI tool that:
 ### Tailor pipeline (3-agent flow with checkpoints)
 | Command | What it does |
 |---|---|
-| `wolf tailor --job <id>` | Full pipeline: analyst brief -> resume + cover letter (parallel) |
+| `wolf tailor full --job <id>` | Full pipeline: analyst brief -> resume + cover letter (parallel) |
 | `wolf tailor brief --job <id>` | Step 1 only: produce the tailoring brief |
 | `wolf tailor resume --job <id>` | Step 2a only: write resume (requires existing brief) |
 | `wolf tailor cover --job <id>` | Step 2b only: write cover letter (requires existing brief) |
@@ -54,7 +54,7 @@ All tailor commands accept `--hint "<text>"` to give the analyst pre-analysis gu
 ### One-shot (trust the AI)
 ```
 wolf add --title "SWE" --company "Acme" --jd-text "..."   # returns jobId
-wolf tailor --job <jobId>                                 # full 3-agent pipeline
+wolf tailor full --job <jobId>                            # full 3-agent pipeline
 ```
 
 ### Iterative (human-in-the-loop)

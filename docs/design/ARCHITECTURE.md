@@ -495,7 +495,7 @@ CLI parses args
   ← CLI prints batch summary; scoring completes in background
 ```
 
-### `wolf tailor --job <job_id> [--hint "..."]`
+### `wolf tailor full --job <job_id> [--hint "..."]`
 
 ```
 CLI parses args

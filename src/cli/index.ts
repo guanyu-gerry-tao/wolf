@@ -90,14 +90,16 @@ program
   });
 
 const tailorCmd = new Command('tailor')
-  .description('Tailor resume + cover letter for a job (runs the full pipeline when called without a subcommand)')
-  .option('-j, --job <id>', 'Job ID')
+  .description('Tailor resume + cover letter for a job (run a phase or the full pipeline as a subcommand)');
+tailorCmd
+  .command('full')
+  .description('Run the full 3-agent pipeline: analyst brief -> resume + cover letter (parallel)')
+  .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
-  .option('--no-cover-letter', 'Skip cover letter in full pipeline')
+  .option('--no-cover-letter', 'Skip cover letter')
   .option('--hint <text>', 'Pre-analysis guidance for the analyst (written to hint.md)')
   .option('--diff', 'Show before/after comparison')
   .action(async (opts) => {
-    if (!opts.job) throw new Error('tailor: --job <id> is required');
     const result = await tailor({
       jobId: opts.job,
       profileId: opts.profile,

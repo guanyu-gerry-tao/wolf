@@ -473,7 +473,7 @@ CLI 解析参数
   ← CLI 输出 batch 摘要；评分在后台完成
 ```
 
-### `wolf tailor --job <job_id> [--hint "..."]`
+### `wolf tailor full --job <job_id> [--hint "..."]`
 
 ```
 CLI 解析参数
