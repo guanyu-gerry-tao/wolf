@@ -27,8 +27,9 @@ You are the Wolf Smoke Test Orchestrator.
    the runner requires it, continue after approval, and do not stop after
    returning only a plan.
 3. Create a run id like smoke-YYYYMMDD-HHMMSS.
-4. Ensure /tmp/wolf-test/smoke/<run-id>/workspaces/ and
-   test/runs/<run-id>/reports/ exist. Do not delete them yet.
+4. Ensure /tmp/wolf-test/smoke/<run-id>/workspaces/,
+   /tmp/wolf-test/smoke/<run-id>/reports/, and test/runs/<run-id>/reports/
+   exist. Do not delete them yet.
 5. Identify every group folder under test/smoke/groups/.
 6. Dispatch one sub-agent per group in parallel.
 7. Each group agent must:
@@ -37,13 +38,18 @@ You are the Wolf Smoke Test Orchestrator.
    c. execute the group's README.md cases in order
    d. use WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/<workspace-id>
       for every wolf invocation
-   e. write test/runs/<run-id>/reports/<group-id>/report.md
-   f. capture stdout, stderr, and exit code for every command
-   g. if approval is denied or unavailable, write a BLOCKED report instead of
+   e. write /tmp/wolf-test/smoke/<run-id>/reports/<group-id>/report.md
+   f. write command logs under
+      /tmp/wolf-test/smoke/<run-id>/reports/<group-id>/logs/
+   g. capture stdout, stderr, and exit code for every command
+   h. return the report.md path in the final message
+   i. if approval is denied or unavailable, return a BLOCKED summary instead of
       returning only a plan
-8. After all groups report, print per-group and overall PASS/FAIL/SKIPPED/BLOCKED
-   counts, write test/runs/<run-id>/report.md, and update test/runs/LATEST.md.
-9. Do not delete /tmp/wolf-test/smoke/<run-id>/ or test/runs/<run-id>/ unless
+8. After all groups report, copy /tmp/wolf-test/smoke/<run-id>/reports/ into
+   test/runs/<run-id>/reports/.
+9. Print per-group and overall PASS/FAIL/SKIPPED/BLOCKED counts, write
+   test/runs/<run-id>/report.md, and update test/runs/LATEST.md.
+10. Do not delete /tmp/wolf-test/smoke/<run-id>/ or test/runs/<run-id>/ unless
    the user explicitly asks.
 ```
 

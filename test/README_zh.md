@@ -74,7 +74,16 @@ WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>
 
 ## 必须写报告
 
-每个 group 都必须写持久化报告：
+每个 group agent 应该先把原始报告和命令日志写到 runtime tree：
+
+```text
+/tmp/wolf-test/<suite>/<run-id>/reports/<group-id>/report.md
+/tmp/wolf-test/<suite>/<run-id>/reports/<group-id>/logs/
+```
+
+group agent 的最终回复必须返回原始 report path，方便 orchestrator 直接读取。
+
+orchestrator 负责把每个原始 group report 复制到 repo 本地运行记录：
 
 ```text
 test/runs/<suite>-<timestamp>/reports/<group-id>/report.md
@@ -87,7 +96,7 @@ test/runs/<suite>-<timestamp>/report.md
 test/runs/LATEST.md
 ```
 
-`report.md` 是 suite 总结。`LATEST.md` 指向最近一次运行和关键失败报告，方便 coding agent 直接读取。
+`report.md` 是 suite 总结。`LATEST.md` 指向最近一次运行和关键失败报告，方便 coding agent 直接读取。repo 本地的 `test/runs/` 副本是后续 coding agent 的持久交接物；`/tmp/wolf-test/` 保留为 runtime evidence 区域。
 
 group 报告必须包含：
 

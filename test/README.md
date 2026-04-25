@@ -91,7 +91,19 @@ interactive path available:
 
 ## Required Reports
 
-Every group must write a durable report under:
+Each group agent should write its raw report and command logs under the runtime
+tree:
+
+```text
+/tmp/wolf-test/<suite>/<run-id>/reports/<group-id>/report.md
+/tmp/wolf-test/<suite>/<run-id>/reports/<group-id>/logs/
+```
+
+The group agent must return the raw report path in its final message so the
+orchestrator can read it directly.
+
+The orchestrator is responsible for copying each raw group report into the
+repo-local run record:
 
 ```text
 test/runs/<suite>-<timestamp>/reports/<group-id>/report.md
@@ -105,7 +117,9 @@ test/runs/LATEST.md
 ```
 
 `report.md` is the suite summary. `LATEST.md` points coding agents to the most
-recent run and its important failure reports.
+recent run and its important failure reports. The repo-local `test/runs/` copy
+is the durable handoff for later coding agents; `/tmp/wolf-test/` remains the
+runtime evidence area.
 
 The group report must include:
 

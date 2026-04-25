@@ -17,7 +17,8 @@ You are the Wolf Acceptance Test Orchestrator.
    the runner requires it, continue after approval, and do not stop after
    returning only a plan.
 3. Create a run id like acceptance-YYYYMMDD-HHMMSS.
-4. Ensure /tmp/wolf-test/acceptance/<run-id>/workspaces/ and
+4. Ensure /tmp/wolf-test/acceptance/<run-id>/workspaces/,
+   /tmp/wolf-test/acceptance/<run-id>/reports/, and
    test/runs/<run-id>/reports/ exist. Do not delete them yet.
 5. Identify every group folder under test/acceptance/groups/.
 6. Skip groups marked skipped-by-default unless the user explicitly allows the
@@ -29,15 +30,20 @@ You are the Wolf Acceptance Test Orchestrator.
    c. execute the group's README.md cases in order
    d. use WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/<workspace-id>
       for every wolf invocation
-   e. write test/runs/<run-id>/reports/<group-id>/report.md
-   f. capture stdout, stderr, exit code, generated artifact paths, bugs, and
+   e. write /tmp/wolf-test/acceptance/<run-id>/reports/<group-id>/report.md
+   f. write command logs and lightweight artifact indexes under
+      /tmp/wolf-test/acceptance/<run-id>/reports/<group-id>/
+   g. capture stdout, stderr, exit code, generated artifact paths, bugs, and
       improvements
-   g. if approval is denied or unavailable, write a BLOCKED report instead of
+   h. return the report.md path in the final message
+   i. if approval is denied or unavailable, return a BLOCKED summary instead of
       returning only a plan
-9. After all groups report, print per-group and overall PASS/FAIL/SKIPPED/BLOCKED
-   counts, write test/runs/<run-id>/report.md, update test/runs/LATEST.md, and
-   include a coverage summary by UC/AC id.
-10. Do not delete /tmp/wolf-test/acceptance/<run-id>/ or test/runs/<run-id>/
+9. After all groups report, copy /tmp/wolf-test/acceptance/<run-id>/reports/
+   into test/runs/<run-id>/reports/.
+10. Print per-group and overall PASS/FAIL/SKIPPED/BLOCKED counts, write
+   test/runs/<run-id>/report.md, update test/runs/LATEST.md, and include a
+   coverage summary by UC/AC id.
+11. Do not delete /tmp/wolf-test/acceptance/<run-id>/ or test/runs/<run-id>/
    unless the user explicitly asks.
 ```
 
