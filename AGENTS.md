@@ -80,7 +80,7 @@ wolf/
 |---|---|
 | `wolf init` | Interactive setup wizard; defaults to `~/wolf` |
 | `wolf init --empty` | Non-interactive skeleton workspace |
-| `wolf init --dev --empty` | Dev skeleton workspace (dev build only; use `WOLF_DEV_HOME=/tmp/wolf-at-*` for tests) |
+| `wolf init --dev --empty` | Dev skeleton workspace (dev build only; tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
 | `wolf hunt` | Find and score jobs |
 | `wolf tailor` | Tailor resume to a JD |
 | `wolf fill` | Auto-fill job application form |
@@ -140,8 +140,10 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - e.g. `src/commands/env/__tests__/env.test.ts` tests `src/commands/env/index.ts`
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
-- CLI behavior added or changed → add an entry to `docs/dev/ACCEPTANCE_TESTS.md` and `docs/dev/ACCEPTANCE_TESTS_zh.md` in the same PR.
-- Automated acceptance tests must only use `/tmp/wolf-at-*` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`.
+- Smoke and acceptance test definitions live under `test/`; start with `test/README.md`.
+- CLI behavior added or changed → add or update the relevant smoke/acceptance group under `test/` in the same PR.
+- Automated smoke and acceptance tests must only use `/tmp/wolf-test/` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`.
+- Test run reports live under `test/runs/<run-id>/`, with `test/runs/LATEST.md` pointing to the most recent run. The directory is kept with `.gitkeep`, but run contents are gitignored and must not be committed.
 
 ### Comment style
 
@@ -156,7 +158,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - Layer / directory / data flow changed → `ARCHITECTURE.md` + `ARCHITECTURE_zh.md`
   - Architectural decision made → `DECISIONS.md` + `DECISIONS_zh.md`
   - Milestone status changed → `AGENTS.md`
-  - Testing conventions changed → `ACCEPTANCE_TESTS.md` + `ACCEPTANCE_TESTS_zh.md`
+  - Testing conventions changed → `test/README.md` + `test/README_zh.md` and the relevant suite/group docs
 
 ## Implementation plans
 

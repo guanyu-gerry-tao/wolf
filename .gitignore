@@ -27,6 +27,9 @@ playwright-report/*
 test-results/*
 screenshots/*
 
+# Local test run reports and captured artifacts. Keep only .gitkeep.
+test/runs/**
+
 # Logs
 logs/*
 *.log

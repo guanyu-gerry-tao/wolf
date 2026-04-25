@@ -117,8 +117,9 @@ real dogfood state by accident.
 
 `src/utils/instance.ts` is the source of truth for build mode, workspace
 resolution, env-var lookup, and the dev warning. Acceptance tests must override
-the dev workspace with `WOLF_DEV_HOME=/tmp/wolf-at-<ID>` for every command and
-must only create/delete `/tmp/wolf-at-*` paths.
+the dev workspace with
+`WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>` for
+every command and must only create/delete paths under `/tmp/wolf-test/`.
 
 ### Directory structure
 

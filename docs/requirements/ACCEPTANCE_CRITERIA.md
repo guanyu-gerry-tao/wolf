@@ -36,8 +36,8 @@ Each section corresponds to a User Story and Use Case.
 
 **AC-01-6 — Dev init isolation**
 - Given a dev build invoked as `npm run wolf -- init --dev --empty`
-- When `WOLF_DEV_HOME=/tmp/wolf-at-<ID>` is set
-- Then all workspace files are created under `/tmp/wolf-at-<ID>` and `wolf.toml` contains `[instance].mode = "dev"`
+- When `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>` is set
+- Then all workspace files are created under that test workspace and `wolf.toml` contains `[instance].mode = "dev"`
 
 **AC-01-7 — Stable build rejects dev workspaces**
 - Given the stable build is running

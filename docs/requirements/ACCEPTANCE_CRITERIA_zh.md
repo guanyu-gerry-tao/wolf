@@ -36,8 +36,8 @@
 
 **AC-01-6 — Dev 初始化隔离**
 - Given dev build 以 `npm run wolf -- init --dev --empty` 调用
-- When 设置了 `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`
-- Then 所有 workspace 文件都创建在 `/tmp/wolf-at-<ID>` 下，且 `wolf.toml` 包含 `[instance].mode = "dev"`
+- When 设置了 `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`
+- Then 所有 workspace 文件都创建在该测试 workspace 下，且 `wolf.toml` 包含 `[instance].mode = "dev"`
 
 **AC-01-7 — Stable build 拒绝 dev workspace**
 - Given 当前运行的是 stable build
