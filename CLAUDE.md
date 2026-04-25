@@ -144,6 +144,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - CLI behavior added or changed → add or update the relevant smoke/acceptance group under `test/` in the same PR.
 - Automated smoke and acceptance tests must only use `/tmp/wolf-test/` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`.
 - Test run reports live under `test/runs/<run-id>/`, with `test/runs/LATEST.md` pointing to the most recent run. The directory is kept with `.gitkeep`, but run contents are gitignored and must not be committed.
+- If the user asks to clear test tmp/temp files, interpret that as deleting runtime workspaces under `/tmp/wolf-test/` only. Do not delete `test/runs/` reports unless the user explicitly asks to clear reports too.
 
 ### Comment style
 
