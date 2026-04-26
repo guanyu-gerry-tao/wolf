@@ -115,6 +115,40 @@ npm test  # 运行测试，应该全部通过
 
 如果有测试失败，先把错误信息完整复制给 AI 问一下。还是搞不定，联系项目 owner。
 
+## 第三点五步：用 dev build 开发（不要污染你真实的 workspace）
+
+> [!TIP]
+> 这一段可以整段贴给 Claude Code / ChatGPT，让 AI 帮你执行下面的命令。你只需要告诉 AI 想用哪个目录当 workspace、API key 放在哪。
+
+上面的 `npm run build` 装的是 **stable build**。Stable build 默认 workspace 是 `~/wolf`，读你真实的 `WOLF_*` 环境变量 —— 也就是说如果你拿它来开发，改动会写进你真实的求职 workspace、消耗你真实的 API 预算。请不要这样做。
+
+本地开发请用 **dev build**。这是另一个 build mode，默认 workspace 是 `~/wolf-dev`、优先读 `WOLF_DEV_*` env、CLI 会打印 dev banner（这样你随时知道现在跑的是哪个 build）、MCP 工具名是 `wolfdev_*`（避免与 AI 客户端里已配置的真实 `wolf_*` 工具冲突）。
+
+```bash
+npm run build:dev                              # 编译 dev-aware dist
+export WOLF_DEV_HOME=~/wolf-dev                # 或任何你想测试的目录
+export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # 跟生产 key 分开
+
+npm run wolf -- init --dev --empty             # 创建 dev workspace（无交互提示）
+npm run wolf -- <command>                      # 用 dev build 跑任意 wolf 命令
+```
+
+`npm run wolf -- ...` 实际跑的是 `node dist/cli/index.js`，所以你不用 `npm install -g .`，也不会跟你机器上别处装的 stable `wolf` 互相覆盖。
+
+Stable 和 dev build 的关键区别：
+
+| | Stable build | Dev build |
+|---|---|---|
+| 怎么 build | `npm run build` | `npm run build:dev` |
+| 怎么调用 | 全局 `wolf`（需先 `npm install -g .`）或 `node dist/cli/index.js` | `npm run wolf -- <command>` |
+| 默认 workspace | `~/wolf`（或 `WOLF_HOME`） | `~/wolf-dev`（或 `WOLF_DEV_HOME`） |
+| 环境变量优先级 | 只读 `WOLF_*` | 先 `WOLF_DEV_*`，fallback `WOLF_*` |
+| MCP 工具名 | `wolf_*` | `wolfdev_*` |
+| CLI banner | 无 | 每次调用都打 "dev" banner |
+| `wolf init --dev` | 拒绝，报清晰错误 | 允许 |
+
+如果你看到 `wolf init` 在向你确认是否使用你真实的 `~/wolf` 目录，说明你不小心跑了 stable build —— 请重新 `npm run build:dev`，用 `npm run wolf -- ...` 调用。
+
 ## 第四步：找一个任务来做
 
 > 开源项目的任务是公开发布的，就像游戏里的悬赏公告板——任何人都可以挑一个来做。做完提交，审核通过后，你写的代码就正式进入项目，这就是"贡献"。
@@ -222,11 +256,12 @@ git push -u origin feat/你的功能名
 
 **Dog fooding** 是一个工程术语，意思是"吃自己的狗粮"——用自己写的工具做一次真实的操作，而不只是看测试通过了就算完。
 
+请用 **dev build** 跑，这样改动会停留在你的 dev workspace（`WOLF_DEV_HOME`），用的是 dev API key。第三点五步有完整说明。
+
 ```bash
-cd /path/to/wolf      # cd 到你的 wolf 项目根目录
-npm run build         # 重新编译
-npm install -g .      # 把 wolf 安装到本地，之后才能直接用 wolf 命令
-wolf <你实现的命令>     # 真实跑一遍
+cd /path/to/wolf            # cd 到你的 wolf 项目根目录
+npm run build:dev           # 改完代码后重新编译 dev build
+npm run wolf -- <命令>       # 用 dev workspace 真实跑一遍
 ```
 
 过一遍这些问题：
