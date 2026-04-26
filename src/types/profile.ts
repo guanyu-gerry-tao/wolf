@@ -11,7 +11,15 @@ import { Status } from "./sponsorship.js";
 export interface UserProfile {
   id: string; // e.g. "default", "gc-persona"
   label: string; // human-readable name of the profile, e.g. "Default", "Green Card"
-  name: string; // full name as on resume;
+  // Name is split into legal + display fields so ATS forms (which require
+  // First/Middle/Last separately) and human-facing surfaces (resume header,
+  // cover-letter "Dear …") can each draw from the right source.
+  // Use displayName(profile) / legalFullName(profile) helpers in src/utils/profileName.ts.
+  legalFirstName: string;             // required — First name on legal documents
+  legalMiddleName: string | null;     // optional — Middle name (some ATS require)
+  legalLastName: string;              // required — Last name on legal documents
+  preferredName: string | null;       // optional — e.g. "Gerry" for legal "Guanyu"; falls back to legalFirstName
+  pronouns: string | null;            // optional — e.g. "he/him"; some ATS / cover letters use it
   email: string;
   phone: string; // required — most forms demand a phone number
   firstUrl: string | null; // e.g. LinkedIn

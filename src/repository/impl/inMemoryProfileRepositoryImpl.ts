@@ -4,7 +4,11 @@ import type { UserProfile } from '../../types/index.js';
 const MOCK_PROFILE: UserProfile = {
   id: 'default',
   label: 'Test Profile',
-  name: 'Test User',
+  legalFirstName: 'Test',
+  legalMiddleName: null,
+  legalLastName: 'User',
+  preferredName: null,
+  pronouns: null,
   email: 'test@example.com',
   phone: '+1 555 000 0000',
   firstUrl: null,

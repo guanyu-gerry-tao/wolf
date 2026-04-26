@@ -201,7 +201,8 @@ Returns what's missing and what the next step should be.`,
         await loadConfig();
         const ctx = createAppContext();
         const profile = await ctx.profileRepository.getDefault();
-        const hasProfile = !!profile?.name && !!profile?.email;
+        // "Profile present" = both legal name halves and an email are filled.
+        const hasProfile = !!profile?.legalFirstName && !!profile?.legalLastName && !!profile?.email;
 
         const result = {
           profile: hasProfile ? 'ok' : 'missing',

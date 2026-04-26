@@ -20,7 +20,11 @@ const CONFIG: AppConfig = {
 const PROFILE: UserProfile = {
   id: 'default',
   label: 'Default',
-  name: 'Alex Rivera',
+  legalFirstName: 'Alex',
+  legalMiddleName: null,
+  legalLastName: 'Rivera',
+  preferredName: null,
+  pronouns: null,
   email: 'alex@example.com',
   phone: '+1 555 000 0000',
   firstUrl: null,
@@ -44,10 +48,13 @@ async function writeProfile(profile: UserProfile): Promise<void> {
   // so the profile round-trips through UserProfileSchema cleanly.
   const serializable = {
     ...profile,
-    firstUrl:     profile.firstUrl     ?? '',
-    secondUrl:    profile.secondUrl    ?? '',
-    thirdUrl:     profile.thirdUrl     ?? '',
-    scoringNotes: profile.scoringNotes ?? '',
+    legalMiddleName: profile.legalMiddleName ?? '',
+    preferredName:   profile.preferredName   ?? '',
+    pronouns:        profile.pronouns        ?? '',
+    firstUrl:        profile.firstUrl        ?? '',
+    secondUrl:       profile.secondUrl       ?? '',
+    thirdUrl:        profile.thirdUrl        ?? '',
+    scoringNotes:    profile.scoringNotes    ?? '',
   };
   await fs.writeFile(
     path.join(dir, 'profile.toml'),
@@ -74,8 +81,8 @@ afterEach(async () => {
 describe('profileGet', () => {
   // Simple string field: the most common lookup.
   it('prints a top-level string field', async () => {
-    await profileGet('name');
-    expect(logSpy).toHaveBeenCalledWith('Alex Rivera');
+    await profileGet('legalFirstName');
+    expect(logSpy).toHaveBeenCalledWith('Alex');
   });
 
   // Arrays print as JSON so the output is unambiguous even when an element
@@ -94,13 +101,13 @@ describe('profileGet', () => {
 describe('profileSet', () => {
   // String roundtrip: write-then-read-back is the core guarantee.
   it('persists a string field', async () => {
-    await profileSet('name', 'Jane Doe');
+    await profileSet('legalFirstName', 'Jane');
     const raw = await fs.readFile(
       path.join(tmpDir, 'profiles', 'default', 'profile.toml'),
       'utf-8',
     );
-    const written = parse(raw) as { name: string };
-    expect(written.name).toBe('Jane Doe');
+    const written = parse(raw) as { legalFirstName: string };
+    expect(written.legalFirstName).toBe('Jane');
   });
 
   // Array fields accept comma-separated CLI input — shell-friendly vs JSON syntax.
@@ -168,10 +175,10 @@ describe('profileCreate', () => {
       path.join(tmpDir, 'profiles', 'jane', 'profile.toml'),
       'utf-8',
     );
-    const jane = parse(janeRaw) as { id: string; name: string };
+    const jane = parse(janeRaw) as { id: string; legalFirstName: string };
     expect(jane.id).toBe('jane');
     // Data from source is preserved (name), only id/label change.
-    expect(jane.name).toBe(PROFILE.name);
+    expect(jane.legalFirstName).toBe(PROFILE.legalFirstName);
   });
 
   // Invalid ids would create unusable or unsafe paths; the command rejects

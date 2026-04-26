@@ -5,6 +5,7 @@ import SYSTEM_PROMPT from './prompts/tailor-system.md';
 import COVER_LETTER_SYSTEM_PROMPT from './prompts/cover-letter-system.md';
 import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
 import type { AiConfig, UserProfile } from '../../types/index.js';
+import { displayName } from '../../utils/profileName.js';
 
 export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
   async tailorResumeToHtml(
@@ -121,7 +122,7 @@ function buildContactSection(profile: UserProfile, tone?: string): string {
   const urls = formatProfileUrls(profile);
   const lines = [
     '## Candidate Contact Info',
-    `Name: ${profile.name}`,
+    `Name: ${displayName(profile)}`,
     `Email: ${profile.email}`,
     `Phone: ${profile.phone}`,
     `URLs: ${urls}`,

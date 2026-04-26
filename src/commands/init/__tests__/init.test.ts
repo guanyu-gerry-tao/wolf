@@ -29,9 +29,15 @@ const originalApiKey = process.env.WOLF_ANTHROPIC_API_KEY;
 // Default mock answers matching the interactive prompts in the order they fire.
 // The order must stay in sync with the input() / select() / confirm() call sequence in init().
 function setupDefaultMocks(): void {
-  // input calls in order: name, email, phone, firstUrl, secondUrl, thirdUrl, targetRoles, targetLocations
+  // input calls in order:
+  //   legalFirstName, legalMiddleName, legalLastName, preferredName, pronouns,
+  //   email, phone, firstUrl, secondUrl, thirdUrl, targetRoles, targetLocations
   vi.mocked(input)
-    .mockResolvedValueOnce('Alex Rivera')       // name
+    .mockResolvedValueOnce('Alex')              // legalFirstName
+    .mockResolvedValueOnce('')                  // legalMiddleName (skip)
+    .mockResolvedValueOnce('Rivera')            // legalLastName
+    .mockResolvedValueOnce('')                  // preferredName (skip → falls back to legalFirstName)
+    .mockResolvedValueOnce('')                  // pronouns (skip)
     .mockResolvedValueOnce('alex@example.com')  // email
     .mockResolvedValueOnce('+1 555 000 0000')   // phone
     .mockResolvedValueOnce('')                  // firstUrl (skip)
@@ -97,7 +103,12 @@ describe('init()', () => {
         path.join(dir, 'profiles', 'default', 'profile.toml'), 'utf-8'
       );
       const profile = UserProfileSchema.parse(parse(profileRaw));
-      expect(profile.name).toBe('Alex Rivera');
+      expect(profile.legalFirstName).toBe('Alex');
+      expect(profile.legalLastName).toBe('Rivera');
+      // Optional name fields skipped → null after parse, "" in serialized TOML.
+      expect(profile.legalMiddleName).toBeNull();
+      expect(profile.preferredName).toBeNull();
+      expect(profile.pronouns).toBeNull();
       expect(profile.email).toBe('alex@example.com');
       expect(profile.phone).toBe('+1 555 000 0000');
       expect(profile.immigrationStatus).toBe('no limit');
@@ -196,7 +207,10 @@ describe('init()', () => {
       );
       const profile = UserProfileSchema.parse(parse(profileRaw));
       expect(profile.id).toBe('default');
-      expect(profile.name).toBe('');
+      // --empty skeleton leaves required name fields as empty strings; the user
+      // must edit them before any name-surfacing command runs.
+      expect(profile.legalFirstName).toBe('');
+      expect(profile.legalLastName).toBe('');
       expect(profile.email).toBe('');
       expect(profile.targetRoles).toEqual([]);
       expect(profile.targetLocations).toEqual([]);

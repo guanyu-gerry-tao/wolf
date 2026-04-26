@@ -4,6 +4,7 @@ import { stripComments } from '../../utils/stripComments.js';
 import ANALYST_SYSTEM_PROMPT from './prompts/analyst-system.md';
 import type { TailoringBriefService } from '../tailoringBriefService.js';
 import type { AiConfig, UserProfile } from '../../types/index.js';
+import { displayName } from '../../utils/profileName.js';
 
 export class TailoringBriefServiceImpl implements TailoringBriefService {
   async analyze(
@@ -66,7 +67,7 @@ function buildCandidateSection(profile: UserProfile): string {
   const targetRoles = profile.targetRoles.join(', ') || 'unspecified';
   return [
     '## Candidate',
-    `Name: ${profile.name}`,
+    `Name: ${displayName(profile)}`,
     `Target roles: ${targetRoles}`,
   ].join('\n');
 }

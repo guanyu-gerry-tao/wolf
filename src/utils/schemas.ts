@@ -14,10 +14,24 @@ export const SponsorshipSchema = z.enum([
 ]);
 
 // --- UserProfile ---
+// Empty-string-to-null transform mirrors the firstUrl/secondUrl pattern below:
+// optional fields always appear in profile.toml as `key = ""` so users can see
+// and fill them in, but the runtime model treats empty as absent.
+const optionalString = () =>
+  z.string().nullable().default(null).transform(v => v === '' ? null : v);
+
 export const UserProfileSchema = z.object({
   id: z.string(),
   label: z.string(),
-  name: z.string(),
+  // Name split into legal + display fields — see UserProfile interface for
+  // semantics; render via displayName() / legalFullName() in utils/profileName.ts.
+  // Accepts "" so `wolf init --empty` can write a placeholder profile.toml that
+  // still parses; interactive `wolf init` prompts enforce non-empty via validate().
+  legalFirstName: z.string(),
+  legalMiddleName: optionalString(),
+  legalLastName: z.string(),
+  preferredName: optionalString(),
+  pronouns: optionalString(),
   email: z.union([z.literal(''), z.string().email()]),
   phone: z.string(),
   // Empty string is treated as absent — written as "" when null so the field

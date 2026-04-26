@@ -160,7 +160,13 @@ Open `profiles/default/profile.toml` with any text editor and save.
 ```toml
 id = "default"
 label = "Default"
-name = "Your Name"
+# Name split so ATS forms can fill First/Middle/Last separately.
+# Required: legalFirstName, legalLastName. Optional fields appear as "" (empty).
+legalFirstName = "Your"
+legalMiddleName = ""                       # optional — some ATS require it
+legalLastName = "Name"
+preferredName = ""                         # optional — e.g. "Gerry" if legal is "Guanyu"
+pronouns = ""                              # optional — e.g. "he/him"
 email = "you@example.com"
 phone = "+1 555 000 0000"
 firstUrl = "https://linkedin.com/in/you"   # null if not set

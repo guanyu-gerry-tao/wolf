@@ -10,6 +10,7 @@ import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir } from '../.
 import type { AppConfig } from '../../types/index.js';
 import type { UserProfile } from '../../types/index.js';
 import type { Status } from '../../types/index.js';
+import { displayName } from '../../utils/profileName.js';
 
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
@@ -157,10 +158,17 @@ function buildDefaultConfig(mode?: 'stable' | 'dev'): AppConfig {
 }
 
 function buildEmptyProfile(): UserProfile {
+  // Empty skeleton for `wolf init --empty`. Required name fields default to ''
+  // so the file parses; the user must edit them before any command that
+  // surfaces the candidate's name (resume, cover letter, fill).
   return {
     id: 'default',
     label: 'Default',
-    name: '',
+    legalFirstName: '',
+    legalMiddleName: null,
+    legalLastName: '',
+    preferredName: null,
+    pronouns: null,
     email: '',
     phone: '',
     firstUrl: null,
@@ -175,12 +183,17 @@ function buildEmptyProfile(): UserProfile {
 }
 
 function serializableProfile(profile: UserProfile): Record<string, unknown> {
+  // Replace nulls with "" so optional fields always appear in profile.toml as
+  // visible empty strings the user can fill in. Required fields pass through.
   return {
     ...profile,
-    firstUrl:     profile.firstUrl     ?? '',
-    secondUrl:    profile.secondUrl    ?? '',
-    thirdUrl:     profile.thirdUrl     ?? '',
-    scoringNotes: profile.scoringNotes ?? '',
+    legalMiddleName: profile.legalMiddleName ?? '',
+    preferredName:   profile.preferredName   ?? '',
+    pronouns:        profile.pronouns        ?? '',
+    firstUrl:        profile.firstUrl        ?? '',
+    secondUrl:       profile.secondUrl       ?? '',
+    thirdUrl:        profile.thirdUrl        ?? '',
+    scoringNotes:    profile.scoringNotes    ?? '',
   };
 }
 
@@ -340,10 +353,29 @@ Consider cd-ing to a dedicated folder first, e.g.:
   // ── Step 1: Collect profile info ─────────────────────────────────────────
   console.log(`\n${bold('── Profile ──')}`);
 
-  const name = await input({
-    message: 'Full name (as on resume):',
+  // Name is split so ATS forms can fill First/Middle/Last separately.
+  // Middle / preferred / pronouns are optional — Enter to skip.
+  const legalFirstName = await input({
+    message: 'Legal first name:',
     validate: v => v.trim() !== '' || 'Required',
   });
+  const legalMiddleNameRaw = await input({
+    message: 'Legal middle name (Enter to skip):',
+    default: '',
+  });
+  const legalLastName = await input({
+    message: 'Legal last name:',
+    validate: v => v.trim() !== '' || 'Required',
+  });
+  const preferredNameRaw = await input({
+    message: `Preferred name (e.g. nickname; Enter to use "${legalFirstName}"):`,
+    default: '',
+  });
+  const pronounsRaw = await input({
+    message: 'Pronouns (e.g. "he/him", Enter to skip):',
+    default: '',
+  });
+
   const email = await input({
     message: 'Email:',
     validate: v => v.includes('@') || 'Invalid email',
@@ -403,7 +435,11 @@ Consider cd-ing to a dedicated folder first, e.g.:
   const profile: UserProfile = {
     id: 'default',
     label: 'Default',
-    name,
+    legalFirstName,
+    legalMiddleName: legalMiddleNameRaw.trim() || null,
+    legalLastName,
+    preferredName:   preferredNameRaw.trim()   || null,
+    pronouns:        pronounsRaw.trim()        || null,
     email,
     phone,
     firstUrl:  firstUrlRaw.trim()  || null,
@@ -429,7 +465,7 @@ Consider cd-ing to a dedicated folder first, e.g.:
   const resumePoolPath = path.join(profileDir, 'resume_pool.md');
   const poolExists = await fs.access(resumePoolPath).then(() => true).catch(() => false);
   if (!poolExists) {
-    await fs.writeFile(resumePoolPath, buildResumePoolTemplate(name), 'utf-8');
+    await fs.writeFile(resumePoolPath, buildResumePoolTemplate(displayName(profile)), 'utf-8');
   }
 
   await fs.mkdir(path.join(workspaceDir, 'data'), { recursive: true });

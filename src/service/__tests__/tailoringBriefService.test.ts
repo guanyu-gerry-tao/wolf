@@ -13,7 +13,10 @@ vi.mock('../../utils/ai/index.js', () => ({
 import { aiClient } from '../../utils/ai/index.js';
 
 const PROFILE: UserProfile = {
-  id: 'default', label: 'Default', name: 'Alex', email: 'alex@example.com',
+  id: 'default', label: 'Default',
+  legalFirstName: 'Alex', legalMiddleName: null, legalLastName: 'Rivera',
+  preferredName: null, pronouns: null,
+  email: 'alex@example.com',
   phone: '+1 555 000 0000', firstUrl: null, secondUrl: null, thirdUrl: null,
   immigrationStatus: 'no limit', willingToRelocate: 'no',
   targetRoles: ['SWE'], targetLocations: ['Remote'], scoringNotes: null,

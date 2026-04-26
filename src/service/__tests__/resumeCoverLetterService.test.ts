@@ -16,7 +16,11 @@ import { aiClient } from '../../utils/ai/index.js';
 const PROFILE: UserProfile = {
   id: 'default',
   label: 'Default',
-  name: 'Alex Rivera',
+  legalFirstName: 'Alex',
+  legalMiddleName: null,
+  legalLastName: 'Rivera',
+  preferredName: null,
+  pronouns: null,
   email: 'alex@example.com',
   phone: '+1 555 000 0000',
   firstUrl: 'linkedin.com/in/alex',
@@ -97,7 +101,9 @@ describe('ResumeCoverLetterServiceImpl', () => {
     expect(result).toContain('Dear Hiring Manager');
     const [prompt, systemPrompt] = vi.mocked(aiClient).mock.calls[0];
     expect(prompt).toContain(JD_TEXT);
-    expect(prompt).toContain(PROFILE.name);
+    // Resume / cover letter use displayName(profile), which renders as
+    // "<preferredName ?? legalFirstName> <legalLastName>".
+    expect(prompt).toContain(`${PROFILE.legalFirstName} ${PROFILE.legalLastName}`);
     expect(prompt).toContain(BRIEF);
     expect(prompt).toContain(TONE);
     expect(systemPrompt).toContain('cover letter');
