@@ -129,6 +129,42 @@ If a test fails, paste the full error message into your AI and ask for help. Sti
 
 ---
 
+## Step 3.5: Use the dev build (don't pollute your real workspace)
+
+> [!TIP]
+> You can paste this whole section into Claude Code / ChatGPT and ask the AI to set it up for you. Just tell the AI which workspace directory you want and where your API key lives.
+
+The `npm run build` step above produces the **stable build**. The stable build defaults to `~/wolf` and reads your real `WOLF_*` environment variables — meaning if you use it for development, your code changes will write into your actual job-search workspace and consume your real API budget. Don't do that.
+
+Use the **dev build** for local development instead. It's a separate build mode that defaults to `~/wolf-dev`, prefers `WOLF_DEV_*` env vars, prints a "dev" banner so you always know which build you're running, and exposes MCP tools as `wolfdev_*` so they don't collide with the real `wolf_*` tools in any AI client you've configured.
+
+```bash
+npm run build:dev                              # build the dev-aware dist
+export WOLF_DEV_HOME=~/wolf-dev                # or any directory you want for testing
+export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # keep your dev key separate from your real one
+
+npm run wolf -- init --dev --empty             # create a dev workspace (no prompts)
+npm run wolf -- <command>                      # run any wolf command against the dev build
+```
+
+`npm run wolf -- ...` runs `node dist/cli/index.js`, so you don't need `npm install -g .` and you won't shadow any stable `wolf` binary you have installed elsewhere.
+
+Key differences between stable and dev builds:
+
+| | Stable build | Dev build |
+|---|---|---|
+| How to build | `npm run build` | `npm run build:dev` |
+| How to invoke | global `wolf` (after `npm install -g .`) or `node dist/cli/index.js` | `npm run wolf -- <command>` |
+| Default workspace | `~/wolf` (or `WOLF_HOME`) | `~/wolf-dev` (or `WOLF_DEV_HOME`) |
+| Env var precedence | `WOLF_*` only | `WOLF_DEV_*` first, then `WOLF_*` |
+| MCP tool names | `wolf_*` | `wolfdev_*` |
+| CLI banner | none | "dev" banner on every invocation |
+| `wolf init --dev` | rejected with a clear error | accepted |
+
+If you ever see `wolf init` prompting about your real `~/wolf` directory while you're trying to develop, you ran the stable build by mistake — re-run `npm run build:dev` and use `npm run wolf -- ...` instead.
+
+---
+
 ## Step 4: Find a task
 
 > Tasks in open source projects are publicly posted — like a bounty board. Anyone can pick one up, do the work, and submit it. Once approved, your code is officially part of the project.
@@ -244,11 +280,12 @@ git push -u origin feat/your-feature-name
 
 **Dog fooding** means "eating your own dog food" — using the tool you built in a real scenario, not just checking that CI is green.
 
+Run it against the **dev build** so it stays in your dev workspace (`WOLF_DEV_HOME`) and uses your dev API key. See Step 3.5 if you haven't set that up yet.
+
 ```bash
-cd /path/to/wolf      # navigate to your wolf project root
-npm run build         # recompile
-npm install -g .      # install wolf locally so you can run it as a command
-wolf <your-command>   # run it for real
+cd /path/to/wolf            # navigate to your wolf project root
+npm run build:dev           # recompile the dev build after your changes
+npm run wolf -- <command>   # run it against the dev workspace
 ```
 
 Ask yourself:
