@@ -243,7 +243,7 @@ Wolf 有三层测试：
 
 - 单元测试（`npm test`）：验证函数级逻辑。CI 会在每个 PR 上自动跑（`npm ci + npm run build + npm test`），本地不用操心。
 - Smoke 套件（`test/smoke/`）：跑一遍核心 CLI 命令，验证 build、workspace 隔离、基础流程。免费，无需 API key，几分钟跑完。
-- Acceptance 套件（`test/acceptance/`）：真调 Anthropic API 跑完整 tailor 流程，AI reviewer 评审 resume / cover letter 产物。每次约 $0.20-0.50、5-15 分钟。
+- Acceptance 套件（`test/acceptance/`）：真调 Anthropic API 跑完整 tailor 流程，AI reviewer 评审 resume / cover letter 产物。每次约 $0.20-0.50。计算时间 10 分钟内，但跑的过程中 orchestrator 会派发 sub-agent，期间可能弹 Claude Code 的权限确认，请保持在场及时通过。
 
 PR 前请关注：
 

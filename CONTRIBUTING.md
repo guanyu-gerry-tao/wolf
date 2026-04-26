@@ -267,7 +267,7 @@ Wolf has three test layers:
 
 - Unit tests (`npm test`): verify function-level logic. CI already runs this on every PR (`npm ci + npm run build + npm test`); nothing to do locally.
 - Smoke suite (`test/smoke/`): runs the core CLI commands to confirm the build, workspace isolation, and basic flows still work. Free, no API key, a few minutes.
-- Acceptance suite (`test/acceptance/`): calls the real Anthropic API to drive the full tailor pipeline; an AI reviewer scores the resume / cover letter. Around \$0.20-0.50 per run, 5-15 minutes.
+- Acceptance suite (`test/acceptance/`): calls the real Anthropic API to drive the full tailor pipeline; an AI reviewer scores the resume / cover letter. Around \$0.20-0.50 per run. Compute time is under 10 minutes, but the orchestrator dispatches sub-agents during the run and Claude Code may prompt for permission — please stay nearby to approve in time.
 
 Before opening a PR, please:
 
