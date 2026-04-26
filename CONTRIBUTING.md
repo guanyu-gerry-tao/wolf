@@ -261,6 +261,59 @@ If you find a problem, go back to Step 6, fix it, and test again. Once you're sa
 
 ---
 
+## Step 8.5: Run the test suites
+
+Wolf has three test layers:
+
+- Unit tests (`npm test`): verify function-level logic. CI already runs this on every PR (`npm ci + npm run build + npm test`); nothing to do locally.
+- Smoke suite (`test/smoke/`): runs the core CLI commands to confirm the build, workspace isolation, and basic flows still work. Free, no API key, a few minutes.
+- Acceptance suite (`test/acceptance/`): calls the real Anthropic API to drive the full tailor pipeline; an AI reviewer scores the resume / cover letter. Around \$0.20-0.50 per run. Compute time is under 10 minutes, but the orchestrator dispatches sub-agents during the run and Claude Code may prompt for permission — please stay nearby to approve in time.
+
+Before opening a PR, please:
+
+| Layer | Cost | Pre-PR | How |
+|---|---|---|---|
+| Unit tests | free | Nothing — CI runs it | CI |
+| Smoke suite | free | Please run it if your change touches CLI / commands / build modes / workspace handling | Locally, see below |
+| Acceptance suite | ~$0.20-0.50 | Case by case, see below | Locally, or ask the maintainer |
+
+### Smoke suite
+
+Fast gate. Uses `/tmp/wolf-test/` workspaces only — never touches your real `~/wolf` or shell RC files.
+
+How to run: please copy the orchestrator prompt from [test/smoke/README.md](test/smoke/README.md) into Claude Code (or another agent runner) and let it dispatch the groups. Results land under `test/runs/smoke-<timestamp>/` and `test/runs/LATEST.md` is updated.
+
+Once it's done, please paste the smoke `report.md` summary line (e.g. "9 / 9 PASS") into your PR description.
+
+If smoke fails for a reason unrelated to your change (e.g. a pre-existing issue), please mention it in the PR description and link the failing report.
+
+### Acceptance suite
+
+Deeper than smoke: real AI calls produce a resume + cover letter, and a separate AI reviewer scores the output. About \$0.20-0.50 per full tailor-group run based on real usage data — small but not zero, which is why this is a judgment call rather than a blanket requirement.
+
+Please run it when your change has any of these characteristics:
+
+- Touches `src/service/` or `src/application/`
+- Touches a `.md` prompt file under `src/service/impl/prompts/`
+- Touches `src/service/impl/render/` or `tailorApplicationServiceImpl.ts`
+- Adds or changes a use case or acceptance criterion in `docs/requirements/`
+- Strengthens or relaxes any AC currently mapped to an implemented acceptance group (see [test/acceptance/COVERAGE.md](test/acceptance/COVERAGE.md))
+
+You can skip it (please add "skipped acceptance because X" to the PR description) when your change is:
+
+- Pure docs / README / comment edits
+- A small refactor inside `src/utils/` already covered by unit tests
+- A new acceptance case added to a planned (not yet implemented) group
+- A typo or formatting fix
+
+If you're not sure, please just ask in the PR description: "I didn't run acceptance because X — do you want me to?" The maintainer will reply.
+
+How to run: please copy the orchestrator prompt from [test/acceptance/README.md](test/acceptance/README.md) "How To Run" section into Claude Code. You'll need `WOLF_ANTHROPIC_API_KEY` set. The full run report lands under `test/runs/acceptance-<timestamp>/`; please paste the suite-level summary line into your PR description.
+
+If you don't have an API key but the change needs acceptance, please mention it in the PR and the maintainer can run it for you.
+
+---
+
 ## Step 9: Open a Pull Request
 
 > A Pull Request (PR) is how you tell the project owner "I'm done — please review and merge this." Make sure the PR targets the original wolf repository's base branch, not your own fork.

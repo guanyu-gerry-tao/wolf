@@ -237,6 +237,57 @@ wolf <你实现的命令>     # 真实跑一遍
 
 如果发现问题，回到第六步修复，再重新测试。满意了再进下一步。
 
+## 第八点五步：跑测试套件
+
+Wolf 有三层测试：
+
+- 单元测试（`npm test`）：验证函数级逻辑。CI 会在每个 PR 上自动跑（`npm ci + npm run build + npm test`），本地不用操心。
+- Smoke 套件（`test/smoke/`）：跑一遍核心 CLI 命令，验证 build、workspace 隔离、基础流程。免费，无需 API key，几分钟跑完。
+- Acceptance 套件（`test/acceptance/`）：真调 Anthropic API 跑完整 tailor 流程，AI reviewer 评审 resume / cover letter 产物。每次约 $0.20-0.50。计算时间 10 分钟内，但跑的过程中 orchestrator 会派发 sub-agent，期间可能弹 Claude Code 的权限确认，请保持在场及时通过。
+
+PR 前请关注：
+
+| 层 | 成本 | PR 前 | 怎么跑 |
+|---|---|---|---|
+| 单元测试 | 免费 | 无需操作，CI 自动 | CI |
+| Smoke 套件 | 免费 | 改了 CLI / 命令 / build mode / workspace 时请跑一下 | 本地，见下 |
+| Acceptance 套件 | ~$0.20-0.50 | 看情况，见下 | 本地，或请维护者代跑 |
+
+### Smoke 套件
+
+Smoke 是快速门禁，只用 `/tmp/wolf-test/` 工作区，不碰真实的 `~/wolf` 或 shell RC 文件。
+
+怎么跑：请把 [test/smoke/README_zh.md](test/smoke/README_zh.md) 里的 orchestrator prompt 复制给 Claude Code（或别的 agent runner），自动派发各 group。结果会写到 `test/runs/smoke-<时间戳>/`，并更新 `test/runs/LATEST.md`。
+
+跑完后，请把 smoke `report.md` 的总结行（例如 "9 / 9 PASS"）贴到 PR 描述里。
+
+如果 smoke fail 跟改动无关（比如已有旧问题），请在 PR 描述里说明并附失败报告链接。
+
+### Acceptance 套件
+
+Acceptance 比 smoke 更深入：调真实 AI 接口生成 resume + cover letter，再让 AI reviewer 评审。一次完整 tailor 组 acceptance 按实测约 $0.20-0.50。不算贵但不是零，所以采用"看情况判断"而不是统一强制。
+
+下列情况请跑一下：
+
+- 改动到 `src/service/` 或 `src/application/`
+- 改动到 `src/service/impl/prompts/` 下的 `.md` prompt
+- 改动到 `src/service/impl/render/` 或 `tailorApplicationServiceImpl.ts`
+- 在 `docs/requirements/` 里新增或修改了 use case / acceptance criterion
+- 强化或放宽了已 implemented acceptance group 覆盖的 AC（见 [test/acceptance/COVERAGE_zh.md](test/acceptance/COVERAGE_zh.md)）
+
+下列情况可以跳过（请在 PR 描述里写一句"未跑 acceptance，原因是 X"）：
+
+- 纯文档 / README / 注释
+- `src/utils/` 小重构，单元测试已覆盖
+- 只是给 planned（尚未 implemented）group 加新的 acceptance case
+- 错别字 / 格式
+
+不确定要不要跑，请直接在 PR 描述里问一句："我没跑 acceptance 因为 X，需要我跑吗？" 维护者会回复。
+
+怎么跑：请把 [test/acceptance/README_zh.md](test/acceptance/README_zh.md) 里"如何运行"段的 orchestrator prompt 复制给 Claude Code，需要先设置 `WOLF_ANTHROPIC_API_KEY`。完成后报告会写到 `test/runs/acceptance-<时间戳>/`，请把套件层级的总结行贴到 PR 描述里。
+
+没有 API key 但改动需要 acceptance：请在 PR 里说一声，维护者可以代跑。
+
 ## 第九步：发 Pull Request
 
 > Pull Request（PR）是你告诉项目 owner"我写完了，请帮我看看能不能合并进去"的方式。注意：PR 的目标是原始 wolf 仓库的 base branch，不是你自己的 fork。
