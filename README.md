@@ -104,6 +104,21 @@ wolf --help
 wolf mcp serve
 ```
 
+### Quick start — dev build (for contributors)
+
+If you're hacking on wolf itself, use the dev build so your code changes never touch your real `~/wolf` workspace or your production API key. See [CONTRIBUTING.md](CONTRIBUTING.md) "Step 3.5" for the full contract.
+
+```bash
+npm install
+npm run build:dev
+
+export WOLF_DEV_HOME=~/wolf-dev                # any directory you want for testing
+export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # separate from your production key
+
+npm run wolf -- init --dev --empty             # create a dev workspace (no prompts)
+npm run wolf -- <command>                      # run any wolf command against the dev build
+```
+
 ## License
 
 MIT
