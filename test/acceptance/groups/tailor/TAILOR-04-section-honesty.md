@@ -78,30 +78,46 @@ with:
 
 ## Experience
 
-### Backend Engineer — Northwind Systems
+### Backend Engineer - Northwind Systems
 *2022 - 2025*
-- Built Java and Scala backend services for event processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams.
-- Designed internal APIs and runbooks for distributed job processing.
+- Built Java and Scala backend services running 200+ event-processing workflows.
+- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
+- Designed internal REST APIs and on-call runbooks for distributed job processing.
+- Migrated legacy Hadoop jobs to Spark Structured Streaming with zero data loss.
 
-### Software Engineer Intern — Atlas Tools
-*2021*
-- Built Java API integrations for internal reporting tools.
-- Wrote integration tests for batch processing endpoints.
+### Data Platform Engineer - Vega Logistics
+*2020 - 2022*
+- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
+- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
+- Authored the team's data-quality framework (Great Expectations + custom Scala validators).
+
+### Software Engineer Intern - Atlas Tools
+*2019*
+- Built Java API integrations between internal reporting tools and a third-party billing system.
+- Wrote integration tests for batch processing endpoints; raised coverage from 41% to 78%.
 
 ## Projects
 
 ### Internal Job Scheduler
 *2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite.
+- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
+- Replaced four bespoke scripts and reduced on-call paging by ~30%.
+
+### Open-Source Spark Connector
+*2023*
+- Maintainer of a small Spark connector for an internal columnar format.
+- Two minor releases shipped, used by three downstream teams.
 
 ## Skills
 
-Java, Scala, Spark, Hadoop, SQL, distributed systems, REST API design
+Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
 ```
 
 **Note:** intentionally NO `## Education` section. The candidate is a
-bootcamp / self-taught backend engineer with no degree to list.
+bootcamp / self-taught backend engineer with no degree to list. The pool is
+otherwise dense enough that the resulting resume can fill a single page on
+Experience + Projects + Skills alone — so an underflow `CannotFillError` here
+would correctly be treated as a fixture density bug, not a renderer bug.
 
 **Run:**
 
@@ -136,31 +152,40 @@ with:
 
 ## Skills
 
-Java, Scala, Spark, Hadoop, SQL, distributed systems, REST API design
+Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
 
 ## Projects
 
 ### Internal Job Scheduler
 *2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite.
+- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
+- Replaced four bespoke scripts and reduced on-call paging by ~30%.
+
+### Open-Source Spark Connector
+*2023*
+- Maintainer of a small Spark connector for an internal columnar format.
 
 ## Experience
 
-### Backend Engineer — Northwind Systems
+### Backend Engineer - Northwind Systems
 *2022 - 2025*
-- Built Java and Scala backend services for event processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams.
-- Designed internal APIs and runbooks for distributed job processing.
+- Built Java and Scala backend services running 200+ event-processing workflows.
+- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
+- Designed internal REST APIs and on-call runbooks for distributed job processing.
 
-### Software Engineer Intern — Atlas Tools
-*2021*
-- Built Java API integrations for internal reporting tools.
-- Wrote integration tests for batch processing endpoints.
+### Data Platform Engineer - Vega Logistics
+*2020 - 2022*
+- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
+- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
+
+### Software Engineer Intern - Atlas Tools
+*2019*
+- Built Java API integrations between internal reporting tools and a third-party billing system.
 
 ## Education
 
-### B.S. Computer Science — Northwind State University
-*2017 - 2021*
+### B.S. Computer Science - Northwind State University
+*2015 - 2019*
 ```
 
 **Note:** sections are intentionally in non-conventional order:

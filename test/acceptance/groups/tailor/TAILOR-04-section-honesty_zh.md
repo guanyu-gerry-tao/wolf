@@ -72,29 +72,42 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<su
 
 ## Experience
 
-### Backend Engineer — Northwind Systems
+### Backend Engineer - Northwind Systems
 *2022 - 2025*
-- Built Java and Scala backend services for event processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams.
-- Designed internal APIs and runbooks for distributed job processing.
+- Built Java and Scala backend services running 200+ event-processing workflows.
+- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
+- Designed internal REST APIs and on-call runbooks for distributed job processing.
+- Migrated legacy Hadoop jobs to Spark Structured Streaming with zero data loss.
 
-### Software Engineer Intern — Atlas Tools
-*2021*
-- Built Java API integrations for internal reporting tools.
-- Wrote integration tests for batch processing endpoints.
+### Data Platform Engineer - Vega Logistics
+*2020 - 2022*
+- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
+- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
+- Authored the team's data-quality framework (Great Expectations + custom Scala validators).
+
+### Software Engineer Intern - Atlas Tools
+*2019*
+- Built Java API integrations between internal reporting tools and a third-party billing system.
+- Wrote integration tests for batch processing endpoints; raised coverage from 41% to 78%.
 
 ## Projects
 
 ### Internal Job Scheduler
 *2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite.
+- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
+- Replaced four bespoke scripts and reduced on-call paging by ~30%.
+
+### Open-Source Spark Connector
+*2023*
+- Maintainer of a small Spark connector for an internal columnar format.
+- Two minor releases shipped, used by three downstream teams.
 
 ## Skills
 
-Java, Scala, Spark, Hadoop, SQL, distributed systems, REST API design
+Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
 ```
 
-**注意**：故意不放 `## Education` section。设定是 bootcamp / 自学背景，无学位。
+**注意**：故意不放 `## Education` section。设定是 bootcamp / 自学背景，无学位。Pool 其他部分密度足够，定制后的 resume 仅靠 Experience + Projects + Skills 就能填满一页 —— 所以这里如果出 underflow `CannotFillError` 必然是 fixture 密度不够，不是渲染器 bug。
 
 **运行：**
 
@@ -126,31 +139,40 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-4a 
 
 ## Skills
 
-Java, Scala, Spark, Hadoop, SQL, distributed systems, REST API design
+Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
 
 ## Projects
 
 ### Internal Job Scheduler
 *2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite.
+- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
+- Replaced four bespoke scripts and reduced on-call paging by ~30%.
+
+### Open-Source Spark Connector
+*2023*
+- Maintainer of a small Spark connector for an internal columnar format.
 
 ## Experience
 
-### Backend Engineer — Northwind Systems
+### Backend Engineer - Northwind Systems
 *2022 - 2025*
-- Built Java and Scala backend services for event processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams.
-- Designed internal APIs and runbooks for distributed job processing.
+- Built Java and Scala backend services running 200+ event-processing workflows.
+- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
+- Designed internal REST APIs and on-call runbooks for distributed job processing.
 
-### Software Engineer Intern — Atlas Tools
-*2021*
-- Built Java API integrations for internal reporting tools.
-- Wrote integration tests for batch processing endpoints.
+### Data Platform Engineer - Vega Logistics
+*2020 - 2022*
+- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
+- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
+
+### Software Engineer Intern - Atlas Tools
+*2019*
+- Built Java API integrations between internal reporting tools and a third-party billing system.
 
 ## Education
 
-### B.S. Computer Science — Northwind State University
-*2017 - 2021*
+### B.S. Computer Science - Northwind State University
+*2015 - 2019*
 ```
 
 **注意**：section 顺序刻意非常规：`Skills → Projects → Experience → Education`。

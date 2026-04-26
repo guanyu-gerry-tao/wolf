@@ -110,6 +110,53 @@ describe('RenderService', () => {
     expect(mockFit).not.toHaveBeenCalled();
   });
 
+  // The CannotFillError message must be user-actionable: name what
+  // happened (too short), give concrete numbers from the last fit
+  // attempt, and tell the user how to fix THEIR pool — never suggest
+  // adding fabricated content. This is the contract that lets the CLI
+  // surface error.message directly without a separate diagnostic layer.
+  it('CannotFillError message tells the user the page did not fill and what to add to resume_pool.md', async () => {
+    const attempt: FitResult = {
+      pdf: FAKE_PDF,
+      finalParams: { fontSize: 14, lineHeight: 1.3, marginIn: 0.5, sectionGap: 2 },
+      iterations: 5,
+      trace: [{ iter: 5, params: { fontSize: 14, lineHeight: 1.3, marginIn: 0.5, sectionGap: 2 }, scrollHeight: 580, pageHeightPx: 960 }],
+    };
+    const err = new CannotFillError(attempt);
+
+    expect(err.message).toMatch(/too short/i);
+    expect(err.message).toContain('580px');
+    expect(err.message).toContain('960px');
+    expect(err.message).toContain('60%');
+    expect(err.message).toMatch(/resume_pool\.md/);
+    // Must NOT positively instruct adding fabricated content. Phrasings
+    // like "ask Claude to add filler" or "wolf will invent the rest" are
+    // forbidden; "wolf will NOT fabricate" is fine — that's the policy
+    // statement, not an instruction.
+    expect(err.message).not.toMatch(/ask claude|add filler|wolf will (?:fabricate|invent)/i);
+  });
+
+  // Same contract for overflow: identify the failure mode + concrete
+  // numbers + actionable edit (trim, drop sections), no vague "iterations"
+  // jargon that surfaces internal algorithm details to the user.
+  it('CannotFitError message tells the user the page overflowed and what to trim in resume_pool.md', async () => {
+    const attempt: FitResult = {
+      pdf: FAKE_PDF,
+      finalParams: { fontSize: 9.5, lineHeight: 1.1, marginIn: 0.3, sectionGap: 0.85 },
+      iterations: 12,
+      trace: [{ iter: 12, params: { fontSize: 9.5, lineHeight: 1.1, marginIn: 0.3, sectionGap: 0.85 }, scrollHeight: 1100, pageHeightPx: 960 }],
+    };
+    const err = new CannotFitError(attempt);
+
+    expect(err.message).toMatch(/too long/i);
+    expect(err.message).toContain('1100px');
+    expect(err.message).toContain('960px');
+    // (1100 - 960) / 960 = 14.58% → rounds to 15.
+    expect(err.message).toContain('15%');
+    expect(err.message).toMatch(/resume_pool\.md/);
+    expect(err.message).toMatch(/trim|drop/i);
+  });
+
   // Regression guard: a long cover letter (multi-page) must not throw
   // CannotFitError either — natural layout simply paginates onto page two.
   it('renderCoverLetterPdf does not throw CannotFitError on long content', async () => {

@@ -29,7 +29,7 @@ export interface FitResult {
 
 export class CannotFitError extends Error {
   constructor(public readonly lastAttempt: FitResult) {
-    super(`Could not fit content after ${lastAttempt.iterations} iterations`);
+    super(buildCannotFitMessage(lastAttempt));
     this.name = 'CannotFitError';
   }
 }
@@ -37,13 +37,51 @@ export class CannotFitError extends Error {
 /**
  * Raised when raw content is sparse enough that even the maximum section-gap
  * expansion can't reach the target fill threshold. Caller (application layer)
- * should treat this as "content too short — ask Claude to add material".
+ * should treat this as "content too short — the user's resume_pool.md needs
+ * more material" (NOT "ask Claude to add material" — fabricating content
+ * violates the section-honesty contract; see DECISIONS.md 2026-04-25).
  */
 export class CannotFillError extends Error {
   constructor(public readonly lastAttempt: FitResult) {
-    super(`Could not fill page to target after max section-gap expansion`);
+    super(buildCannotFillMessage(lastAttempt));
     this.name = 'CannotFillError';
   }
+}
+
+// User-facing message for an overflow (too long) failure. Surfaces what
+// happened in plain numbers, then names concrete edits that move the dial.
+function buildCannotFitMessage(attempt: FitResult): string {
+  const last = attempt.trace[attempt.trace.length - 1];
+  const overflow = last
+    ? Math.round(((last.scrollHeight - last.pageHeightPx) / last.pageHeightPx) * 100)
+    : null;
+  const heightInfo = last
+    ? ` Even at minimum font/margins, rendered content was ${last.scrollHeight}px on a ${last.pageHeightPx}px page (${overflow}% over).`
+    : '';
+  return (
+    `Resume content is too long to fit on one page.${heightInfo} ` +
+    `Trim bullets (aim for 3 per role), drop the lowest-priority section, ` +
+    `or shorten your longest bullets in resume_pool.md, then re-run.`
+  );
+}
+
+// User-facing message for an underflow (too short) failure. Tells the user
+// the page didn't fill and what to add — never suggests fabrication.
+function buildCannotFillMessage(attempt: FitResult): string {
+  const last = attempt.trace[attempt.trace.length - 1];
+  const fillPct = last
+    ? Math.round((last.scrollHeight / last.pageHeightPx) * 100)
+    : null;
+  const heightInfo = last
+    ? ` Even at maximum section spacing (2em) and largest comfortable font (14pt), rendered content reached only ${last.scrollHeight}px on a ${last.pageHeightPx}px page (~${fillPct}% filled; target >= 95%).`
+    : '';
+  return (
+    `Resume content is too short to fill one page.${heightInfo} ` +
+    `A genuine one-page resume needs more material — add another role or project, ` +
+    `expand bullet detail, or include a Skills / Education / Publications section ` +
+    `in resume_pool.md, then re-run. (wolf will not fabricate content for you; ` +
+    `see DECISIONS.md 2026-04-25 on section honesty.)`
+  );
 }
 
 const DEFAULTS: FitParams = { fontSize: 11, lineHeight: 1.3, marginIn: 0.5, sectionGap: 0.85 };
