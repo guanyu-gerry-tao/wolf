@@ -2,7 +2,7 @@
 
 ## 状态
 
-Planned。
+Planned - not implemented。
 
 ## 产品领域
 
@@ -29,4 +29,3 @@ Send 测试必须在发送邮件前停止。测试员必须看到 recipient、su
 ## 报告预期
 
 报告必须包含 draft paths、reviewer findings、send boundary evidence，以及明确批准发送时的 outreach log evidence。
-

@@ -2,7 +2,7 @@
 
 ## 状态
 
-Planned。
+Planned - not implemented。
 
 ## 产品领域
 
@@ -24,4 +24,3 @@ Job scoring、dealbreaker filters、structured score output、畸形 AI response
 ## 报告预期
 
 报告必须包含输入 jobs、filtering 使用的 profile facts、model 或 mock response 证据、DB 更新、score summary，以及 reviewer findings。
-

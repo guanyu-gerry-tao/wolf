@@ -2,7 +2,7 @@
 
 ## 状态
 
-Planned。这个 group 明确和 `fill`、`score`、`tailor` 分开。
+Planned - not implemented。这个 group 明确和 `fill`、`score`、`tailor` 分开。
 
 ## 产品领域
 
@@ -25,4 +25,3 @@ Job discovery providers、provider failure isolation、URL normalization、dedup
 ## 报告预期
 
 报告必须包含 provider 输入、抓取结果、跳过的重复项、保存的行、各 provider 错误，以及最终 CLI 或 MCP summary。
-

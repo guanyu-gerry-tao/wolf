@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned.
+Planned - not implemented.
 
 ## Product Area
 
@@ -33,4 +33,3 @@ condition, and cleanup instructions.
 
 Reports must include draft paths, reviewer findings, send boundary evidence,
 and any outreach log evidence when sending is explicitly approved.
-

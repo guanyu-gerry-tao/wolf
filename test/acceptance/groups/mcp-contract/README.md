@@ -2,7 +2,9 @@
 
 ## Status
 
-Planned.
+Planned. MCP remains planned as an acceptance surface even though a few tool
+handlers already exist; do not treat this group as runnable until MCP contract
+cases are written.
 
 ## Product Area
 
@@ -33,4 +35,3 @@ effects inherit the relevant product group's risk mode.
 
 Reports must include tool names, input payloads, output schema validation,
 structured error evidence, and any dev-mode warning fields.
-

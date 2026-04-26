@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned.
+Planned - not implemented.
 
 ## Product Area
 
@@ -35,4 +35,3 @@ external side effect.
 
 Reports must include form fixture path or URL, field mapping, screenshot path,
 whether submission was blocked or approved, and any browser errors.
-

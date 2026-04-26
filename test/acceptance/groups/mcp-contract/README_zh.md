@@ -2,7 +2,7 @@
 
 ## 状态
 
-Planned。
+Planned。即使少数 tool handler 已存在，MCP 作为 acceptance surface 仍保持 planned；在 MCP contract cases 写好之前，不要把这个 group 当作可运行。
 
 ## 产品领域
 
@@ -30,4 +30,3 @@ schema 和 tool-shape 检查使用 `automated`。带外部副作用的 tool call
 ## 报告预期
 
 报告必须包含 tool names、input payloads、output schema validation、structured error evidence，以及任何 dev-mode warning fields。
-

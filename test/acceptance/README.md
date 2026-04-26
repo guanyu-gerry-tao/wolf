@@ -5,8 +5,9 @@ should answer: "Which use cases and acceptance criteria are actually exercised
 by runnable tests?"
 
 Acceptance is broader than smoke and may include API calls, AI artifact review,
-browser automation, or human approval boundaries. Costly or risky groups are
-skipped by default.
+browser automation, or human approval boundaries. Groups are skipped by default
+only when their docs explicitly mark them that way; otherwise missing
+prerequisites are reported as failures or blocked runs.
 
 ## How To Run
 
@@ -44,10 +45,17 @@ You are the Wolf Acceptance Test Orchestrator.
       returning only a plan
 9. After all groups report, copy /tmp/wolf-test/acceptance/<run-id>/reports/
    into test/runs/<run-id>/reports/.
-10. Print per-group and overall PASS/FAIL/SKIPPED/BLOCKED counts, write
+10. Inspect each group report for required report sections. If a report is
+   missing important evidence, ask that group agent to continue and complete the
+   report. If the group agent is unavailable and the missing evidence is
+   important for judging the result, rerun that group. Do not silently accept an
+   incomplete report. A report that says SKIPPED because a required `WOLF_*` API
+   key was not set must be re-classified as FAIL per the External API Policy
+   below — name the missing key and what to configure.
+11. Print per-group and overall PASS/FAIL/SKIPPED/BLOCKED counts, write
    test/runs/<run-id>/report.md, update test/runs/LATEST.md, and include a
    coverage summary by UC/AC id.
-11. Do not delete /tmp/wolf-test/acceptance/<run-id>/ or test/runs/<run-id>/
+12. Do not delete /tmp/wolf-test/acceptance/<run-id>/ or test/runs/<run-id>/
    unless the user explicitly asks.
 ```
 
@@ -55,10 +63,11 @@ You are the Wolf Acceptance Test Orchestrator.
 
 | Group | Product Area | Default Mode | Default Status |
 |---|---|---|---|
+| `add` | Manual structured job intake | automated | implemented |
 | `hunt` | Job discovery providers and dedupe | automated / ai-reviewed | planned |
 | `score` | Job scoring and hard filters | ai-reviewed | planned |
-| `job-tracking` | Rich `wolf job list` filters and output modes | automated | planned |
-| `tailor` | Resume and cover-letter artifact generation | ai-reviewed | planned |
+| `job-tracking` | Rich `wolf job list` filters and output modes | automated | implemented |
+| `tailor` | Resume and cover-letter artifact generation | ai-reviewed | implemented |
 | `fill` | Application form filling | automated for fixtures, human-approval for live submit | planned |
 | `reach` | Outreach draft and send boundaries | ai-reviewed / human-approval | planned |
 | `mcp-contract` | MCP tool schemas and structured responses | automated | planned |
@@ -79,6 +88,9 @@ Each group README must include:
 If a use case is implemented but has no acceptance group, the suite should say
 so explicitly rather than hiding the gap.
 
+The coverage matrix lives in [COVERAGE.md](COVERAGE.md). Update it whenever a
+case is added, removed, planned, implemented, or re-scoped.
+
 ## AI Review Policy
 
 Use AI review for subjective artifacts whenever possible. For example,
@@ -93,3 +105,44 @@ inspect:
 
 The reviewer output must be written into the group report. Human review may be
 offered as an optional follow-up, but should not be the default test executor.
+
+For tailor artifacts, use the shared reviewer prompt at
+`test/acceptance/reviewers/tailor-artifact-review.md`, then add case-specific
+checks from the case file.
+
+## External API Policy
+
+If a runnable implemented group requires an external API key, missing credentials
+are a `FAIL`, not a skip. The report must name the missing key, explain which
+case could not run, and tell the user what to configure. Use `SKIPPED` only when
+the group or case is explicitly marked skipped-by-default or the user explicitly
+chooses not to run that risk/cost class.
+
+External API reports must record provider, model if known, relevant `WOLF_*`
+key presence as `set`/`not set`, and any cost or rate-limit observations.
+
+## Real Side Effects
+
+Real side effects require `human-approval` and must never happen by accident.
+Examples include:
+
+- submitting a real job application
+- clicking a final submit button on a live ATS or employer form
+- sending outreach email or LinkedIn messages
+- modifying external accounts, CRM records, calendars, or mailboxes
+- uploading a real resume or cover letter to a live third-party site
+
+Fixture pages, local browser automation, dry-run form mapping, generated
+screenshots, and local file writes under `/tmp/wolf-test/` are not real external
+side effects.
+
+## Short-Term Plan
+
+1. Keep the fixture scripts as the default source for realistic pasted JD and
+   resume inputs.
+2. Keep the orchestrator responsible for report completeness. Do not add a
+   report checker script yet.
+3. Use the shared tailor reviewer prompt for all tailor AI review cases.
+4. Keep `COVERAGE.md` current as cases move between planned and implemented.
+5. Treat missing required API credentials in runnable implemented groups as
+   `FAIL` with clear user-facing remediation.

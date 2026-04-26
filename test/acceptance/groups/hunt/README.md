@@ -2,8 +2,8 @@
 
 ## Status
 
-Planned. This group is intentionally separate from `fill`, `score`, and
-`tailor`.
+Planned - not implemented. This group is intentionally separate from `fill`,
+`score`, and `tailor`.
 
 ## Product Area
 
@@ -28,4 +28,3 @@ and hunt summary output.
 
 Reports must include provider inputs, fetched rows, duplicates skipped, saved
 rows, errors by provider, and the final CLI or MCP summary.
-

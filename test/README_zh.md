@@ -11,6 +11,17 @@ wolf 的测试分两层：
 test/
 ├── README.md
 ├── README_zh.md
+├── fixtures/
+│   ├── jd/
+│   │   ├── README.md
+│   │   ├── README_zh.md
+│   │   ├── raw/
+│   │   └── scripts/
+│   └── resume/
+│       ├── README.md
+│       ├── README_zh.md
+│       ├── raw/
+│       └── scripts/
 ├── smoke/
 │   ├── README.md
 │   ├── README_zh.md
@@ -28,6 +39,19 @@ test/
 ```
 
 每个 group 只测试一个产品方面。不要把无关领域混在一个 group 里：`hunt` 测试不和 `fill` 混放，`tailor` 不和 `reach` 混放，MCP contract 测试也不要和 CLI 工作流测试混放，除非该 group 明确就是端到端 workflow group。
+
+## Fixtures
+
+共享的离线测试输入放在 `test/fixtures/`。
+
+- `test/fixtures/jd/` 包含一个小型 CC0 计算机相关 job-posting CSV，以及
+  `scripts/sample_raw_jd.py`，用于输出一段接近用户复制粘贴的真实 JD。
+- `test/fixtures/resume/` 包含一个小型计算机相关 resume CSV，以及
+  `scripts/sample_raw_resume.py`，用于输出一份接近用户复制粘贴的真实 resume。
+
+Acceptance case 应该调用 fixture 脚本，而不是在测试文档里嵌入很长的 resume 或
+JD 文本。脚本把测试输入输出到 stdout，把可选 source metadata 输出到 stderr，
+这样报告可以记录来源，又不会污染 `jdText` 或 resume input。
 
 ## 安全规则
 

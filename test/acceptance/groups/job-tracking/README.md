@@ -2,8 +2,8 @@
 
 ## Status
 
-Planned. Smoke covers only a narrow happy path; this group owns full list and
-status behavior.
+Implemented. Smoke covers only a narrow happy path; this group owns full list
+and status behavior.
 
 ## Product Area
 
@@ -31,9 +31,14 @@ search, time ranges, JSON output, overflow footer, and invalid input.
 
 `automated`.
 
+## Cases
+
+- [JOB-01 - Structured filters and repeated search](JOB-01-filters-and-search.md)
+- [JOB-02 - JSON output and overflow footer](JOB-02-json-and-overflow.md)
+- [JOB-03 - Invalid input is rejected](JOB-03-invalid-input.md)
+
 ## Report Expectations
 
 Reports must include seeded jobs, command output, JSON output when applicable,
 expected/actual row ids for filters, and clear bug entries for invalid-input
 behavior.
-

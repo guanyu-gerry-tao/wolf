@@ -15,6 +15,17 @@ Wolf uses two test suites:
 test/
 ├── README.md
 ├── README_zh.md
+├── fixtures/
+│   ├── jd/
+│   │   ├── README.md
+│   │   ├── README_zh.md
+│   │   ├── raw/
+│   │   └── scripts/
+│   └── resume/
+│       ├── README.md
+│       ├── README_zh.md
+│       ├── raw/
+│       └── scripts/
 ├── smoke/
 │   ├── README.md
 │   ├── README_zh.md
@@ -35,6 +46,20 @@ Each group tests one product area. Do not mix unrelated areas in one group:
 `hunt` tests do not belong with `fill`, `tailor` tests do not belong with
 `reach`, and MCP contract tests stay separate from CLI workflow tests unless the
 group is explicitly an end-to-end workflow group.
+
+## Fixtures
+
+Shared offline test inputs live under `test/fixtures/`.
+
+- `test/fixtures/jd/` contains a small CC0 computer-related job-posting CSV and
+  `scripts/sample_raw_jd.py`, which prints one realistic pasted JD.
+- `test/fixtures/resume/` contains a small computer-related resume CSV and
+  `scripts/sample_raw_resume.py`, which prints one realistic pasted resume.
+
+Acceptance cases should call the fixture scripts instead of embedding large
+resume or JD text inline. The scripts print test input to stdout and optional
+source metadata to stderr, so command reports can record provenance without
+polluting `jdText` or resume input.
 
 ## Safety Rules
 

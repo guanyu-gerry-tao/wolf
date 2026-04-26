@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned.
+Implemented.
 
 ## Product Area
 
@@ -27,15 +27,30 @@ and AI review of output quality.
 
 `ai-reviewed`. Human review is optional, not the default executor.
 
+## Cost / Risk
+
+- Cost: medium to high
+- Risk: external-api
+- Requires: `WOLF_ANTHROPIC_API_KEY` or `WOLF_DEV_ANTHROPIC_API_KEY`; future
+  OpenAI-compatible providers are acceptable if configured through wolf config.
+- Missing required API credentials are `FAIL`, not `SKIPPED`. The report must
+  name the missing key and tell the user how to configure it.
+
+## Cases
+
+- [TAILOR-01 - Full tailor pipeline for one fixture job](TAILOR-01-full-pipeline.md)
+- [TAILOR-02 - Stepwise brief, resume, and cover letter](TAILOR-02-stepwise-pipeline.md)
+- [TAILOR-03 - Analyst hint is written and used](TAILOR-03-hint-guidance.md)
+
 ## AI Review Rubric
 
-The reviewer must inspect source resume facts, JD facts, generated resume,
-cover letter, and PDF screenshot evidence. The review must judge factual
-accuracy, JD relevance, unsupported claims, formatting, one-page behavior, and
-specific fixes for failures.
+Use `test/acceptance/reviewers/tailor-artifact-review.md`. The reviewer must
+inspect source resume facts, JD facts, generated resume, cover letter, and PDF
+screenshot evidence. The review must judge factual accuracy, JD relevance,
+unsupported claims, formatting, one-page behavior, and specific fixes for
+failures.
 
 ## Report Expectations
 
 Reports must include artifact paths, screenshots or screenshot paths, reviewer
 findings, bugs, and improvements.
-

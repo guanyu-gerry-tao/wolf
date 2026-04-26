@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned.
+Planned - not implemented.
 
 ## Product Area
 
@@ -28,4 +28,3 @@ are `skipped-by-default` unless explicitly allowed.
 
 Reports must include input jobs, profile facts used for filtering, model or mock
 response evidence, DB updates, score summaries, and reviewer findings.
-

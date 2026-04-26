@@ -141,6 +141,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
 - Smoke and acceptance test definitions live under `test/`; start with `test/README.md`.
+- Shared offline JD and resume inputs live under `test/fixtures/`; use the fixture scripts there instead of embedding large pasted text in acceptance docs.
 - CLI behavior added or changed → add or update the relevant smoke/acceptance group under `test/` in the same PR.
 - Automated smoke and acceptance tests must only use `/tmp/wolf-test/` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`.
 - Test run reports live under `test/runs/<run-id>/`, with `test/runs/LATEST.md` pointing to the most recent run. The directory is kept with `.gitkeep`, but run contents are gitignored and must not be committed.
