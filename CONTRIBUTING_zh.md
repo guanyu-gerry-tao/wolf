@@ -237,53 +237,56 @@ wolf <你实现的命令>     # 真实跑一遍
 
 如果发现问题，回到第六步修复，再重新测试。满意了再进下一步。
 
-## 第八点五步：跑 smoke 套件（必须）+ 判断要不要跑 acceptance（看情况）
+## 第八点五步：跑测试套件
 
-> [!IMPORTANT]
-> 单元测试（`npm test`）和 build 已经被 CI 在每个 PR 上自动强制了，你**不用**自己再操心。但还有两层测试 CI 不会跑，至少其中一层是开 PR 前你的责任。
+Wolf 有三层测试：
 
-Wolf 有三层测试，其中两层你必须考虑：
+- 单元测试（`npm test`）：验证函数级逻辑。CI 会在每个 PR 上自动跑（`npm ci + npm run build + npm test`），本地不用操心。
+- Smoke 套件（`test/smoke/`）：跑一遍核心 CLI 命令，验证 build、workspace 隔离、基础流程。免费，无需 API key，几分钟跑完。
+- Acceptance 套件（`test/acceptance/`）：真调 Anthropic API 跑完整 tailor 流程，AI reviewer 评审 resume / cover letter 产物。每次约 $0.20-0.50、5-15 分钟。
 
-| 层 | 成本 | PR 前是否必跑？ | 谁跑 |
+PR 前请关注：
+
+| 层 | 成本 | PR 前 | 怎么跑 |
 |---|---|---|---|
-| **单元测试**（`npm test`） | 免费 | 已经被 CI 强制 | CI（每次 push） |
-| **Smoke 套件**（`test/smoke/`） | 免费 | **必须**——只要 PR 改了 CLI 行为、命令、build mode 或 workspace 处理 | 你，本地，开 PR 前 |
-| **Acceptance 套件**（`test/acceptance/`） | 一次完整 run 约 $1-3 Anthropic API 费用 | **看情况**——见下 | 你（如果改了 AI 相关代码）或维护者 |
+| 单元测试 | 免费 | 无需操作，CI 自动 | CI |
+| Smoke 套件 | 免费 | 改了 CLI / 命令 / build mode / workspace 时请跑一下 | 本地，见下 |
+| Acceptance 套件 | ~$0.20-0.50 | 看情况，见下 | 本地，或请维护者代跑 |
 
-### Smoke 套件——必须
+### Smoke 套件
 
-Smoke 是快速门禁。它验证 dev build、workspace 隔离、核心 CLI 路径仍然 OK。它只用 `/tmp/wolf-test/` 工作区，永远不会碰你真实的 `~/wolf` 或 shell RC 文件。**不需要 API key**。
+Smoke 是快速门禁，只用 `/tmp/wolf-test/` 工作区，不碰真实的 `~/wolf` 或 shell RC 文件。
 
-怎么跑：把 [test/smoke/README_zh.md](test/smoke/README_zh.md) 里的 orchestrator prompt 复制给 Claude Code（或别的 agent runner），它会派发各 group。结果会写到 `test/runs/smoke-<时间戳>/`，并更新 `test/runs/LATEST.md`。
+怎么跑：请把 [test/smoke/README_zh.md](test/smoke/README_zh.md) 里的 orchestrator prompt 复制给 Claude Code（或别的 agent runner），自动派发各 group。结果会写到 `test/runs/smoke-<时间戳>/`，并更新 `test/runs/LATEST.md`。
 
-通过标准：每个 smoke group PASS。把 smoke `report.md` 的总结行（例如 "9 / 9 PASS"）粘到 PR 描述里，方便 reviewer 一眼确认。
+跑完后，请把 smoke `report.md` 的总结行（例如 "9 / 9 PASS"）贴到 PR 描述里。
 
-如果 smoke fail 是个跟你改动无关的旧问题，**在 PR 描述里说明并贴出失败报告链接** —— 不要静默跳过。
+如果 smoke fail 跟改动无关（比如已有旧问题），请在 PR 描述里说明并附失败报告链接。
 
-### Acceptance 套件——看情况
+### Acceptance 套件
 
-Acceptance 是覆盖门禁。它会真的调 Anthropic API，并用 AI reviewer 评审产物质量（resume / cover letter PDF 等）。一次完整 run 大约 $1-3 API 花费、5-15 分钟。
+Acceptance 比 smoke 更深入：调真实 AI 接口生成 resume + cover letter，再让 AI reviewer 评审。一次完整 tailor 组 acceptance 按实测约 $0.20-0.50。不算贵但不是零，所以采用"看情况判断"而不是统一强制。
 
-**满足下列任一条件就跑**：
+下列情况请跑一下：
 
-- 改了 `src/service/` 或 `src/application/`
-- 改了 `src/service/impl/prompts/` 下任何 `.md` prompt
-- 改了 `src/service/impl/render/` 或 `tailorApplicationServiceImpl.ts`
-- 在 `docs/requirements/` 里新增或改了 use case / acceptance criterion
-- 强化或放宽了任何已映射到 implemented acceptance group 的 AC（见 [test/acceptance/COVERAGE_zh.md](test/acceptance/COVERAGE_zh.md)）
+- 改动到 `src/service/` 或 `src/application/`
+- 改动到 `src/service/impl/prompts/` 下的 `.md` prompt
+- 改动到 `src/service/impl/render/` 或 `tailorApplicationServiceImpl.ts`
+- 在 `docs/requirements/` 里新增或修改了 use case / acceptance criterion
+- 强化或放宽了已 implemented acceptance group 覆盖的 AC（见 [test/acceptance/COVERAGE_zh.md](test/acceptance/COVERAGE_zh.md)）
 
-**下列情况可以跳过**（在 PR 描述里写一句"未跑 acceptance，原因是 X"）：
+下列情况可以跳过（请在 PR 描述里写一句"未跑 acceptance，原因是 X"）：
 
-- 纯文档 / README / 注释改动
-- `src/utils/` 的小重构，且单元测试已覆盖
-- 只是给某个 planned（尚未 implemented）group 加了新的 acceptance case
-- 错别字 / 格式修复
+- 纯文档 / README / 注释
+- `src/utils/` 小重构，单元测试已覆盖
+- 只是给 planned（尚未 implemented）group 加新的 acceptance case
+- 错别字 / 格式
 
-**不确定的话**：在 PR 描述里直接问"我没跑 acceptance 因为 X，你需要我在 merge 前跑吗？"维护者会告诉你跑还是不跑。**问清楚比静默跳过更负责**。
+不确定要不要跑，请直接在 PR 描述里问一句："我没跑 acceptance 因为 X，需要我跑吗？" 维护者会回复。
 
-怎么跑：把 [test/acceptance/README_zh.md](test/acceptance/README_zh.md) 里"如何运行"段的 orchestrator prompt 复制给 Claude Code。需要先设置 `WOLF_ANTHROPIC_API_KEY`。Orchestrator 会写一份完整 run 报告到 `test/runs/acceptance-<时间戳>/`。把套件层级的总结行粘到 PR 描述里。
+怎么跑：请把 [test/acceptance/README_zh.md](test/acceptance/README_zh.md) 里"如何运行"段的 orchestrator prompt 复制给 Claude Code，需要先设置 `WOLF_ANTHROPIC_API_KEY`。完成后报告会写到 `test/runs/acceptance-<时间戳>/`，请把套件层级的总结行贴到 PR 描述里。
 
-如果你**没有 API key 但你的改动确实需要 acceptance**：在 PR 里说明，维护者可以替你跑。**不要因为没有 API key 就放弃贡献**。
+没有 API key 但改动需要 acceptance：请在 PR 里说一声，维护者可以代跑。
 
 ## 第九步：发 Pull Request
 

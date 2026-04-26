@@ -261,34 +261,37 @@ If you find a problem, go back to Step 6, fix it, and test again. Once you're sa
 
 ---
 
-## Step 8.5: Run the smoke suite (required) and consider acceptance (judgment call)
+## Step 8.5: Run the test suites
 
-> [!IMPORTANT]
-> Unit tests (`npm test`) and the build are already enforced by CI on every PR — you don't need to babysit them. But there are two test layers CI does NOT run, and at least one of them is your responsibility before opening a PR.
+Wolf has three test layers:
 
-Wolf has three test layers. Two of them you must consider:
+- Unit tests (`npm test`): verify function-level logic. CI already runs this on every PR (`npm ci + npm run build + npm test`); nothing to do locally.
+- Smoke suite (`test/smoke/`): runs the core CLI commands to confirm the build, workspace isolation, and basic flows still work. Free, no API key, a few minutes.
+- Acceptance suite (`test/acceptance/`): calls the real Anthropic API to drive the full tailor pipeline; an AI reviewer scores the resume / cover letter. Around \$0.20-0.50 per run, 5-15 minutes.
 
-| Layer | Cost | Required before PR? | Who runs it |
+Before opening a PR, please:
+
+| Layer | Cost | Pre-PR | How |
 |---|---|---|---|
-| **Unit tests** (`npm test`) | free | Already enforced by CI | CI on every push |
-| **Smoke suite** (`test/smoke/`) | free | **Required** for any PR that changes CLI behavior, commands, build modes, or workspace handling | You, locally, before opening the PR |
-| **Acceptance suite** (`test/acceptance/`) | ~$1-3 of Anthropic API per full run | **Case by case** — see below | You (if your change touches AI), or the maintainer |
+| Unit tests | free | Nothing — CI runs it | CI |
+| Smoke suite | free | Please run it if your change touches CLI / commands / build modes / workspace handling | Locally, see below |
+| Acceptance suite | ~$0.20-0.50 | Case by case, see below | Locally, or ask the maintainer |
 
-### Smoke suite — required
+### Smoke suite
 
-The smoke suite is the fast gate. It proves the dev build, workspace isolation, and core CLI paths still work. It uses `/tmp/wolf-test/` workspaces only and never touches your real `~/wolf` or shell RC files. No API key needed.
+Fast gate. Uses `/tmp/wolf-test/` workspaces only — never touches your real `~/wolf` or shell RC files.
 
-How to run: copy the orchestrator prompt from [test/smoke/README.md](test/smoke/README.md) into Claude Code (or any agent runner) and let it dispatch the groups. It will write a report under `test/runs/smoke-<timestamp>/` and update `test/runs/LATEST.md`.
+How to run: please copy the orchestrator prompt from [test/smoke/README.md](test/smoke/README.md) into Claude Code (or another agent runner) and let it dispatch the groups. Results land under `test/runs/smoke-<timestamp>/` and `test/runs/LATEST.md` is updated.
 
-Pass criteria: every smoke group reports PASS. Paste the smoke `report.md` summary line (e.g. "9 / 9 PASS") into your PR description so the reviewer can confirm at a glance.
+Once it's done, please paste the smoke `report.md` summary line (e.g. "9 / 9 PASS") into your PR description.
 
-If smoke fails because of a pre-existing issue unrelated to your change, say so in the PR description and link the failing report — don't silently skip.
+If smoke fails for a reason unrelated to your change (e.g. a pre-existing issue), please mention it in the PR description and link the failing report.
 
-### Acceptance suite — case by case
+### Acceptance suite
 
-The acceptance suite is the coverage gate. It exercises real AI calls against the Anthropic API and uses an AI reviewer to judge artifact quality (resume / cover letter PDFs, etc.). One full run costs roughly $1-3 in API spend and takes 5-15 minutes.
+Deeper than smoke: real AI calls produce a resume + cover letter, and a separate AI reviewer scores the output. About \$0.20-0.50 per full tailor-group run based on real usage data — small but not zero, which is why this is a judgment call rather than a blanket requirement.
 
-Run it (locally) when your change has any of these characteristics:
+Please run it when your change has any of these characteristics:
 
 - Touches `src/service/` or `src/application/`
 - Touches a `.md` prompt file under `src/service/impl/prompts/`
@@ -296,18 +299,18 @@ Run it (locally) when your change has any of these characteristics:
 - Adds or changes a use case or acceptance criterion in `docs/requirements/`
 - Strengthens or relaxes any AC currently mapped to an implemented acceptance group (see [test/acceptance/COVERAGE.md](test/acceptance/COVERAGE.md))
 
-Skip it (and say so in the PR description) when your change is:
+You can skip it (please add "skipped acceptance because X" to the PR description) when your change is:
 
 - Pure docs / README / comment edits
-- A small refactor inside `src/utils/` with full unit-test coverage
-- A new acceptance case added to a planned (not implemented) group
+- A small refactor inside `src/utils/` already covered by unit tests
+- A new acceptance case added to a planned (not yet implemented) group
 - A typo or formatting fix
 
-If you're not sure, ask in the PR description: "I didn't run acceptance because X — do you want me to before merge?" The maintainer will tell you yes or no. Better to ask than to silently skip a needed run.
+If you're not sure, please just ask in the PR description: "I didn't run acceptance because X — do you want me to?" The maintainer will reply.
 
-How to run: copy the orchestrator prompt from [test/acceptance/README.md](test/acceptance/README.md) "How To Run" section into Claude Code. You'll need `WOLF_ANTHROPIC_API_KEY` set. The orchestrator writes a full run report under `test/runs/acceptance-<timestamp>/`. Paste the suite-level summary line into your PR description.
+How to run: please copy the orchestrator prompt from [test/acceptance/README.md](test/acceptance/README.md) "How To Run" section into Claude Code. You'll need `WOLF_ANTHROPIC_API_KEY` set. The full run report lands under `test/runs/acceptance-<timestamp>/`; please paste the suite-level summary line into your PR description.
 
-If you don't have an API key and your change clearly needs acceptance, mention it in the PR — the maintainer can run it for you. Don't let the API requirement block you from contributing.
+If you don't have an API key but the change needs acceptance, please mention it in the PR and the maintainer can run it for you.
 
 ---
 
