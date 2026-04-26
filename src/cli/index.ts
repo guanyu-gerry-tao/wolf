@@ -9,12 +9,17 @@ import { status, formatStatus } from '../commands/status/index.js';
 import { jobList, formatJobList } from '../commands/job/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
-import { envShow, envSet, envClear } from '../commands/env/index.js';
+import { envShow, envSet, envSetOne, envClear } from '../commands/env/index.js';
 import { configGet, configSet } from '../commands/config/index.js';
 import { profileGet, profileSet, profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
 import { startMcpServer } from '../mcp/server.js';
+import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
 
 const program = new Command();
+
+if (isDevBuild()) {
+  console.error(DEV_WARNING);
+}
 
 program
   .name('wolf')
@@ -24,8 +29,11 @@ program
 program
   .command('init')
   .description('Interactive setup wizard')
-  .action(async () => {
-    await init();
+  .option('--empty', 'Non-interactive: create skeleton only, no prompts')
+  .option('--dev', 'Create a dev workspace (requires npm run build:dev)')
+  .option('--here', 'Create the workspace in the current directory')
+  .action(async (opts) => {
+    await init({ empty: opts.empty, dev: opts.dev, here: opts.here });
   });
 
 program
@@ -82,14 +90,16 @@ program
   });
 
 const tailorCmd = new Command('tailor')
-  .description('Tailor resume + cover letter for a job (runs the full pipeline when called without a subcommand)')
-  .option('-j, --job <id>', 'Job ID')
+  .description('Tailor resume + cover letter for a job (run a phase or the full pipeline as a subcommand)');
+tailorCmd
+  .command('full')
+  .description('Run the full 3-agent pipeline: analyst brief -> resume + cover letter (parallel)')
+  .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
-  .option('--no-cover-letter', 'Skip cover letter in full pipeline')
+  .option('--no-cover-letter', 'Skip cover letter')
   .option('--hint <text>', 'Pre-analysis guidance for the analyst (written to hint.md)')
   .option('--diff', 'Show before/after comparison')
   .action(async (opts) => {
-    if (!opts.job) throw new Error('tailor: --job <id> is required');
     const result = await tailor({
       jobId: opts.job,
       profileId: opts.profile,
@@ -279,9 +289,18 @@ envCmd
   .description('List all WOLF_* keys and whether they are set (values masked)')
   .action(() => { envShow(); });
 envCmd
-  .command('set')
-  .description('Interactively set WOLF_* keys and write them to your shell RC file')
-  .action(async () => { await envSet(); });
+  .command('set [key] [value]')
+  .description('Set WOLF_* keys in your shell RC file. With no args, runs interactive setup; with <key> <value>, writes that one key non-interactively.')
+  .action(async (key?: string, value?: string) => {
+    if (key && value) {
+      await envSetOne(key, value);
+    } else if (!key && !value) {
+      await envSet();
+    } else {
+      console.error('error: provide both <key> and <value>, or neither (for interactive mode)');
+      process.exitCode = 1;
+    }
+  });
 envCmd
   .command('clear')
   .description('Remove all WOLF_* export lines from shell RC files')

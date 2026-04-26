@@ -69,7 +69,7 @@ logger.info('Starting loop');                          // 没上下文没字段
 运行时控制：
 
 ```bash
-WOLF_LOG=debug wolf tailor --jobId abc123
+WOLF_LOG=debug wolf tailor full --jobId abc123
 WOLF_LOG_FORMAT=json wolf hunt | jq .
 tail -f data/logs/wolf.log.jsonl | jq 'select(.level=="error")'
 ```

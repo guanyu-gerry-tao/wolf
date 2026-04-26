@@ -105,6 +105,22 @@ export interface AppContext {
 }
 ```
 
+### Dev and stable instances
+
+wolf has two build modes so development and acceptance testing cannot mutate
+real dogfood state by accident.
+
+| Mode | Build | Invocation | Default workspace | Env namespace | MCP tools |
+|---|---|---|---|---|---|
+| stable | `npm run build` | `wolf ...` | `~/wolf` or `WOLF_HOME` | `WOLF_*` | `wolf_*` |
+| dev | `npm run build:dev` | `npm run wolf -- ...` | `~/wolf-dev` or `WOLF_DEV_HOME` | `WOLF_DEV_*`, fallback `WOLF_*` | `wolfdev_*` |
+
+`src/utils/instance.ts` is the source of truth for build mode, workspace
+resolution, env-var lookup, and the dev warning. Acceptance tests must override
+the dev workspace with
+`WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>` for
+every command and must only create/delete paths under `/tmp/wolf-test/`.
+
 ### Directory structure
 
 ```
@@ -162,7 +178,7 @@ CLI parses --job abc123 [--hint "focus on ML ops"]
                   → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
               → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
                   → Anthropic API → returns HTML body
-                  → [Service] RenderService.renderCoverLetterPdf(html)
+                  → [Service] RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
                   → writeFile data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
       → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
       → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
@@ -479,7 +495,7 @@ CLI parses args
   ← CLI prints batch summary; scoring completes in background
 ```
 
-### `wolf tailor --job <job_id> [--hint "..."]`
+### `wolf tailor full --job <job_id> [--hint "..."]`
 
 ```
 CLI parses args
@@ -496,7 +512,7 @@ CLI parses args
           → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
         → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
           → Claude → HTML body
-          → RenderService.renderCoverLetterPdf(html)
+          → RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
           → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
     → db.updateJob(jobId, { tailoredResumePdfPath, coverLetterPaths })
     → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }

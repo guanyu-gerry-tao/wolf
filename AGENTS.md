@@ -78,7 +78,9 @@ wolf/
 
 | Command | Description |
 |---|---|
-| `wolf init` | Interactive setup wizard |
+| `wolf init` | Interactive setup wizard; defaults to `~/wolf` |
+| `wolf init --empty` | Non-interactive skeleton workspace |
+| `wolf init --dev --empty` | Dev skeleton workspace (dev build only; tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
 | `wolf hunt` | Find and score jobs |
 | `wolf tailor` | Tailor resume to a JD |
 | `wolf fill` | Auto-fill job application form |
@@ -90,7 +92,7 @@ wolf/
 
 ## MCP tools
 
-`wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`
+Stable: `wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`. Dev builds expose `wolfdev_*` names.
 
 ## Environment variables
 
@@ -101,6 +103,9 @@ WOLF_ANTHROPIC_API_KEY=
 WOLF_APIFY_API_TOKEN=
 WOLF_GMAIL_CLIENT_ID=
 WOLF_GMAIL_CLIENT_SECRET=
+WOLF_HOME=
+WOLF_DEV_HOME=
+WOLF_DEV_ANTHROPIC_API_KEY=
 ```
 
 Add to `~/.zshrc` (Mac/Linux) or User Environment Variables (Windows).
@@ -135,6 +140,12 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - e.g. `src/commands/env/__tests__/env.test.ts` tests `src/commands/env/index.ts`
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
+- Smoke and acceptance test definitions live under `test/`; start with `test/README.md`.
+- Shared offline JD and resume inputs live under `test/fixtures/`; use the fixture scripts there instead of embedding large pasted text in acceptance docs.
+- CLI behavior added or changed → add or update the relevant smoke/acceptance group under `test/` in the same PR.
+- Automated smoke and acceptance tests must only use `/tmp/wolf-test/` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`.
+- Test run reports live under `test/runs/<run-id>/`, with `test/runs/LATEST.md` pointing to the most recent run. The directory is kept with `.gitkeep`, but run contents are gitignored and must not be committed.
+- If the user asks to clear test tmp/temp files, interpret that as deleting runtime workspaces under `/tmp/wolf-test/` only. Do not delete `test/runs/` reports unless the user explicitly asks to clear reports too.
 
 ### Comment style
 
@@ -149,7 +160,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
   - Layer / directory / data flow changed → `ARCHITECTURE.md` + `ARCHITECTURE_zh.md`
   - Architectural decision made → `DECISIONS.md` + `DECISIONS_zh.md`
   - Milestone status changed → `AGENTS.md`
-  - Testing conventions changed → `TESTING.md` + `TESTING_zh.md`
+  - Testing conventions changed → `test/README.md` + `test/README_zh.md` and the relevant suite/group docs
 
 ## Implementation plans
 

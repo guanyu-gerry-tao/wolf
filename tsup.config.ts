@@ -12,6 +12,7 @@ const external = [
   ...Object.keys(pkg.dependencies ?? {}),
   ...Object.keys(pkg.devDependencies ?? {}),
 ];
+const buildMode = process.env.WOLF_BUILD_MODE === 'dev' ? 'dev' : 'stable';
 
 export default defineConfig({
   // Named entry so the output lands at dist/cli/index.js, matching the bin field.
@@ -20,6 +21,9 @@ export default defineConfig({
   outDir: 'dist',
   // Inline .md files as string constants so no runtime file-read is needed.
   loader: { '.md': 'text' },
+  define: {
+    __WOLF_BUILD_MODE__: JSON.stringify(buildMode),
+  },
   external,
   clean: true,
   // Type declarations are not needed for a CLI binary.

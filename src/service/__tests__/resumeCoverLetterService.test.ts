@@ -149,6 +149,38 @@ describe('ResumeCoverLetterServiceImpl', () => {
     expect(typeof events[1].durationMs).toBe('number');
   });
 
+  // Bug B3 regression guard. The service is a thin pass-through over aiClient:
+  // whatever HTML the writer returns, the service must hand back unchanged.
+  // It does NOT inject, normalize, or augment sections. If the model honors
+  // the prompt and omits a missing section (e.g. Education for a candidate
+  // without a degree), the service must NOT silently re-add it. This guarantee
+  // is what lets TAILOR-04's section-honesty contract hold end-to-end:
+  // application + service code is a no-op on section structure; the prompt is
+  // the only place that decides which sections appear.
+  it('returns the writer HTML verbatim when a section is intentionally absent', async () => {
+    const poolWithoutEducation = `# EXPERIENCE
+SWE at Example Corp (2022-present): backend systems.
+# SKILLS
+Go, TypeScript`;
+    // Writer correctly omits Education because pool has none.
+    const htmlWithoutEducation =
+      '<h2>EXPERIENCE</h2><div class="item">role bullets</div>' +
+      '<h2>SKILLS</h2><div>Go, TypeScript</div>';
+    vi.mocked(aiClient).mockResolvedValue(htmlWithoutEducation);
+
+    const svc = new ResumeCoverLetterServiceImpl();
+    const result = await svc.tailorResumeToHtml(
+      poolWithoutEducation, JD_TEXT, PROFILE, BRIEF, AI_CONFIG,
+    );
+
+    // Service hands the model output back unchanged — no Education section
+    // is appended, prepended, or otherwise stitched in.
+    expect(result).toBe(htmlWithoutEducation);
+    expect(result.toLowerCase()).not.toContain('<h2>education');
+    expect(result.toLowerCase()).not.toContain('bachelor');
+    expect(result.toLowerCase()).not.toContain('b.s.');
+  });
+
   it('emits ai.resume.empty_response before rethrowing on empty AI output', async () => {
     vi.mocked(aiClient).mockResolvedValue('');
     const events = installCapture();

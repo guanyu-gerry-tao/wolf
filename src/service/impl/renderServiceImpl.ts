@@ -3,52 +3,44 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CannotFillError, CannotFitError, fit } from './render/fit.js';
 import { log } from '../../utils/logger.js';
-import type { Page } from 'playwright';
+import type { Browser, Page } from 'playwright';
 import type { RenderService } from '../renderService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHELL_PATH = path.join(__dirname, 'render', 'shell.html');
 
-type RenderKind = 'resume' | 'cover';
-
 export class RenderServiceImpl implements RenderService {
   async renderPdf(htmlBody: string): Promise<Buffer> {
-    // Resume rendering is a one-page fit job — identical browser lifecycle
-    // and PDF path as the cover letter. Delegate to the shared helper.
-    return renderHtmlToPdf(htmlBody, 'resume');
+    // Resume rendering is a one-page fit job: shrink-to-fit when content
+    // overflows, expand-to-fill when it underflows, throwing CannotFitError
+    // / CannotFillError if neither path converges.
+    return renderResumePdfFit(htmlBody);
   }
 
   async renderCoverLetterPdf(htmlBody: string): Promise<Buffer> {
-    // Cover letters are also one page, and `fit()` handles both overflow
-    // and underflow, so they share the exact same code path.
-    return renderHtmlToPdf(htmlBody, 'cover');
+    // Cover letters render at natural CSS-driven layout. No fit loop —
+    // short content keeps its bottom whitespace, long content paginates
+    // naturally to a second page. See DECISIONS.md 2026-04-25 for why we
+    // dropped the single-page fit on cover letters.
+    return renderHtmlToPdfNatural(htmlBody);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Shared PDF rendering — launches Playwright, loads the shell, injects the
-// HTML body, runs the fit loop, and cleans up the browser. Extracted so
-// both public entrypoints stay at the "one obvious line" level.
+// Resume render — single-page fit. Launches Playwright, loads the shell,
+// injects the HTML body, runs the fit loop, and cleans up the browser.
 // ---------------------------------------------------------------------------
 
-async function renderHtmlToPdf(htmlBody: string, kind: RenderKind): Promise<Buffer> {
-  log.debug('render.start', { kind, contentLength: htmlBody.length });
+async function renderResumePdfFit(htmlBody: string): Promise<Buffer> {
+  const kind = 'resume';
+  log.debug('render.start', { kind, contentLength: htmlBody.length, mode: 'fit' });
   const startedAt = Date.now();
 
   // Each render spawns a fresh browser — simpler state model than a pool,
   // and Playwright cold-start is only a few hundred ms.
   const browser = await chromium.launch();
-  const page = await browser.newPage();
   try {
-    // Emulate print media so CSS @media print rules take effect.
-    await page.emulateMedia({ media: 'print' });
-
-    // Load the static shell (styles + layout scaffold + #resume-root placeholder).
-    await page.goto('file://' + SHELL_PATH, { waitUntil: 'domcontentloaded' });
-
-    // Inject the rendered body into the shell and wait for fonts.
-    await injectHtmlIntoShell(page, htmlBody);
-    await waitForFontsReady(page);
+    const page = await loadShellPage(browser, htmlBody);
 
     // Run the binary-search fit loop. On failure, log the fit-specific
     // diagnostics before rethrowing so the caller only gets the one error.
@@ -67,10 +59,60 @@ async function renderHtmlToPdf(htmlBody: string, kind: RenderKind): Promise<Buff
   }
 }
 
+// ---------------------------------------------------------------------------
+// Cover letter render — natural layout, no fit. Renders the shell at default
+// page size and lets Chromium paginate naturally. Multi-page output is OK;
+// a short letter keeping its bottom whitespace is OK. The shell's @page rule
+// + page-break-inside guards on h1/h2/h3 keep multi-page output readable.
+// ---------------------------------------------------------------------------
+
+async function renderHtmlToPdfNatural(htmlBody: string): Promise<Buffer> {
+  const kind = 'cover';
+  log.debug('render.start', { kind, contentLength: htmlBody.length, mode: 'natural' });
+  const startedAt = Date.now();
+
+  const browser = await chromium.launch();
+  try {
+    const page = await loadShellPage(browser, htmlBody);
+
+    // preferCSSPageSize: true makes Playwright honor the shell's @page rule
+    // (Letter, 0.5in margin) — the same geometry as the resume's page size,
+    // just without the fit loop's CSS-variable overrides.
+    const pdf = await page.pdf({
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+    log.info('render.done', {
+      kind,
+      mode: 'natural',
+      pdfSizeBytes: pdf.length,
+      durationMs: Date.now() - startedAt,
+    });
+    return pdf;
+  } finally {
+    await browser.close();
+  }
+}
+
+// Open a fresh page, emulate print media, load the shell, inject body,
+// and wait for webfonts. Shared by both resume (fit) and cover (natural)
+// paths so the prelude stays in one place.
+async function loadShellPage(browser: Browser, htmlBody: string): Promise<Page> {
+  const page = await browser.newPage();
+  // Emulate print media so CSS @media print rules take effect.
+  await page.emulateMedia({ media: 'print' });
+  // Load the static shell (styles + layout scaffold + #resume-root placeholder).
+  await page.goto('file://' + SHELL_PATH, { waitUntil: 'domcontentloaded' });
+  // Inject the rendered body into the shell and wait for fonts.
+  await injectHtmlIntoShell(page, htmlBody);
+  await waitForFontsReady(page);
+  return page;
+}
+
 // Runs fit() and translates its typed errors into warn-level log events
-// before rethrowing. Keeps renderHtmlToPdf readable by keeping the
+// before rethrowing. Keeps the resume render path readable by keeping the
 // error-translation logic out of its main flow.
-async function runFitWithLogging(page: Page, kind: RenderKind) {
+async function runFitWithLogging(page: Page, kind: 'resume') {
   try {
     return await fit(page);
   } catch (err) {

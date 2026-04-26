@@ -209,6 +209,45 @@ Then verify with: ${bold('wolf env show')}
 `);
 }
 
+/**
+ * Non-interactive form of `wolf env set`: write a single WOLF_* key+value to
+ * the shell RC file without any prompts. Used by `wolf env set <key> <value>`
+ * (mainly for scripts and agents that cannot answer inquirer prompts).
+ *
+ * `rcFile` is an internal test seam; production callers omit it and let
+ * `detectRcFile()` pick the right shell RC.
+ */
+export async function envSetOne(key: string, value: string, rcFile?: string): Promise<void> {
+  if (process.platform === 'win32') {
+    console.log(`\n${bold('To set WOLF_ keys on Windows:')}`);
+    console.log('  1. Open: Settings → System → Advanced system settings → Environment Variables');
+    console.log('  2. Add the WOLF_* key to the User section');
+    console.log('  3. Restart your terminal\n');
+    return;
+  }
+
+  // Reject unknown WOLF_* keys so a typo doesn't silently land in the RC file.
+  if (!(WOLF_KEYS as readonly string[]).includes(key)) {
+    console.error(`error: unknown key "${key}". Valid: ${WOLF_KEYS.join(', ')}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    console.error(`error: value for ${key} must not be empty`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const target = rcFile ?? detectRcFile();
+  await writeWolfBlock(target, [{ key, value: trimmed }]);
+  console.log(`\n  ${green('✓')} ${bold(key)} written to ${target}\n`);
+  console.log(`Restart your terminal to apply, or run:`);
+  console.log(`  ${bold(`source ${target}`)}\n`);
+  console.log(`Then verify with: ${bold('wolf env show')}\n`);
+}
+
 /** Shell RC files to search, in priority order. */
 const RC_FILES = [
   path.join(os.homedir(), '.zshrc'),

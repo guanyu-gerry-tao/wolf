@@ -69,7 +69,7 @@ A static message plus structured fields means `jq 'select(.msg=="Tailor analyze 
 Control at runtime:
 
 ```bash
-WOLF_LOG=debug wolf tailor --jobId abc123
+WOLF_LOG=debug wolf tailor full --jobId abc123
 WOLF_LOG_FORMAT=json wolf hunt | jq .
 tail -f data/logs/wolf.log.jsonl | jq 'select(.level=="error")'
 ```

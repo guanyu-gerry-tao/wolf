@@ -9,15 +9,18 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { vi } from 'vitest';
 
 let tmpDir: string;
+const originalEnv = { ...process.env };
 
 describe('config utils', () => {
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'wolf-test-'));
+    process.env.WOLF_HOME = tmpDir;
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   });
 
   afterEach(async () => {
     vi.restoreAllMocks();
+    process.env = { ...originalEnv };
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
@@ -44,6 +47,7 @@ describe('config utils', () => {
 
     it('throws if wolf.toml does not exist', async () => {
       const { loadConfig } = await import('../config.js');
+      await fs.rm(path.join(tmpDir, 'wolf.toml'), { force: true });
       await expect(loadConfig()).rejects.toThrow('wolf.toml not found');
     });
   });

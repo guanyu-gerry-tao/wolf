@@ -104,6 +104,17 @@ export interface AppContext {
 }
 ```
 
+### Dev 和 stable 实例
+
+wolf 有两个 build mode，避免开发和验收测试误伤真实 dogfood 数据。
+
+| Mode | Build | 调用方式 | 默认 workspace | 环境变量命名空间 | MCP tools |
+|---|---|---|---|---|---|
+| stable | `npm run build` | `wolf ...` | `~/wolf` 或 `WOLF_HOME` | `WOLF_*` | `wolf_*` |
+| dev | `npm run build:dev` | `npm run wolf -- ...` | `~/wolf-dev` 或 `WOLF_DEV_HOME` | `WOLF_DEV_*`，fallback 到 `WOLF_*` | `wolfdev_*` |
+
+`src/utils/instance.ts` 是 build mode、workspace 解析、环境变量读取和 dev warning 的唯一真相来源。验收测试必须每次命令都设置 `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`，并且只能在 `/tmp/wolf-test/` 下创建/删除路径。
+
 ### 目录结构
 
 ```
@@ -161,7 +172,7 @@ CLI 解析 --job abc123 [--hint "focus on ML ops"]
                   → 写入 data/jobs/<dir>/{src/resume.html, resume.pdf}
               → [服务层] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
                   → Anthropic API → 返回 HTML body
-                  → [服务层] RenderService.renderCoverLetterPdf(html)
+                  → [服务层] RenderService.renderCoverLetterPdf(html)  # Playwright，自然布局（不走 fit）
                   → 写入 data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
       → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
       → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
@@ -462,7 +473,7 @@ CLI 解析参数
   ← CLI 输出 batch 摘要；评分在后台完成
 ```
 
-### `wolf tailor --job <job_id> [--hint "..."]`
+### `wolf tailor full --job <job_id> [--hint "..."]`
 
 ```
 CLI 解析参数
@@ -479,7 +490,7 @@ CLI 解析参数
           → 写入 data/jobs/<dir>/{src/resume.html, resume.pdf}
         → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
           → Claude → HTML body
-          → RenderService.renderCoverLetterPdf(html)
+          → RenderService.renderCoverLetterPdf(html)  # Playwright，自然布局（不走 fit）
           → 写入 data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
     → db.updateJob(jobId, { tailoredResumePdfPath, coverLetterPaths })
     → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }

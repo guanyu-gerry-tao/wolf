@@ -2,6 +2,21 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { add } from '../commands/add/index.js';
 import { tailor } from '../commands/tailor/index.js';
+import { DEV_WARNING, getEnvValue, isDevBuild } from '../utils/instance.js';
+
+type ToolBaseName = 'hunt' | 'add' | 'score' | 'tailor' | 'fill' | 'reach' | 'status';
+
+export function mcpToolName(base: ToolBaseName): string {
+  return `${isDevBuild() ? 'wolfdev' : 'wolf'}_${base}`;
+}
+
+export function withMcpWarning<T extends object>(payload: T): T & { _warning?: string } {
+  return isDevBuild() ? { ...payload, _warning: DEV_WARNING } : payload;
+}
+
+function jsonContent(payload: object): { content: [{ type: 'text'; text: string }] } {
+  return { content: [{ type: 'text', text: JSON.stringify(withMcpWarning(payload)) }] };
+}
 
 function notImplemented(tool: string): object {
   return { error: 'not_implemented', tool, message: `${tool} is not yet implemented.` };
@@ -13,7 +28,7 @@ function missingParam(param: string, prompt: string): object {
 
 export function registerTools(server: McpServer): void {
   server.registerTool(
-    'wolf_hunt',
+    mcpToolName('hunt'),
     {
       description: `Search, find, and score job listings from configured job platforms (LinkedIn, Handshake, etc.).
 Use this when the user wants to find jobs, search openings, or says anything like
@@ -32,14 +47,14 @@ Then call with those parameters.`,
     // TODO(M2): replace with async (args) => { const result = await hunt(args); ... }
     (args) => {
       if (!args.role) {
-        return { content: [{ type: 'text', text: JSON.stringify(missingParam('role', 'What role are you looking for? (e.g. "SWE intern", "backend engineer")')) }] };
+        return jsonContent(missingParam('role', 'What role are you looking for? (e.g. "SWE intern", "backend engineer")'));
       }
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_hunt')) }] };
+      return jsonContent(notImplemented(mcpToolName('hunt')));
     }
   );
 
   server.registerTool(
-    'wolf_add',
+    mcpToolName('add'),
     {
       description: `Add a single job to wolf's database from structured data provided by the AI caller.
 Use this when the user shares a job they found — screenshot, pasted JD text, or URL content.
@@ -57,7 +72,7 @@ then present the result to the user and offer to run wolf_tailor.`,
     },
     async (args) => {
       if (!args.title || !args.company || !args.jdText) {
-        return { content: [{ type: 'text', text: JSON.stringify(missingParam('title/company/jdText', 'Extract title, company, and jdText from the user\'s input before calling wolf_add.')) }] };
+        return jsonContent(missingParam('title/company/jdText', 'Extract title, company, and jdText from the user\'s input before calling wolf_add.'));
       }
       const result = await add({
         title: args.title as string,
@@ -66,12 +81,12 @@ then present the result to the user and offer to run wolf_tailor.`,
         url: args.url as string | undefined,
         profileId: args.profileId as string | undefined,
       });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return jsonContent(result);
     }
   );
 
   server.registerTool(
-    'wolf_score',
+    mcpToolName('score'),
     {
       description: `Process unscored jobs in the database: extract structured fields from JD text,
 apply dealbreaker filters, and submit remaining jobs to Claude Batch API for async scoring.
@@ -86,12 +101,12 @@ Returns a batch ID immediately — scoring completes in the background.`,
     },
     // TODO(M2): replace with async (args) => { const result = await score(args); ... }
     (_args) => {
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_score')) }] };
+      return jsonContent(notImplemented(mcpToolName('score')));
     }
   );
 
   server.registerTool(
-    'wolf_tailor',
+    mcpToolName('tailor'),
     {
       description: `Run the full tailor pipeline for a job: analyst produces a tailoring brief,
 then resume and cover letter are written in parallel from the same brief (so they
@@ -110,7 +125,7 @@ takes effect on subsequent tailor runs until overwritten.`,
     },
     async (args) => {
       if (!args.jobId) {
-        return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_add or wolf_hunt first.')) }] };
+        return jsonContent(missingParam('jobId', 'A jobId is required. Run wolf_add or wolf_hunt first.'));
       }
       const result = await tailor({
         jobId: args.jobId as string,
@@ -118,12 +133,12 @@ takes effect on subsequent tailor runs until overwritten.`,
         coverLetter: args.coverLetter as boolean | undefined,
         hint: args.hint as string | undefined,
       });
-      return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      return jsonContent(result);
     }
   );
 
   server.registerTool(
-    'wolf_fill',
+    mcpToolName('fill'),
     {
       description: `Auto-fill a job application form for a specific job using the user's profile.
 Use this when the user says "fill out the application", "submit my application",
@@ -139,14 +154,14 @@ Supports dryRun: true for previewing what would be filled without submitting.`,
     // TODO(M2): replace with async (args) => { const result = await fill(args); ... }
     (args) => {
       if (!args.jobId) {
-        return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.')) }] };
+        return jsonContent(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.'));
       }
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_fill')) }] };
+      return jsonContent(notImplemented(mcpToolName('fill')));
     }
   );
 
   server.registerTool(
-    'wolf_reach',
+    mcpToolName('reach'),
     {
       description: `Find HR or recruiter contacts for a job and draft an outreach email.
 Optionally send the email if user confirms (send: true).
@@ -162,14 +177,14 @@ Requires a jobId. If send is not specified, default to false and show draft firs
     // TODO(M2): replace with async (args) => { const result = await reach(args); ... }
     (args) => {
       if (!args.jobId) {
-        return { content: [{ type: 'text', text: JSON.stringify(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.')) }] };
+        return jsonContent(missingParam('jobId', 'A jobId is required. Run wolf_hunt first to get a list of jobs.'));
       }
-      return { content: [{ type: 'text', text: JSON.stringify(notImplemented('wolf_reach')) }] };
+      return jsonContent(notImplemented(mcpToolName('reach')));
     }
   );
 
   server.registerTool(
-    'wolf_status',
+    mcpToolName('status'),
     {
       description: `Check the current setup status of wolf: whether a user profile exists,
 resume is loaded, and API integrations are configured.
@@ -191,28 +206,23 @@ Returns what's missing and what the next step should be.`,
         const result = {
           profile: hasProfile ? 'ok' : 'missing',
           integrations: {
-            anthropic: !!process.env['WOLF_ANTHROPIC_API_KEY'],
-            apify: !!process.env['WOLF_APIFY_API_TOKEN'],
+            anthropic: !!getEnvValue('ANTHROPIC_API_KEY'),
+            apify: !!getEnvValue('APIFY_API_TOKEN'),
           },
           next_step: !hasProfile
             ? 'Run `wolf init` in your workspace to set up your profile.'
-            : !process.env['WOLF_ANTHROPIC_API_KEY']
+            : !getEnvValue('ANTHROPIC_API_KEY')
               ? 'Set WOLF_ANTHROPIC_API_KEY in your shell to enable AI features.'
               : 'Wolf is ready. Try `wolf_add` or `wolf_hunt` to get started.',
         };
 
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        return jsonContent(result);
       } catch {
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              profile: 'missing',
-              integrations: { anthropic: false, apify: false },
-              next_step: 'No wolf.toml found. Run `wolf init` in your workspace directory first.',
-            }),
-          }],
-        };
+        return jsonContent({
+          profile: 'missing',
+          integrations: { anthropic: false, apify: false },
+          next_step: 'No wolf.toml found. Run `wolf init` in your workspace directory first.',
+        });
       }
     }
   );

@@ -29,6 +29,21 @@ Each section corresponds to a User Story and Use Case.
 - When wolf opens `resume_pool.md`
 - Then the file opens in the user's default editor; wolf waits for the editor to close before continuing
 
+**AC-01-5 — Scriptable empty init**
+- Given an automated agent needs a non-interactive workspace
+- When it runs `wolf init --empty`
+- Then wolf writes schema-valid `wolf.toml`, `profiles/default/profile.toml`, an empty `profiles/default/resume_pool.md`, and `data/` without prompting
+
+**AC-01-6 — Dev init isolation**
+- Given a dev build invoked as `npm run wolf -- init --dev --empty`
+- When `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>` is set
+- Then all workspace files are created under that test workspace and `wolf.toml` contains `[instance].mode = "dev"`
+
+**AC-01-7 — Stable build rejects dev workspaces**
+- Given the stable build is running
+- When the user passes `wolf init --dev`
+- Then wolf exits with a clear error telling the user to run `npm run build:dev` from the clone
+
 ---
 
 ## AC-02 · Job Discovery (`wolf hunt`)
@@ -96,6 +111,8 @@ Each section corresponds to a User Story and Use Case.
 - Given Claude rewrites bullet points
 - When the output is inspected
 - Then no new company names, dates, metrics, or technical claims are introduced that were not in the original resume
+- AND no entire sections (e.g. Education, Skills, Projects) are invented when the resume pool lacks the underlying data
+- AND section ordering in the generated resume follows the order of sections in the resume pool — the writer must not reorder sections to match a perceived convention (e.g. moving Experience above Skills when the pool put Skills first)
 
 **AC-04-3 — Diff output**
 - Given the user runs `wolf tailor <jobId> --diff`

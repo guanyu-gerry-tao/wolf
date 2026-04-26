@@ -53,7 +53,7 @@ async function runInitIn(dir: string, assertFn: () => Promise<void>): Promise<vo
   const originalCwd = process.cwd();
   process.chdir(dir);
   try {
-    await init();
+    await init({ here: true });
   } finally {
     process.chdir(originalCwd);
   }
@@ -172,5 +172,75 @@ describe('init()', () => {
       const profileDirExists = await fs.access(path.join(dir, 'profiles')).then(() => true).catch(() => false);
       expect(profileDirExists).toBe(false);
     });
+  });
+
+  // Non-interactive init is the acceptance-test bootstrap path. It must not
+  // call any prompt, and it must create schema-valid default files.
+  it('creates an empty workspace without prompts when --empty is set', async () => {
+    const dir = makeTempDir();
+    await fs.mkdir(dir, { recursive: true });
+    const originalCwd = process.cwd();
+    process.chdir(dir);
+
+    await init({ empty: true, here: true });
+
+    try {
+      const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
+      const config = AppConfigSchema.parse(parse(raw));
+      expect(config.defaultProfileId).toBe('default');
+      expect(config.instance?.mode).toBeUndefined();
+
+      const profileRaw = await fs.readFile(
+        path.join(dir, 'profiles', 'default', 'profile.toml'),
+        'utf-8',
+      );
+      const profile = UserProfileSchema.parse(parse(profileRaw));
+      expect(profile.id).toBe('default');
+      expect(profile.name).toBe('');
+      expect(profile.email).toBe('');
+      expect(profile.targetRoles).toEqual([]);
+      expect(profile.targetLocations).toEqual([]);
+
+      const resumePool = await fs.readFile(
+        path.join(dir, 'profiles', 'default', 'resume_pool.md'),
+        'utf-8',
+      );
+      expect(resumePool).toBe('');
+      await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
+      expect(input).not.toHaveBeenCalled();
+      expect(confirm).not.toHaveBeenCalled();
+      expect(select).not.toHaveBeenCalled();
+    } finally {
+      process.chdir(originalCwd);
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Dev empty init is the exact path the acceptance orchestrator will run in
+  // /tmp/wolf-at-* workspaces. The dev marker makes the workspace self-labeling.
+  it('writes instance.mode = dev for --dev --empty workspaces', async () => {
+    const dir = makeTempDir();
+    process.env.WOLF_BUILD_MODE = 'dev';
+    process.env.WOLF_DEV_HOME = dir;
+
+    try {
+      await init({ dev: true, empty: true });
+
+      const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
+      const config = AppConfigSchema.parse(parse(raw));
+      expect(config.instance?.mode).toBe('dev');
+    } finally {
+      delete process.env.WOLF_BUILD_MODE;
+      delete process.env.WOLF_DEV_HOME;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // A stable build must not be able to create a dev-marked workspace; otherwise
+  // a user or agent could confuse the real binary with the local dev build.
+  it('rejects --dev when the binary is not a dev build', async () => {
+    delete process.env.WOLF_BUILD_MODE;
+    await expect(init({ dev: true, empty: true, here: true }))
+      .rejects.toThrow('--dev requires a dev build');
   });
 });

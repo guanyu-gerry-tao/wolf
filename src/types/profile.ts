@@ -37,6 +37,9 @@ export type ModelRef = string;
  * default* fields are baselines — individual command runs can override them via options.
  */
 export interface AppConfig {
+  instance?: {
+    mode: 'stable' | 'dev';
+  };
   defaultProfileId: string;            // which profile folder to use by default
   hunt: {
     minScore: number;                  // default 0.5
