@@ -21,10 +21,10 @@ UC ids reference [`docs/requirements/USE_CASES.md`](../../docs/requirements/USE_
 
 | Requirement | Behavior | Acceptance Coverage |
 |---|---|---|
-| `UC-06.1.1` | Tailor Resume (CLI) | `tailor/TAILOR-01`, `tailor/TAILOR-02`, `tailor/TAILOR-03` |
+| `UC-06.1.1` | Tailor Resume (CLI) | `tailor/TAILOR-01`, `tailor/TAILOR-02`, `tailor/TAILOR-03`, `tailor/TAILOR-04` |
 | `UC-07.1.1` | Generate Cover Letter (CLI) | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-04-1` | Tailored `.tex` file and compiled PDF written to workspace | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
-| `AC-04-2` | Factual accuracy preserved — no fabricated companies, dates, metrics, or technical claims | `tailor/TAILOR-01` |
+| `AC-04-2` | Factual accuracy preserved — no fabricated companies/dates/metrics/claims, no invented sections, section order follows the pool | `tailor/TAILOR-01`, `tailor/TAILOR-04` |
 | `AC-05-1` | `.md` and PDF cover letter written alongside tailored resume | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-05-2` | Cover letter includes correct role title and company name from JD | `tailor/TAILOR-01` |
 | Analyst hint flow (`--hint` writes `src/hint.md`, steers analyst brief) | Sub-feature of `UC-06.1.1`; no canonical AC id assigned | `tailor/TAILOR-03` |

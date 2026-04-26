@@ -21,10 +21,10 @@
 
 | Requirement | 行为 | Acceptance 覆盖 |
 |---|---|---|
-| `UC-06.1.1` | Tailor Resume（CLI） | `tailor/TAILOR-01`, `tailor/TAILOR-02`, `tailor/TAILOR-03` |
+| `UC-06.1.1` | Tailor Resume（CLI） | `tailor/TAILOR-01`, `tailor/TAILOR-02`, `tailor/TAILOR-03`, `tailor/TAILOR-04` |
 | `UC-07.1.1` | Generate Cover Letter（CLI） | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-04-1` | 写出 tailored `.tex` 和编译后的 PDF | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
-| `AC-04-2` | 保留事实准确性 — 不引入新的公司、日期、指标或技术声称 | `tailor/TAILOR-01` |
+| `AC-04-2` | 保留事实准确性 — 不引入新公司/日期/指标/声称、不杜撰整段 section、section 顺序跟随 pool | `tailor/TAILOR-01`, `tailor/TAILOR-04` |
 | `AC-05-1` | 在 tailored resume 旁边写出 `.md` 和 PDF cover letter | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-05-2` | Cover letter 含正确的 role title 和 company name | `tailor/TAILOR-01` |
 | Analyst hint 流程（`--hint` 写 `src/hint.md`，引导 analyst brief） | `UC-06.1.1` 的子能力；没有专属 AC id | `tailor/TAILOR-03` |

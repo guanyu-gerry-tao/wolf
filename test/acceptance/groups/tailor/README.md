@@ -41,6 +41,7 @@ and AI review of output quality.
 - [TAILOR-01 - Full tailor pipeline for one fixture job](TAILOR-01-full-pipeline.md)
 - [TAILOR-02 - Stepwise brief, resume, and cover letter](TAILOR-02-stepwise-pipeline.md)
 - [TAILOR-03 - Analyst hint is written and used](TAILOR-03-hint-guidance.md)
+- [TAILOR-04 - Section honesty and pool-driven ordering](TAILOR-04-section-honesty.md)
 
 ## AI Review Rubric
 

@@ -30,6 +30,17 @@ function buildResumePoolTemplate(name: string): string {
 // wolf will pick the right subset per application.
 // LINES STARTING WITH // ARE NOTES FOR YOU ONLY — THE AI WILL NOT READ THEM.
 
+// ## Section honesty + ordering (READ THIS)
+// 1. Sections are OPTIONAL. If you have no Education (e.g. bootcamp grad), no Experience
+//    (e.g. first job seeker), or no separate Projects, just leave that section out. wolf
+//    will NEVER fabricate a section that doesn't exist in your pool.
+// 2. The ORDER of sections in this file IS the order on your generated resume. If you
+//    put Skills first, the writer will put Skills first — even if convention says
+//    Experience comes first. You decide. The writer is forbidden from reordering.
+// 3. Section TITLES are kept verbatim. If you write "## Work Experience" it stays
+//    "Work Experience" (not normalized to "Experience"). Visual styling like ALL CAPS is
+//    applied by the template's CSS, not by the writer.
+
 // ## Contact
 // Your contact info (name, email, phone, LinkedIn, etc.) is NOT stored here.
 // To update it, edit: profiles/default/profile.toml

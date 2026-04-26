@@ -111,6 +111,8 @@
 - Given Claude 改写了简历要点
 - When 检查输出内容
 - Then 未引入原始简历中不存在的公司名称、日期、数据指标或技术声明
+- AND 不杜撰 resume pool 中没有底层数据的整段 section（例如 Education / Skills / Projects）
+- AND 生成的 resume 中 section 的顺序严格跟随 resume pool 里的顺序 —— writer 不得为了符合某种"惯例"（例如把 Experience 移到 Skills 前面）而重排 section
 
 **AC-04-3 — 差异对比输出**
 - Given 用户运行 `wolf tailor <jobId> --diff`
