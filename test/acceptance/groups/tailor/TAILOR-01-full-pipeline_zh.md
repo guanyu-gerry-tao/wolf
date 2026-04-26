@@ -1,0 +1,122 @@
+# TAILOR-01 - 一个 Fixture Job 的完整 Tailor Pipeline
+
+## 目的
+
+验证 `wolf tailor full --job <jobId>` 会为一个 fixture job 跑完 analyst、resume writer、cover letter writer、renderer 和 DB path update。
+
+## 覆盖
+
+- `UC-06.1.1`
+- `UC-07.1.1`
+- `AC-04-1`
+- `AC-04-2`
+- `AC-05-1`
+- `AC-05-2`
+
+## 执行模式
+
+`ai-reviewed`
+
+## 成本 / 风险
+
+- Cost: medium to high
+- Risk: external-api
+- Requires: `WOLF_ANTHROPIC_API_KEY` 或 `WOLF_DEV_ANTHROPIC_API_KEY`
+
+## Workspace
+
+使用 `WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01`。
+
+## Setup
+
+group 内先运行一次 dev build：
+
+```bash
+npm run build:dev
+```
+
+初始化 workspace：
+
+```bash
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
+```
+
+填充 default profile 和 resume pool：
+
+```bash
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set name "Test Candidate"
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set email "candidate@example.test"
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set targetRoles "Backend Engineer, Data Infrastructure Engineer"
+```
+
+编辑 `/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01/profiles/default/resume_pool.md`，只写入 fixture facts。最小内容：
+
+```md
+# Test Candidate Resume Pool
+
+## Northwind Systems - Backend Engineer - 2022-2025
+- Built Java and Scala backend services for event processing workflows.
+- Improved Spark data pipelines used by analytics and operations teams.
+- Designed internal APIs and runbooks for distributed job processing.
+
+## Atlas Tools - Software Engineer Intern - 2021
+- Built Java API integrations for internal reporting tools.
+- Wrote integration tests for batch processing endpoints.
+```
+
+添加 fixture job 并捕获 `jobId`：
+
+```bash
+JD_FIXTURE=test/fixtures/jd/raw/computer-related-job-postings-cc0.csv
+JD_TEXT="$(python3 test/fixtures/jd/scripts/sample_raw_jd.py "$JD_FIXTURE" --row-id 119)"
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- add --title "Member of Technical Staff, Backend" --company "Fixture Company" --jd-text "$JD_TEXT"
+```
+
+## 步骤
+
+运行：
+
+```bash
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- tailor full --job <jobId>
+```
+
+然后检查生成的 job workspace：
+
+```text
+/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01/data/jobs/
+```
+
+## 预期产物
+
+- `src/hint.md`
+- `src/tailoring-brief.md`
+- `src/resume.html`
+- `resume.pdf`
+- `src/cover_letter.html`
+- `cover_letter.pdf`
+
+## AI Review Rubric
+
+以 [`../../reviewers/tailor-artifact-review.md`](../../reviewers/tailor-artifact-review.md)
+作为基础 rubric。reviewer 必须按那个 prompt 的输入清单、review tasks 和 output
+format 执行。下面只列本 case 独有的检查项，不要重复共享 rubric 已经覆盖的内容。
+
+### 本 case 独有检查
+
+- Resume 强调 backend systems、data infrastructure、Java/Scala、Spark 或
+  Hadoop-style pipeline work、API design 和 distributed processing。
+- Cover letter 中原样出现 `Fixture Company` 和
+  `Member of Technical Staff, Backend`。
+
+## 通过标准
+
+- 所有 setup 命令和 `tailor` 退出码都是 `0`。
+- 每次 wolf 调用的 stderr 都出现 dev banner。
+- `tailor` stdout 是 JSON，包含 `tailoredPdfPath` 和 `coverLetterPdfPath`。
+- 所有预期产物都存在。
+- AI review 结果是 `PASS` 或 `PASS_WITH_MINOR_IMPROVEMENTS`。
+- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+
+## 报告要求
+
+包含 command logs、fixture 路径、`jobId`、artifact paths、生成 HTML 的短摘录、AI review findings、bugs、improvements，以及 protected-path safety checks。
