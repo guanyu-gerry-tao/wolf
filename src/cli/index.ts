@@ -9,7 +9,7 @@ import { status, formatStatus } from '../commands/status/index.js';
 import { jobList, formatJobList } from '../commands/job/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
-import { envShow, envSet, envClear } from '../commands/env/index.js';
+import { envShow, envSet, envSetOne, envClear } from '../commands/env/index.js';
 import { configGet, configSet } from '../commands/config/index.js';
 import { profileGet, profileSet, profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
 import { startMcpServer } from '../mcp/server.js';
@@ -289,9 +289,18 @@ envCmd
   .description('List all WOLF_* keys and whether they are set (values masked)')
   .action(() => { envShow(); });
 envCmd
-  .command('set')
-  .description('Interactively set WOLF_* keys and write them to your shell RC file')
-  .action(async () => { await envSet(); });
+  .command('set [key] [value]')
+  .description('Set WOLF_* keys in your shell RC file. With no args, runs interactive setup; with <key> <value>, writes that one key non-interactively.')
+  .action(async (key?: string, value?: string) => {
+    if (key && value) {
+      await envSetOne(key, value);
+    } else if (!key && !value) {
+      await envSet();
+    } else {
+      console.error('error: provide both <key> and <value>, or neither (for interactive mode)');
+      process.exitCode = 1;
+    }
+  });
 envCmd
   .command('clear')
   .description('Remove all WOLF_* export lines from shell RC files')
