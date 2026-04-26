@@ -178,7 +178,7 @@ CLI parses --job abc123 [--hint "focus on ML ops"]
                   → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
               → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
                   → Anthropic API → returns HTML body
-                  → [Service] RenderService.renderCoverLetterPdf(html)
+                  → [Service] RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
                   → writeFile data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
       → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
       → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
@@ -512,7 +512,7 @@ CLI parses args
           → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
         → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
           → Claude → HTML body
-          → RenderService.renderCoverLetterPdf(html)
+          → RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
           → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
     → db.updateJob(jobId, { tailoredResumePdfPath, coverLetterPaths })
     → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }

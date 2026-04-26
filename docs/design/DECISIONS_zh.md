@@ -258,3 +258,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** 验收测试需要让 AI agent 从 shell 层运行 `wolf` 命令，但同一台机器上也有真实 dogfood 数据。测试绝不能碰 `~/wolf`、`~/wolf-dev`、repo `data/` 或 shell RC 文件。
 **AI：** 采用两个 build mode 和不同默认值。Stable build 来自 `npm run build`，读取 `WOLF_*`，默认 workspace 是 `~/wolf` 或 `WOLF_HOME`。Dev build 来自 `npm run build:dev`，优先读取 `WOLF_DEV_*`，再 fallback 到 `WOLF_*`，默认 workspace 是 `~/wolf-dev` 或 `WOLF_DEV_HOME`。本地 dev 调用方式是 `npm run wolf -- <command>`。自动化验收测试必须始终设置 `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`，并且只能在 `/tmp/wolf-at-*` 下创建和删除文件。
 **结果：** 采用。`src/utils/instance.ts` 统一负责 build mode、workspace、环境变量命名空间和 dev warning。`wolf init --empty --dev` 为 agent 创建 schema-valid 的 dev workspace。Dev CLI 输出带 warning，dev MCP 工具使用 `wolfdev_*` 名称并在响应里包含结构化 warning。
+
+---
+
+**2026-04-25 — Cover letter 自然布局渲染，不再单页 fit（Bug B2）**
+**我：** 第一次端到端 acceptance 运行触发了 `CannotFillError`，每个 cover letter 渲染都被阻塞：250 字的 cover letter 默认字号下大约只有 545px 内容，960px 的页面上即便把 section-gap 拉满 + 字号涨到 14pt 也达不到 95% 填充阈值。fit 算法把 "内容太短" 当作 caller 的硬错（"让模型加 filler 后重试"），可 cover letter 本来就该简短。让 Claude 凑字数会降低质量。从概念上讲：单页 resume 必须是一页（HR 扫读），但 cover letter 没有这个约束 —— 不到一页可以，确实需要溢出到第二页也可以，HR 读 cover letter 是从头读到尾的。
+**AI：** Cover letter 直接走自然 CSS 布局，丢掉 fit loop。`RenderService.renderCoverLetterPdf` 的 JSDoc 早就这么写了（"without the fit algorithm, natural layout preferred"），是 impl 在撒谎。重构 `RenderServiceImpl`：resume 保留 `fit()`（保留 `CannotFitError` / `CannotFillError` 路径），cover letter 走新的 `renderHtmlToPdfNatural`：加载 shell → 注入 body → 等字体 → `page.pdf({ printBackground: true, preferCSSPageSize: true })`。shell 的 `@page` 规则 + 已有的 h1/h2/h3 `page-break-inside: avoid` + `<p>` 的 `widows`/`orphans: 2`，多页分页效果开箱即用。cover letter prompt 删掉硬性的 "must fit on one page"，改成 250-300 字软目标，并明确说明留白或溢出到第二页都可以。触发本决策的 acceptance 运行：`test/runs/acceptance-20260425-163454/`。
+**结果：** 采用。`RenderServiceImpl` 现在有两条路径 —— `renderResumePdfFit`（resume）和 `renderHtmlToPdfNatural`（cover），仅共享 prelude（`loadShellPage`）。`renderCoverLetterPdf` 不再抛 `CannotFitError` / `CannotFillError`。新增三个回归测试：cover letter buffer 返回、短内容不抛 `CannotFillError`、长内容不抛 `CannotFitError`。架构图同步标注 cover letter 为 "自然布局（不走 fit）"。

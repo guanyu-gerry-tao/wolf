@@ -13,9 +13,10 @@ export interface RenderService {
   renderPdf(htmlBody: string): Promise<Buffer>;
 
   /**
-   * Render HTML body content to PDF without the fit algorithm.
-   * Use for cover letters and other content where natural layout is preferred
-   * over forced single-page fitting.
+   * Render HTML body content to PDF at natural CSS-driven layout, without
+   * the fit algorithm. Used for cover letters: short letters keep their
+   * bottom whitespace; long letters paginate naturally to a second page.
+   * Never throws CannotFitError or CannotFillError.
    * @param htmlBody - HTML to inject into shell.html's #resume-root
    * @returns PDF as a Buffer
    */

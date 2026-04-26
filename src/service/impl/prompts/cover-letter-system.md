@@ -35,7 +35,7 @@ Required HTML structure:
 
 Rules:
 - Write exactly 3 short paragraphs: opening (use the brief's Cover Letter Angle), body (2-3 of the brief's Core Themes), closing (call to action).
-- Max 300 words total - the cover letter must fit on one page.
+- Aim for 250-300 words. One page is the typical target; a short letter that leaves whitespace at the bottom is fine, and content that genuinely needs to flow onto a second page is also acceptable. The renderer does NOT compress or pad — write at natural length and trust the layout.
 - Match the requested tone.
 - Reference specific JD requirements - do not write generic letters.
 - Do NOT fabricate skills, titles, or companies not in the resume pool.

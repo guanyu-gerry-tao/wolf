@@ -80,13 +80,50 @@ describe('RenderService', () => {
     await expect(svc.renderPdf('<h2>Too little</h2>')).rejects.toThrow(CannotFillError);
   });
 
-  // renderCoverLetterPdf: reuses fit() so the PDF code path is identical to renderPdf.
-  it('renderCoverLetterPdf returns pdf buffer via fit', async () => {
-    mockFit.mockResolvedValue({ pdf: FAKE_PDF, finalParams: {}, iterations: 1, trace: [] } as unknown as FitResult);
+  // renderCoverLetterPdf: natural-layout render path. Cover letters do NOT
+  // use the fit() loop — short content keeps its whitespace, long content
+  // paginates naturally. See DECISIONS.md 2026-04-25.
+  it('renderCoverLetterPdf returns pdf buffer at natural layout (no fit)', async () => {
     const svc = new RenderServiceImpl();
     const result = await svc.renderCoverLetterPdf('<p>Cover letter content</p>');
     expect(result).toEqual(FAKE_PDF);
-    // fit IS called — cover letters are one page and share the same rendering path.
-    expect(mockFit).toHaveBeenCalledOnce();
+    // fit() must NOT be called for cover letters — that was Bug B2.
+    expect(mockFit).not.toHaveBeenCalled();
+  });
+
+  // Regression for Bug B2: a legitimately short cover letter must not bubble
+  // up CannotFillError. Even if fit() would throw on this content, the
+  // cover-letter path never reaches fit(), so the buffer comes back cleanly.
+  it('renderCoverLetterPdf does not throw CannotFillError on short content', async () => {
+    // Pre-arm fit() to throw — a regression to the old fit-based path would
+    // hit this and surface the error. The natural path never calls it.
+    const fakeShortAttempt: FitResult = {
+      pdf: FAKE_PDF,
+      finalParams: { fontSize: 14, lineHeight: 1.3, marginIn: 0.5, sectionGap: 2 },
+      iterations: 5,
+      trace: [],
+    };
+    mockFit.mockRejectedValue(new CannotFillError(fakeShortAttempt));
+
+    const svc = new RenderServiceImpl();
+    await expect(svc.renderCoverLetterPdf('<p>Short.</p>')).resolves.toEqual(FAKE_PDF);
+    expect(mockFit).not.toHaveBeenCalled();
+  });
+
+  // Regression guard: a long cover letter (multi-page) must not throw
+  // CannotFitError either — natural layout simply paginates onto page two.
+  it('renderCoverLetterPdf does not throw CannotFitError on long content', async () => {
+    const fakeLongAttempt: FitResult = {
+      pdf: FAKE_PDF,
+      finalParams: { fontSize: 9.5, lineHeight: 1.1, marginIn: 0.3, sectionGap: 0.85 },
+      iterations: 12,
+      trace: [],
+    };
+    mockFit.mockRejectedValue(new CannotFitError(fakeLongAttempt));
+
+    const svc = new RenderServiceImpl();
+    const longHtml = '<p>'.concat('lorem ipsum '.repeat(2000), '</p>');
+    await expect(svc.renderCoverLetterPdf(longHtml)).resolves.toEqual(FAKE_PDF);
+    expect(mockFit).not.toHaveBeenCalled();
   });
 });
