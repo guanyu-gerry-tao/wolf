@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { jobList, formatJobList } from '../list.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { jobList, formatJobList, runJobListCli } from '../list.js';
 import type { AppContext } from '../../../cli/appContext.js';
 import type { Job, JobQuery } from '../../../types/job.js';
 import type { Company } from '../../../types/company.js';
@@ -275,6 +275,102 @@ describe('jobList()', () => {
       await expect(jobList({ search: ['   '] }, ctx))
         .rejects.toThrow(/--search terms must be non-empty strings/);
     });
+  });
+});
+
+// `runJobListCli` is the CLI-edge wrapper: it adapts jobList()'s thrown
+// validation errors into a friendly stderr message + non-zero exit code,
+// and prints the success result to stdout (table or JSON). The point of
+// having this layer separate from jobList() is so the programmatic API
+// stays "throws", but the CLI surface never spills a Node stack trace
+// onto the user's terminal when they typo a flag.
+describe('runJobListCli()', () => {
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    // Capture stdout/stderr per test so we can assert exact output shape
+    // without bleeding into the real terminal during the run.
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Reset exit code each run so non-zero from a previous test doesn't
+    // bleed into the assertions of the next one.
+    process.exitCode = 0;
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    errSpy.mockRestore();
+    process.exitCode = 0;
+  });
+
+  // The bug this fix addresses: invalid input was throwing all the way out
+  // of the action handler, leaving Node to print the unhandled-error frame
+  // dump after the "clean" message. The CLI wrapper must catch the error,
+  // surface only the human-readable message on stderr, and exit non-zero.
+  it('catches validation errors, prints message to stderr, sets exitCode=1 (no rethrow, no stack frames)', async () => {
+    const ctx = makeCtx({ jobs: [], companies: [] });
+
+    // Must not reject — the action handler relies on this completing so
+    // commander does not see an unhandled rejection.
+    await expect(
+      runJobListCli({ status: 'nonsense' as never }, false, ctx),
+    ).resolves.toBeUndefined();
+
+    // Exit code reflects failure so shell scripts (and CI) can detect it.
+    expect(process.exitCode).toBe(1);
+
+    // The user-facing message must be on stderr and must name the bad flag.
+    const errCalls = errSpy.mock.calls.map((c) => String(c[0]));
+    expect(errCalls.some((s) => s.includes('Invalid --status "nonsense"'))).toBe(true);
+
+    // Stack frames look like `    at <fn> (...)` — the whole point of the
+    // fix is that this noise must not appear anywhere in our output.
+    const allOut = [...errCalls, ...logSpy.mock.calls.map((c) => String(c[0]))].join('\n');
+    expect(allOut).not.toMatch(/^\s+at\s/m);
+
+    // No success row may be printed when validation fails.
+    expect(logSpy).not.toHaveBeenCalled();
+  });
+
+  // Happy path: when filters are valid, the table goes to stdout and the
+  // exit code stays 0 — the CLI behaves exactly like the action handler
+  // it replaces.
+  it('prints the table to stdout on success with exitCode=0', async () => {
+    const ctx = makeCtx({
+      jobs: [makeJob({ id: 'j1', title: 'SWE' })],
+      companies: [makeCompany({ id: 'company-1', name: 'Acme' })],
+    });
+
+    await runJobListCli({}, false, ctx);
+
+    expect(process.exitCode).toBe(0);
+    expect(errSpy).not.toHaveBeenCalled();
+    // Table output: header line + at least one data row containing the job.
+    const stdout = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(stdout).toMatch(/^ID\s+COMPANY\s+TITLE\s+STATUS\s+SCORE/m);
+    expect(stdout).toContain('Acme');
+    expect(stdout).toContain('SWE');
+  });
+
+  // The --json flag short-circuits the table renderer and emits the raw
+  // JobListResult instead. Keeping this in the wrapper means the action
+  // handler in cli/index.ts has nothing to decide.
+  it('prints JSON when asJson=true', async () => {
+    const ctx = makeCtx({
+      jobs: [makeJob({ id: 'j1' })],
+      companies: [makeCompany({ id: 'company-1', name: 'Acme' })],
+    });
+
+    await runJobListCli({}, true, ctx);
+
+    expect(process.exitCode).toBe(0);
+    const stdout = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
+    // Must parse as JSON and carry the expected shape.
+    const parsed = JSON.parse(stdout);
+    expect(parsed.jobs).toHaveLength(1);
+    expect(parsed.jobs[0].id).toBe('j1');
+    expect(parsed.totalMatching).toBe(1);
   });
 });
 

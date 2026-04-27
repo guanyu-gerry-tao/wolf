@@ -49,6 +49,8 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-03 npm run w
 - Each invalid command prints a clear error naming the offending flag or valid
   values.
 - No invalid command silently prints `No jobs match.`
+- No invalid command prints a Node stack trace (no `    at ...` frames after
+  the error line). The user-facing line is the only error output.
 - Dev banner appears on stderr for every wolf invocation.
 - No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
 

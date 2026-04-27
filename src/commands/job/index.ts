@@ -1,1 +1,1 @@
-export { jobList, formatJobList } from './list.js';
+export { jobList, formatJobList, runJobListCli } from './list.js';

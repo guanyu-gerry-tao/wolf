@@ -6,7 +6,7 @@ import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from '../command
 import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
 import { status, formatStatus } from '../commands/status/index.js';
-import { jobList, formatJobList } from '../commands/job/index.js';
+import { runJobListCli } from '../commands/job/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
 import { envShow, envSet, envSetOne, envClear } from '../commands/env/index.js';
@@ -221,21 +221,21 @@ jobCmd
     // so we hand `undefined` through to keep JobQuery's contract clean.
     const search: string[] | undefined = opts.search.length > 0 ? opts.search : undefined;
 
-    const result = await jobList({
-      search,
-      status: opts.status,
-      minScore: opts.minScore,
-      start: opts.start,
-      end: opts.end,
-      source: opts.source,
-      limit: opts.limit,
-    });
-
-    if (opts.json) {
-      console.log(JSON.stringify(result, null, 2));
-    } else {
-      console.log(formatJobList(result));
-    }
+    // Delegate to the CLI wrapper so validation errors are rendered as a
+    // single stderr line + non-zero exit code instead of an unhandled
+    // promise rejection (which would dump a Node stack trace).
+    await runJobListCli(
+      {
+        search,
+        status: opts.status,
+        minScore: opts.minScore,
+        start: opts.start,
+        end: opts.end,
+        source: opts.source,
+        limit: opts.limit,
+      },
+      Boolean(opts.json),
+    );
   });
 program.addCommand(jobCmd);
 

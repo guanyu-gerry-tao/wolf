@@ -47,6 +47,8 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-03 npm run w
 - 每条 invalid command 都以非零状态退出。
 - 每条 invalid command 都打印清晰错误，指出 offending flag 或合法值。
 - 没有 invalid command 静默打印 `No jobs match.`
+- 没有 invalid command 打印 Node stack trace（错误行之后不应出现
+  `    at ...` 帧）。错误输出只有那一行用户友好的提示。
 - 每次 wolf 调用的 stderr 都出现 dev banner。
 - 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
 
