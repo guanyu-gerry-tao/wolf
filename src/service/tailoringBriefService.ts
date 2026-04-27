@@ -1,4 +1,4 @@
-import type { AiConfig, UserProfile } from '../types/index.js';
+import type { AiConfig, Profile } from '../types/index.js';
 
 /**
  * Produces a "tailoring brief" — a structured Markdown decision doc that the
@@ -12,8 +12,10 @@ export interface TailoringBriefService {
    *
    * @param resumePool  Full candidate pool (Markdown)
    * @param jdText      Job description text
-   * @param profile     Candidate contact info (used for context only; analyst
-   *                    does not include it in the brief)
+   * @param profile     Candidate identity (name + profile.md content). The
+   *                    analyst includes the full profile.md verbatim as
+   *                    context — it surfaces target roles, narrative, and
+   *                    contact details for the brief.
    * @param aiConfig    Provider + model routing for this call
    * @param hint        Optional user guidance. When present, injected into
    *                    the user prompt under "## User Guidance" and treated
@@ -22,7 +24,7 @@ export interface TailoringBriefService {
   analyze(
     resumePool: string,
     jdText: string,
-    profile: UserProfile,
+    profile: Profile,
     aiConfig: AiConfig,
     hint?: string,
   ): Promise<string>;

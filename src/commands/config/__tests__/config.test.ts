@@ -10,7 +10,7 @@ import type { AppConfig } from '../../../types/index.js';
 
 // A complete, schema-valid baseline so tests can focus on the field they care about.
 const BASELINE: AppConfig = {
-  defaultProfileId: 'default',
+  default: 'default',
   hunt: { minScore: 0.5, maxResults: 50 },
   tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
   score: { model: 'anthropic/claude-sonnet-4-6' },
@@ -42,7 +42,7 @@ afterEach(async () => {
 describe('configGet', () => {
   // Top-level scalar: the simplest case, dot-path with a single segment.
   it('prints a top-level scalar', async () => {
-    await configGet('defaultProfileId');
+    await configGet('default');
     expect(logSpy).toHaveBeenCalledWith('default');
   });
 

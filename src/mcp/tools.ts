@@ -201,8 +201,10 @@ Returns what's missing and what the next step should be.`,
         await loadConfig();
         const ctx = createAppContext();
         const profile = await ctx.profileRepository.getDefault();
-        // "Profile present" = both legal name halves and an email are filled.
-        const hasProfile = !!profile?.legalFirstName && !!profile?.legalLastName && !!profile?.email;
+        // "Profile present" = the markdown source file exists and isn't blank.
+        // (Sharper field-level checks belong in the AI agent that reads profile.md;
+        // here we just want a quick "wolf init has been run" boolean.)
+        const hasProfile = !!profile?.md?.trim();
 
         const result = {
           profile: hasProfile ? 'ok' : 'missing',

@@ -7,7 +7,7 @@ import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterSe
 import type { TailoringBriefService } from '../../service/tailoringBriefService.js';
 import type { AiConfig } from '../../types/index.js';
 import type { Job } from '../../types/job.js';
-import type { UserProfile } from '../../types/index.js';
+import type { Profile } from '../../types/index.js';
 
 // Mock fs/promises so no real files are written during tests.
 // readFile returns path-dependent content so hint.md vs brief.md lookups stay distinct.
@@ -46,14 +46,12 @@ const FAKE_JOB: Job = {
   updatedAt: '2026-04-12T00:00:00.000Z',
 };
 
-const FAKE_PROFILE: UserProfile = {
-  id: 'default', label: 'Default',
-  legalFirstName: 'Alex', legalMiddleName: null, legalLastName: 'Rivera',
-  preferredName: null, pronouns: null,
-  email: 'alex@example.com',
-  phone: '+1 555 000 0000', firstUrl: null, secondUrl: null, thirdUrl: null,
-  immigrationStatus: 'no limit', willingToRelocate: 'no',
-  targetRoles: ['SWE'], targetLocations: ['Remote'], scoringNotes: null,
+// Profile is now `{ name, md }` — name is the directory name, md is the
+// raw profile.md content. Tests don't need a realistic profile.md, just a
+// non-empty string so prompt assembly isn't trivially "".
+const FAKE_PROFILE: Profile = {
+  name: 'default',
+  md: '# default\n\n## Identity\n\n### Legal first name\nAlex\n\n### Legal last name\nRivera\n',
 };
 
 const DEFAULT_AI: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
@@ -72,9 +70,16 @@ function makeJobRepo(job: Job | null = FAKE_JOB): JobRepository {
 }
 
 function makeProfileRepo(): ProfileRepository {
+  // Only the methods this service uses are stubbed; the rest stay as bare vi.fn()
+  // so accidental calls to unmocked methods surface as test failures.
   return {
-    get: vi.fn(), getDefault: vi.fn().mockResolvedValue(FAKE_PROFILE),
-    list: vi.fn(), getResumePool: vi.fn().mockResolvedValue('# EXPERIENCE\nBuilt things.'),
+    get: vi.fn(),
+    getDefault: vi.fn().mockResolvedValue(FAKE_PROFILE),
+    list: vi.fn(),
+    getProfileMd: vi.fn().mockResolvedValue(FAKE_PROFILE.md),
+    getResumePool: vi.fn().mockResolvedValue('# EXPERIENCE\nBuilt things.'),
+    getStandardQuestions: vi.fn(),
+    getAttachmentsList: vi.fn().mockResolvedValue([]),
   } as unknown as ProfileRepository;
 }
 

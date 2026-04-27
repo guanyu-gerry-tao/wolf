@@ -3,14 +3,13 @@ import { log } from '../../utils/logger.js';
 import { stripComments } from '../../utils/stripComments.js';
 import ANALYST_SYSTEM_PROMPT from './prompts/analyst-system.md';
 import type { TailoringBriefService } from '../tailoringBriefService.js';
-import type { AiConfig, UserProfile } from '../../types/index.js';
-import { displayName } from '../../utils/profileName.js';
+import type { AiConfig, Profile } from '../../types/index.js';
 
 export class TailoringBriefServiceImpl implements TailoringBriefService {
   async analyze(
     resumePool: string,
     jdText: string,
-    profile: UserProfile,
+    profile: Profile,
     aiConfig: AiConfig,
     hint?: string,
   ): Promise<string> {
@@ -29,7 +28,7 @@ export class TailoringBriefServiceImpl implements TailoringBriefService {
     // Bracket the AI call with start/done events. `hintProvided` captures
     // whether the analyst was steered — useful when debugging brief quality.
     log.debug('ai.brief.start', {
-      profileId: profile.id,
+      profileName: profile.name,
       provider: aiConfig.provider,
       model: aiConfig.model,
       hintProvided: guidanceSection.length > 0,
@@ -40,7 +39,7 @@ export class TailoringBriefServiceImpl implements TailoringBriefService {
       model: aiConfig.model,
     });
     log.info('ai.brief.done', {
-      profileId: profile.id,
+      profileName: profile.name,
       durationMs: Date.now() - startedAt,
       responseLength: raw.length,
     });
@@ -50,7 +49,7 @@ export class TailoringBriefServiceImpl implements TailoringBriefService {
     try {
       return validateNonEmptyBrief(raw);
     } catch (err) {
-      log.error('ai.brief.empty_response', { profileId: profile.id });
+      log.error('ai.brief.empty_response', { profileName: profile.name });
       throw err;
     }
   }
@@ -61,15 +60,11 @@ export class TailoringBriefServiceImpl implements TailoringBriefService {
 // service. Each builder returns a complete, stand-alone section.
 // ---------------------------------------------------------------------------
 
-function buildCandidateSection(profile: UserProfile): string {
-  // targetRoles can be empty for a brand-new profile; default to a sentinel
-  // so the AI gets a readable value instead of an empty list.
-  const targetRoles = profile.targetRoles.join(', ') || 'unspecified';
-  return [
-    '## Candidate',
-    `Name: ${displayName(profile)}`,
-    `Target roles: ${targetRoles}`,
-  ].join('\n');
+// Profile is included verbatim — the analyst reads name, contact, demographics,
+// work auth and target roles directly from the user-authored markdown. Keeping
+// the section labelled "Candidate Profile" lets the system prompt refer to it.
+function buildCandidateSection(profile: Profile): string {
+  return `## Candidate Profile (profile.md)\n${profile.md}`;
 }
 
 // Strip `//` comment lines from the pool before the AI sees them.

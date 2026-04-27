@@ -45,7 +45,7 @@ wolf/
 │   │   ├── <name>.ts         # interface
 │   │   └── impl/             # concrete backends
 │   ├── errors/           # Typed custom error classes
-│   ├── types/            # Shared domain types (Job, Company, UserProfile, ...)
+│   ├── types/            # Shared domain types (Job, Company, Profile, ...)
 │   └── utils/            # Cross-cutting helpers (logger, config, env) — not a layer
 ├── data/                 # Local DB and runtime data (gitignored)
 ├── docs/

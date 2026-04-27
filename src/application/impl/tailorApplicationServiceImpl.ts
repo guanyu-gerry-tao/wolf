@@ -11,7 +11,7 @@ import type {
   TailorOptions,
   TailorResult,
   AiConfig,
-  UserProfile,
+  Profile,
   Job,
 } from '../../types/index.js';
 import { log } from '../../utils/logger.js';
@@ -42,7 +42,7 @@ const HINT_FILE_HEADER = `// hint.md - Pre-analysis guidance for the analyst age
 // Prepared once per call so each step writes to consistent locations.
 interface JobContext {
   job: Job;
-  profile: UserProfile;
+  profile: Profile;
   resumePool: string;
   jdText: string;
   aiConfig: AiConfig;
@@ -77,7 +77,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const pipelineStartedAt = Date.now();
     log.info('tailor.pipeline.start', {
       jobId: ctx.job.id,
-      profileId: ctx.profile.id,
+      profileName: ctx.profile.name,
       coverLetterIncluded: writeCoverLetter,
     });
 
@@ -173,11 +173,12 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       throw new Error(`Job not found: ${jobId}`);
     }
 
+    // profileId here is the profile directory name (e.g. "default" or "gc-persona").
     const profile = profileId
       ? (await this.profileRepository.get(profileId)) ?? (await this.profileRepository.getDefault())
       : await this.profileRepository.getDefault();
 
-    const resumePool = await this.profileRepository.getResumePool(profile.id);
+    const resumePool = await this.profileRepository.getResumePool(profile.name);
     const jdText = await this.jobRepository.readJdText(jobId);
 
     const outputDir = await this.jobRepository.getWorkspaceDir(jobId);

@@ -42,12 +42,14 @@ All tailor commands accept `--hint "<text>"` to give the analyst pre-analysis gu
 | Command | What it does |
 |---|---|
 | `wolf config get/set <key> [value]` | Read or edit `wolf.toml` fields by dot-path (e.g. `tailor.model`) |
-| `wolf profile get/set <key> [value]` | Read or edit the default profile's fields |
-| `wolf profile list` | List all profiles (default marked with `*`) |
-| `wolf profile create <id> [--from <src>]` | Create a new profile (clones default unless --from given) |
-| `wolf profile use <id>` | Switch the default profile |
-| `wolf profile delete <id> --yes` | Delete a profile directory |
+| `wolf profile list` | List all profile directories (default marked with `*`) |
+| `wolf profile create <name> [--from <src>]` | Create a new profile (clones default unless --from given) |
+| `wolf profile use <name>` | Switch the default profile (updates `wolf.toml.default`) |
+| `wolf profile delete <name> --yes` | Delete a profile directory |
 | `wolf env show / set / clear` | Manage `WOLF_*` API keys in shell |
+
+> Profile data lives in `profiles/<name>/profile.md` and `standard_questions.md`.
+> Edit those files directly with any text editor — there is no `wolf profile get/set` CLI.
 
 ## Typical workflow
 
@@ -118,7 +120,7 @@ Location: `wolf.toml` in this directory.
 Open `wolf.toml` with any text editor and save.
 
 ```toml
-defaultProfileId = "default"
+default = "default"   # the profile folder name under profiles/
 
 # Each AI-using command has its own model.
 # Format: "<provider>/<model>" where provider is "anthropic" or "openai".
@@ -146,48 +148,46 @@ model = "anthropic/claude-haiku-4-5-20251001"   # cheaper/faster for form fillin
 
 </details>
 
-### profiles/default/profile.toml — identity and job preferences
+### profiles/default/ — three markdown files + attachments
 
-Contains name, contact info, immigration status, target roles and locations.
-wolf uses this to personalise resume tailoring and job scoring.
-Location: `profiles/default/profile.toml`.
+A profile is a directory; the directory name IS the profile identifier
+(`appliedProfileId` on jobs and `wolf.toml.default` both store the dirname).
+There is no `profile.toml`; identity, demographics, work auth, and address
+all live in `profile.md`.
 
-<details>
-<summary>Fields and how to edit</summary>
-
-Open `profiles/default/profile.toml` with any text editor and save.
-
-```toml
-id = "default"
-label = "Default"
-# Name split so ATS forms can fill First/Middle/Last separately.
-# Required: legalFirstName, legalLastName. Optional fields appear as "" (empty).
-legalFirstName = "Your"
-legalMiddleName = ""                       # optional — some ATS require it
-legalLastName = "Name"
-preferredName = ""                         # optional — e.g. "Gerry" if legal is "Guanyu"
-pronouns = ""                              # optional — e.g. "he/him"
-email = "you@example.com"
-phone = "+1 555 000 0000"
-firstUrl = "https://linkedin.com/in/you"   # null if not set
-secondUrl = "https://github.com/you"       # null if not set
-thirdUrl = null                            # personal website, null if not set
-immigrationStatus = "no limit"             # H-1B | L1 | OPT | CPT | no limit
-willingToRelocate = "no"           # "no" | "yes" | "domestic only" | "open to relocation"
-targetRoles = ["Software Engineer"]
-targetLocations = ["Remote", "NYC"]
-scoringNotes = null   # optional free-form hints to the AI scorer
+```
+profiles/default/
+├── profile.md             ← identity facts (name, contact, address, demographics, work auth, clearance)
+├── resume_pool.md         ← full experience bank (tailor reads this to write resumes)
+├── standard_questions.md  ← application-only Q&A + document pointers (fill reads this)
+└── attachments/           ← drop transcript, EAD, I-20, etc. here
 ```
 
-</details>
+**`profile.md`** uses `H1 = category, H2 = field/question` convention. AI agents
+(tailor, fill, outreach) include the full file as prompt context — they read
+the markdown directly, no field-level extraction.
 
-### profiles/default/resume_pool.md — full experience bank
+**`standard_questions.md`** uses the same H1/H2 convention plus `H3 = label`
+under the `# Documents` section, where the body of each H3 is a bare file
+name inside `attachments/`. Example:
 
-**The most important file to keep up to date.**
+```md
+# Documents
 
-wolf reads this when tailoring resumes. Include everything — all past roles,
-projects, skills, and education. wolf selects the most relevant content per job.
-Location: `profiles/default/resume_pool.md`. Edit in any Markdown editor.
+## What proof of work authorization do you have?
+
+### EAD
+ead.pdf
+```
+
+**`resume_pool.md`** — the most important file to keep up to date. wolf reads
+this when tailoring resumes. Include everything — all past roles, projects,
+skills, and education. wolf selects the most relevant content per job.
+
+**`attachments/`** — files referenced by `standard_questions.md`. Files must
+live directly in this folder; subdirectories or absolute paths are rejected.
+If a file referenced in `standard_questions.md` is missing, `wolf fill` pauses
+and asks you to drop it in.
 
 ## API keys
 
