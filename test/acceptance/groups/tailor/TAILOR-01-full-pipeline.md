@@ -42,12 +42,46 @@ Initialize the workspace:
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-Populate the default profile and resume pool with truthful fixture content:
+Populate the default profile and resume pool with truthful fixture content.
+Profile is now markdown — overwrite `profile.md` directly (the `wolf profile
+set` CLI no longer exists; profile fields are edited in the file):
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set targetRoles "Backend Engineer, Data Infrastructure Engineer"
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
+cat > "$WS/profiles/default/profile.md" <<'EOF'
+# default
+
+# Identity
+
+## Legal first name
+Test
+
+## Legal last name
+Candidate
+
+# Contact
+
+## Email
+candidate@example.test
+
+## Phone
++1 555 010 0100
+
+# Job Preferences
+
+## Target roles
+Backend Engineer, Data Infrastructure Engineer
+
+## Target locations
+Remote-US
+
+## Relocation preference — where are you actually willing to live?
+> [!IMPORTANT]
+> within current metro area: yes
+> within current state: yes
+> cross-country: yes
+> international: no
+EOF
 ```
 
 Edit `/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01/profiles/default/resume_pool.md`

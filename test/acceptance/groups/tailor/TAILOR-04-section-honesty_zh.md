@@ -42,12 +42,31 @@ npm run build:dev
 ```bash
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
   npm run wolf -- init --dev --empty
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set targetRoles "Backend Engineer"
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub>
+cat > "$WS/profiles/default/profile.md" <<'EOF'
+# default
+
+# Identity
+
+## Legal first name
+Test
+
+## Legal last name
+Candidate
+
+# Contact
+
+## Email
+candidate@example.test
+
+## Phone
++1 555 010 0100
+
+# Job Preferences
+
+## Target roles
+Backend Engineer
+EOF
 ```
 
 添加和 TAILOR-01 相同的 fixture job（JD CSV 第 119 行）：

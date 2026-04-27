@@ -46,12 +46,31 @@ fixture profile fields as TAILOR-01:
 ```bash
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
   npm run wolf -- init --dev --empty
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set targetRoles "Backend Engineer"
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub>
+cat > "$WS/profiles/default/profile.md" <<'EOF'
+# default
+
+# Identity
+
+## Legal first name
+Test
+
+## Legal last name
+Candidate
+
+# Contact
+
+## Email
+candidate@example.test
+
+## Phone
++1 555 010 0100
+
+# Job Preferences
+
+## Target roles
+Backend Engineer
+EOF
 ```
 
 Add the same fixture job (row 119 of the JD CSV) used by TAILOR-01:

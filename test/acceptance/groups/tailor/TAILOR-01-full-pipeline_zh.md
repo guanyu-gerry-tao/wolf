@@ -41,12 +41,44 @@ npm run build:dev
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-填充 default profile 和 resume pool：
+填充 default profile 和 resume pool。profile 现在是 markdown —— 直接覆盖 `profile.md`(`wolf profile set` CLI 已删除,profile 字段改成在文件里编辑):
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set targetRoles "Backend Engineer, Data Infrastructure Engineer"
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
+cat > "$WS/profiles/default/profile.md" <<'EOF'
+# default
+
+# Identity
+
+## Legal first name
+Test
+
+## Legal last name
+Candidate
+
+# Contact
+
+## Email
+candidate@example.test
+
+## Phone
++1 555 010 0100
+
+# Job Preferences
+
+## Target roles
+Backend Engineer, Data Infrastructure Engineer
+
+## Target locations
+Remote-US
+
+## Relocation preference — where are you actually willing to live?
+> [!IMPORTANT]
+> within current metro area: yes
+> within current state: yes
+> cross-country: yes
+> international: no
+EOF
 ```
 
 编辑 `/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01/profiles/default/resume_pool.md`，只写入 fixture facts。Pool 内容必须**足够密**，能让定制后的单页 resume 在默认字号/行距下填满整页 —— 过稀的 pool 会被渲染器的 underflow 守卫正确拒绝，因此下面这份 fixture 故意按一份真实中级工程师 resume 的体量给出：
