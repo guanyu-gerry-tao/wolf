@@ -119,13 +119,19 @@ ${bold('What got created:')}
   ${bold('data/')}                                  — auto-managed database
 
 ${bold('Next — fill in your profile:')}
-  Open this workspace in Claude Code (or another AI agent) and ask it to help you fill:
-    1. ${bold(`profiles/${DEFAULT_PROFILE_NAME}/profile.md`)}             (identity)
-    2. ${bold(`profiles/${DEFAULT_PROFILE_NAME}/resume_pool.md`)}         (experience)
-    3. ${bold(`profiles/${DEFAULT_PROFILE_NAME}/standard_questions.md`)}  (application Q&A)
+  Open this workspace in Claude Code (or another AI agent) and ask:
+    "Help me fill profile.md, resume_pool.md, and standard_questions.md."
 
-  Each template has TODO markers showing what to write. The agent reads them
-  and works through the file with you.
+  The agent reads ${bold('CLAUDE.md')} and follows its First-time setup section
+  to walk you through each file.
+
+  In every template, look for these markers (rendered as styled callout boxes
+  in any markdown previewer):
+    ${bold('> [!IMPORTANT]')}  — REQUIRED field; you must answer (AI cannot guess)
+    ${bold('> [!TIP]')}        — guidance / examples; edit or replace as needed
+
+  Both blockquote types are stripped before reaching the AI, so the visible
+  content under each ${bold('## H2')} is what the AI sees.
 
 ${dim(`Workspace path: ${workspaceDir}`)}
 `);
