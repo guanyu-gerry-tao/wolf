@@ -115,7 +115,7 @@ ${bold('What got created:')}
   ${bold(`profiles/${DEFAULT_PROFILE_NAME}/profile.md`)}             — identity facts (name, address, demographics, work auth, ...)
   ${bold(`profiles/${DEFAULT_PROFILE_NAME}/resume_pool.md`)}         — full experience bank (tailor source)
   ${bold(`profiles/${DEFAULT_PROFILE_NAME}/standard_questions.md`)}  — application-only Q&A + document pointers
-  ${bold(`profiles/${DEFAULT_PROFILE_NAME}/attachments/`)}           — drop transcript / EAD / I-20 etc. here
+  ${bold(`profiles/${DEFAULT_PROFILE_NAME}/attachments/`)}           — drop transcript / reference letter / portfolio sample etc. here
   ${bold('data/')}                                  — auto-managed database
 
 ${bold('Next — fill in your profile:')}

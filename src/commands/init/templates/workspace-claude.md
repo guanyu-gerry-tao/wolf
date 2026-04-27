@@ -160,7 +160,8 @@ profiles/default/
 ├── profile.md             ← identity facts (name, contact, address, demographics, work auth, clearance)
 ├── resume_pool.md         ← full experience bank (tailor reads this to write resumes)
 ├── standard_questions.md  ← application-only Q&A + document pointers (fill reads this)
-└── attachments/           ← drop transcript, EAD, I-20, etc. here
+└── attachments/           ← drop transcript, reference letter, portfolio sample, etc. here
+                              (NOT immigration / work-auth documents — those are post-offer, out of scope)
 ```
 
 **`profile.md`** uses `H1 = category, H2 = field/question` convention. AI agents
@@ -174,10 +175,10 @@ name inside `attachments/`. Example:
 ```md
 # Documents
 
-## What proof of work authorization do you have?
+## What academic documents do you have?
 
-### EAD
-ead.pdf
+### Transcript
+transcript.pdf
 ```
 
 **`resume_pool.md`** — the most important file to keep up to date. wolf reads

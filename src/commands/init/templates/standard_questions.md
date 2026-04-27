@@ -7,6 +7,12 @@ Convention:
   H3 (Documents only) = a label / alias for an attachment
   Body under H2 (or H3) = your answer / file name
 
+Markers (each is a `//` line — stripped before AI sees the file):
+  // REQUIRED — you must answer; AI cannot guess this.
+  // (optional — leave blank if N/A)
+
+Sections without `//` carry a sensible default; edit if it doesn't fit you.
+
 This file is consumed by `wolf fill` — when an ATS form asks a question,
 the agent finds the most relevant H2 here and fills the answer (adapting
 {{company}} / {{role}} placeholders, or synthesizing from your "framework"
@@ -16,49 +22,51 @@ answers in the Company / Product Opinions section).
 # Short Answers
 
 ## What's your salary expectation?
-TODO
+Open to discuss based on the full compensation package and role scope.
 
 ## How did you hear about us?
-TODO
+LinkedIn
 
 ## Why this company?
-TODO — write a flexible template; the agent will adapt it per company.
+// REQUIRED — write a flexible template; the agent will adapt it per company.
 
 ## Why this role?
-TODO
+// REQUIRED — write a flexible template; the agent will adapt it per role.
 
 ## Tell me about a time you failed
-TODO — write a STAR+R story.
+// REQUIRED — write one full STAR+R story. Reused across applications.
 
 ## Tell me about yourself
-TODO — 1-paragraph self-introduction. AI adapts per role.
+// REQUIRED — 1-paragraph self-introduction; AI adapts per role.
 
 ## Biggest strength
-TODO
+// REQUIRED
 
 ## Biggest weakness (with what you're doing about it)
-TODO
+// REQUIRED
 
 ## Where do you see yourself in 5 years?
-TODO
+// REQUIRED
 
 ## Tell me about a time you faced conflict
-TODO — STAR+R story.
+// REQUIRED — STAR+R story.
 
 ## Why are you leaving your current role?
-TODO — leave blank if not currently employed (typical NG case).
+// (optional — leave blank if NG/intern with no current role)
 
 ## When can you start?
-TODO — e.g. "Available immediately" / "After May 2026 graduation" / "2 weeks notice".
+Available immediately
 
 ## Are you authorized to work? (form phrasing)
-TODO — short answer for the form. Truth lives in profile.md # Work Authorization.
+// REQUIRED — short answer for the form. Truth lives in profile.md # Work Authorization.
+//   e.g. "Yes, I am authorized to work in the United States."
 
 ## Do you require sponsorship? (form phrasing)
-TODO — short answer for the form. Truth lives in profile.md # Work Authorization.
+// REQUIRED — short answer for the form. Truth lives in profile.md # Work Authorization.
+//   e.g. "No" / "Yes, in the future after my OPT expires" / etc.
 
 ## Are you willing to relocate? (form phrasing)
-TODO — short answer for the form. Truth lives in profile.md # Job Preferences.
+// REQUIRED — short answer for the form. Truth lives in profile.md # Job Preferences.
 
 # Company / Product Opinions
 
@@ -72,27 +80,27 @@ at apply time.
 -->
 
 ## How do you view our company? — your framework
-TODO — describe how you typically form an opinion about a company:
-       what dimensions you weigh (mission, traction, team, culture, market,
-       technical depth, ...), what signals you look for, what tone you take
-       (genuine vs polite). Don't name any specific company here.
+// REQUIRED — describe how you typically form an opinion about a company:
+//   what dimensions you weigh (mission, traction, team, culture, market,
+//   technical depth, ...), what signals you look for, what tone you take
+//   (genuine vs polite). Don't name any specific company here.
 
 ## How do you view our product? — your framework
-TODO — describe how you evaluate a product as a candidate-user:
-       what you look at (UX, depth, defensibility, fit-to-market, technical
-       choices, ...), what level of detail you go to, whether you bring
-       comparisons. Don't name any specific product here.
+// REQUIRED — describe how you evaluate a product as a candidate-user:
+//   what you look at (UX, depth, defensibility, fit-to-market, technical
+//   choices, ...), what level of detail you go to, whether you bring
+//   comparisons. Don't name any specific product here.
 
 ## What suggestions do you have for our company? — your framework
-TODO — how you frame suggestions about a company you're applying to:
-       what kinds of topics are fair game (hiring, GTM, positioning,
-       org design, ...), what tone (constructive vs critical), what to
-       avoid (anything that sounds like you've judged them before joining).
+// REQUIRED — how you frame suggestions about a company you're applying to:
+//   what kinds of topics are fair game (hiring, GTM, positioning,
+//   org design, ...), what tone (constructive vs critical), what to
+//   avoid (anything that sounds like you've judged them before joining).
 
 ## What suggestions do you have for our product? — your framework
-TODO — how you frame product suggestions:
-       depth (high-level vs concrete features), how to handle areas you
-       don't know well, whether to anchor in user pain or technical debt.
+// REQUIRED — how you frame product suggestions:
+//   depth (high-level vs concrete features), how to handle areas you
+//   don't know well, whether to anchor in user pain or technical debt.
 
 # Documents
 
@@ -101,23 +109,21 @@ H3 = label the agent matches against ATS form labels (e.g. "Transcript").
 Body under H3 = file name inside `attachments/`. Path must be a bare filename;
 the agent prepends `attachments/`. Files outside `attachments/` are not allowed.
 
-Example:
-  ## What academic documents do you have?
-
-  ### Transcript
-  transcript.pdf
+Immigration / work-authorization documents are not listed here — ATS forms
+don't consume them at the application stage. They show up post-offer for
+I-9 verification, which is out of wolf's scope.
 -->
 
 ## What academic documents do you have?
 
 ### Transcript
-TODO (e.g. transcript.pdf)
+// (optional — fill in the filename, e.g. transcript.pdf, after dropping the file in attachments/)
 
 ### Unofficial transcript
-TODO (e.g. unofficial-transcript.pdf)
+// (optional — e.g. unofficial-transcript.pdf)
 
 ### Reference letter
-TODO
+// (optional — e.g. reference-prof-smith.pdf)
 
 ### Portfolio sample
-TODO (only for design / DS / writing roles; drop in attachments/ if used)
+// (optional — only for design / DS / writing roles)

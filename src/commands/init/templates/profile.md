@@ -1,15 +1,16 @@
 # default
 
 <!--
-TBD-1: this is a minimal placeholder template.
-The full template (with all H2 questions for each H1 category) is being
-negotiated separately. Edit the sections below to fit your situation; or
-ask your AI agent to walk you through filling each one.
-
 Convention:
   H1 = category
-  H2 = question / field
-  Free-form prose under each H2 = your answer
+  H2 = field / question
+  Body under H2 = your answer
+
+Markers (each is a `//` line — stripped before AI sees the file):
+  // REQUIRED — you must answer; AI cannot guess this.
+  // (optional — leave blank if N/A)
+
+Sections without `//` already carry a sensible default; edit if it doesn't fit you.
 
 The whole file gets passed to AI agents (tailor, resume writer, fill, outreach)
 as context. Be honest and specific; the AI will adapt phrasing per role.
@@ -18,147 +19,151 @@ as context. Be honest and specific; the AI will adapt phrasing per role.
 # Identity
 
 ## Legal first name
-TODO
+// REQUIRED — you must answer; AI cannot guess this.
 
 ## Legal middle name
-TODO (leave blank if none)
+// (optional — leave blank if none)
 
 ## Legal last name
-TODO
+// REQUIRED — you must answer; AI cannot guess this.
 
 ## Preferred name
-TODO (leave blank to use legal first name)
+// (optional — leave blank to use legal first name)
 
 ## Pronouns
-TODO
+// (optional)
 
 ## Date of birth
-TODO (YYYY-MM-DD)
+// (optional — required by some non-US ATS; format YYYY-MM-DD)
 
 # Contact
 
 ## Email
-TODO
+// REQUIRED — you must answer; AI cannot guess this.
 
 ## Phone
-TODO
+// REQUIRED — you must answer; AI cannot guess this.
 
 # Address
 
 ## Full address
-TODO — write complete address including country, e.g.
-"123 Main St, Apt 4, San Francisco, CA 94102, USA"
+// REQUIRED — write complete address including country, e.g.
+//   "123 Main St, Apt 4, San Francisco, CA 94102, USA"
 
 # Links
 
 ## First link (most prominent on resume)
-TODO — paste a URL. The AI infers link type (LinkedIn / GitHub / portfolio / LeetCode) from the URL itself.
+// REQUIRED — at minimum your LinkedIn.
+// AI infers the link type (LinkedIn / GitHub / portfolio / LeetCode) from the URL.
 
 ## Second link (also on resume if there's room)
-TODO
+// (optional)
 
 ## Other links
-TODO — one URL per line, any number; leave blank if none.
+// (optional — one URL per line, any number)
 
 # Job Preferences
 
 ## Target roles
-TODO — comma-separated, e.g. "Software Engineer, Backend Engineer".
+// REQUIRED — comma-separated, e.g. "Software Engineer, Backend Engineer".
 
 ## Target locations
-TODO — comma-separated, e.g. "SF Bay Area, NYC, Remote-US".
+// REQUIRED — comma-separated, e.g. "SF Bay Area, NYC, Remote-US".
 
 ## Willing to relocate
-TODO — yes / no / domestic only / open to relocation.
+open to relocation
 
 ## Scoring notes
-TODO — free-form preferences for the AI scorer
-       (e.g. "prefer backend over frontend, OK with hybrid").
+// (optional — free-form preferences for the AI scorer,
+//   e.g. "prefer backend over frontend, OK with hybrid").
 
 ## Precision-apply companies (don't mass-apply)
-TODO — comma-separated company names. Wolf will still tailor a resume,
-but won't auto-fill the application; you apply manually. Leave blank
-to mass-apply everyone.
+// (optional — comma-separated company names. Wolf will still tailor a resume,
+//   but won't auto-fill the application; you apply manually.
+//   Leave blank to mass-apply everyone.)
 
 ## Hard-reject companies (never apply, even if AI suggests)
-TODO — comma-separated. Inverse of "Precision-apply": these get filtered out at hunt.
+// (optional — comma-separated company names. Filtered out at hunt.)
 
 ## Minimum hourly rate (intern, USD)
-TODO — e.g. "30" or leave blank.
+// (optional — e.g. "30" or leave blank for no floor)
 
 ## Minimum annual salary (new grad, USD)
-TODO — e.g. "100000" or leave blank.
+// (optional — e.g. "100000" or leave blank for no floor)
 
 ## Remote preference
-TODO — "remote only" / "hybrid OK" / "onsite OK" / "no preference".
+no preference
 
 ## Max applications per day (self-rate-limit)
-TODO — e.g. "30" or leave blank for no cap.
+30
 
 # Demographics
 
-<!-- US ATS EEO fields. Fill what you're comfortable disclosing; "Decline to answer" is valid. -->
+<!-- US ATS EEO fields. All voluntary by law. "Decline to answer" is always valid. -->
 
 ## Race
-TODO
+// (optional EEO — "Decline to answer" is a valid value)
 
 ## Gender
-TODO
+// (optional EEO — "Decline to answer" is a valid value)
 
 ## Ethnicity
-TODO
+// (optional EEO — "Not Hispanic or Latino" / "Hispanic or Latino" / "Decline to answer")
 
 ## Veteran status
-TODO
+I am not a protected veteran
 
 ## Disability status
-TODO
+// (optional EEO — "I do not wish to answer" is a valid value)
 
 ## LGBTQ+
-TODO
+// (optional — "Decline to state" is a valid value)
 
 ## Transgender
-TODO
+// (optional — "Decline to state" is a valid value)
 
 ## First-generation college student
-TODO
+No
 
 # Work Authorization
 
 ## Citizenship
-TODO
+// REQUIRED — country of citizenship (e.g. "United States", "China", "India").
 
 ## Do you have work authorization now?
-TODO (Yes / No, with brief explanation)
+// REQUIRED — Yes / No, with brief explanation.
 
 ## Do you have work authorization in the future?
-TODO
+// REQUIRED — Yes / No, with brief explanation.
 
 ## Do you need sponsorship now?
-TODO
+// REQUIRED — Yes / No (used when JD doesn't specify which visa type).
 
 ## Do you need sponsorship in the future?
-TODO
+// REQUIRED — Yes / No (used when JD doesn't specify which visa type).
 
 ## Do you need H-1B?
-TODO (now / future / no)
+No
+// International students: edit per your post-OPT timeline (e.g. "Future: Yes").
 
 ## Do you need CPT?
-TODO
+No
+// F-1 students currently using CPT: change to "Now: Yes".
 
 ## Do you need OPT?
-TODO
+No
+// F-1 students: change to "Now: Yes" or "Future: Yes" per your timeline.
 
 # Clearance
 
 ## Do you have an active security clearance?
-TODO
+No
 
 ## Clearance level
-TODO — Secret / Top Secret / TS-SCI / blank if none.
+// (optional — only fill if active clearance: Secret / Top Secret / TS-SCI)
 
 ## Clearance status
-TODO — Active / Inactive / Eligible / blank if none.
+// (optional — only fill if active clearance: Active / Inactive / Eligible)
 
 ## Are you willing to obtain one?
-TODO
+Yes
