@@ -2,6 +2,7 @@ import path from 'node:path';
 import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { parseModelRef } from '../../utils/parseModelRef.js';
 import { stripComments } from '../../utils/stripComments.js';
+import { extractH2Content } from '../../utils/extractH2.js';
 import type {
   TailorApplicationService,
   AnalyzeResult,
@@ -182,6 +183,12 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const resumePool = await this.profileRepository.getResumePool(profile.name);
     const jdText = await this.jobRepository.readJdText(jobId);
 
+    // Pre-flight: refuse to run tailor on a placeholder profile or pool.
+    // Otherwise the AI would faithfully build a resume from "Job Title — Company
+    // Name" / blank legal name, etc. — garbage in, garbage out. Fail early with
+    // a clear message so the user fills the files in before spending API tokens.
+    assertReadyForTailor(profile, resumePool);
+
     const outputDir = await this.jobRepository.getWorkspaceDir(jobId);
     const srcDir = path.join(outputDir, 'src');
     await mkdir(srcDir, { recursive: true });
@@ -288,5 +295,72 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const pdf = await this.renderService.renderCoverLetterPdf(html);
     await writeFile(ctx.coverLetterPdfPath, pdf);
     return { htmlPath: ctx.coverLetterHtmlPath, pdfPath: ctx.coverLetterPdfPath };
+  }
+}
+
+// Minimum non-blank, non-heading lines required in resume_pool.md (after
+// stripping alert blocks) before we let tailor proceed. The init template
+// produces 0 such lines (each section is `## Title` followed by an empty
+// `> [!TIP]` example block). 5 means "at least one bullet of one role" and
+// is generous enough not to bother people who only have a sparse pool.
+const MIN_POOL_CONTENT_LINES = 5;
+
+// REQUIRED H2 fields in profile.md that tailor surfaces directly (resume
+// header, cover-letter salutation). If any are blank the resume comes out
+// nameless / with no contact — fail loudly here instead of producing junk.
+const REQUIRED_PROFILE_FIELDS = [
+  'Legal first name',
+  'Legal last name',
+  'Email',
+  'Phone',
+] as const;
+
+/**
+ * Throws a user-facing Error if the profile or pool can't safely back a
+ * tailor run. The message names the file to edit so the user can act on it
+ * without reading source.
+ *
+ * Validation is intentionally narrow:
+ *   - REQUIRED_PROFILE_FIELDS in profile.md must have a non-empty body
+ *   - resume_pool.md after stripComments must have ≥ MIN_POOL_CONTENT_LINES
+ *     non-blank, non-heading lines (proxy for "real experience exists")
+ *
+ * We do NOT try to detect template-shaped content — wrapping the example
+ * blocks in `> [!TIP]` already removes them at strip time, so anything that
+ * survives strip is either real content or the user's intentional placeholder.
+ */
+function assertReadyForTailor(profile: Profile, resumePool: string): void {
+  const missing = REQUIRED_PROFILE_FIELDS.filter(
+    (field) => extractH2Content(profile.md, field).length === 0,
+  );
+  if (missing.length > 0) {
+    log.error('tailor.context.profile_incomplete', {
+      profileName: profile.name,
+      missingFields: missing,
+    });
+    throw new Error(
+      `Profile '${profile.name}' is missing required field(s) for tailor: ${missing.join(', ')}.\n` +
+      `Open profiles/${profile.name}/profile.md and fill in the H2 sections under # Identity / # Contact.`,
+    );
+  }
+
+  const stripped = stripComments(resumePool);
+  const substantiveLines = stripped
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      return t.length > 0 && !t.startsWith('#');
+    });
+  if (substantiveLines.length < MIN_POOL_CONTENT_LINES) {
+    log.error('tailor.context.pool_empty', {
+      profileName: profile.name,
+      substantiveLines: substantiveLines.length,
+      minRequired: MIN_POOL_CONTENT_LINES,
+    });
+    throw new Error(
+      `Resume pool for profile '${profile.name}' is empty or only has placeholder examples.\n` +
+      `Open profiles/${profile.name}/resume_pool.md and write at least one real experience entry ` +
+      `(role + company + dates + bullets) before running tailor — otherwise the AI builds a resume from nothing.`,
+    );
   }
 }

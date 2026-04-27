@@ -49,12 +49,49 @@ const FAKE_JOB: Job = {
 };
 
 // Profile is now `{ name, md }` — name is the directory name, md is the
-// raw profile.md content. Tests don't need a realistic profile.md, just a
-// non-empty string so prompt assembly isn't trivially "".
+// raw profile.md content. The md fixture must satisfy assertReadyForTailor's
+// REQUIRED-fields check: # Identity > Legal first/last name + # Contact >
+// Email/Phone all present with non-empty bodies.
 const FAKE_PROFILE: Profile = {
   name: 'default',
-  md: '# default\n\n## Identity\n\n### Legal first name\nAlex\n\n### Legal last name\nRivera\n',
+  md: [
+    '# default',
+    '',
+    '# Identity',
+    '',
+    '## Legal first name',
+    'Alex',
+    '',
+    '## Legal last name',
+    'Rivera',
+    '',
+    '# Contact',
+    '',
+    '## Email',
+    'alex@example.test',
+    '',
+    '## Phone',
+    '+1 555 010 0100',
+    '',
+  ].join('\n'),
 };
+
+// Resume pool fixture must clear MIN_POOL_CONTENT_LINES (5 substantive
+// non-heading lines). Six bullets / dates clear it cleanly.
+const FAKE_RESUME_POOL = [
+  '# Resume Pool',
+  '',
+  '## Experience',
+  '### SWE — Acme',
+  '*2022 - 2025*',
+  '- Built distributed systems handling 10k req/s.',
+  '- Cut p99 latency 40% via Postgres tuning.',
+  '- Owned the on-call rotation for the ingestion path.',
+  '',
+  '## Skills',
+  'TypeScript, Go, PostgreSQL',
+  '',
+].join('\n');
 
 const DEFAULT_AI: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
 const FAKE_BRIEF = '# Tailoring Brief\n## Selected Roles\nSWE at Example Corp';
@@ -71,15 +108,17 @@ function makeJobRepo(job: Job | null = FAKE_JOB): JobRepository {
   } as unknown as JobRepository;
 }
 
-function makeProfileRepo(): ProfileRepository {
+function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string } = {}): ProfileRepository {
   // Only the methods this service uses are stubbed; the rest stay as bare vi.fn()
   // so accidental calls to unmocked methods surface as test failures.
+  const profile = overrides.profile ?? FAKE_PROFILE;
+  const pool = overrides.resumePool ?? FAKE_RESUME_POOL;
   return {
     get: vi.fn(),
-    getDefault: vi.fn().mockResolvedValue(FAKE_PROFILE),
+    getDefault: vi.fn().mockResolvedValue(profile),
     list: vi.fn(),
-    getProfileMd: vi.fn().mockResolvedValue(FAKE_PROFILE.md),
-    getResumePool: vi.fn().mockResolvedValue('# EXPERIENCE\nBuilt things.'),
+    getProfileMd: vi.fn().mockResolvedValue(profile.md),
+    getResumePool: vi.fn().mockResolvedValue(pool),
     getStandardQuestions: vi.fn(),
     getAttachmentsList: vi.fn().mockResolvedValue([]),
   } as unknown as ProfileRepository;
@@ -107,12 +146,13 @@ function makeBriefSvc(): TailoringBriefService {
 
 function makeSvc(overrides: {
   jobRepo?: JobRepository;
+  profileRepo?: ProfileRepository;
   rewriteSvc?: ResumeCoverLetterService;
   briefSvc?: TailoringBriefService;
 } = {}) {
   return new TailorApplicationServiceImpl(
     overrides.jobRepo ?? makeJobRepo(),
-    makeProfileRepo(),
+    overrides.profileRepo ?? makeProfileRepo(),
     makeRenderSvc(),
     overrides.rewriteSvc ?? makeRewriteSvc(),
     overrides.briefSvc ?? makeBriefSvc(),
@@ -294,5 +334,75 @@ describe('TailorApplicationService', () => {
     // should be effectively empty (modulo whitespace).
     const { stripComments } = await import('../../utils/stripComments.js');
     expect(stripComments(body).trim()).toBe('');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Pre-flight validation: refuse to run tailor on a placeholder profile
+  // (missing legal name / email / phone) or on a near-empty resume pool.
+  // The AI would otherwise faithfully render "Job Title — Company Name" /
+  // empty <h1></h1> headers; far better to fail at the boundary with a clear
+  // message that names the file the user must edit.
+  // ---------------------------------------------------------------------------
+
+  it('refuses tailor when profile.md is missing required fields (Legal first name)', async () => {
+    const profileMissingFirstName: Profile = {
+      name: 'default',
+      // Identity has only Last name; First name H2 absent → assertReady fails.
+      md: '# Identity\n\n## Legal last name\nRivera\n\n# Contact\n\n## Email\nx@x.test\n\n## Phone\n+1\n',
+    };
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: profileMissingFirstName }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
+  });
+
+  it('refuses tailor when profile.md required field is blank-bodied', async () => {
+    const profileBlankEmail: Profile = {
+      name: 'default',
+      md: '## Legal first name\nAlex\n## Legal last name\nRivera\n## Email\n\n## Phone\n+1\n',
+    };
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: profileBlankEmail }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Email/);
+  });
+
+  it('refuses tailor when resume_pool.md has only placeholder examples (post-strip empty)', async () => {
+    // Mimics what `wolf init --empty` produces now: every example block lives
+    // inside a > [!TIP] alert, so stripComments removes them and only the H2
+    // headings remain. No bullets, no real content, nothing to tailor from.
+    const placeholderPool = [
+      '# Resume Pool',
+      '## Experience',
+      '> [!TIP]',
+      '> EXAMPLE',
+      '> ### Job Title — Company Name',
+      '> *Month Year - Month Year*',
+      '> - Bullet describing impact',
+      '## Skills',
+      '> [!TIP]',
+      '> EXAMPLE',
+      '> TypeScript, Python, SQL',
+    ].join('\n');
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ resumePool: placeholderPool }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/empty or only has placeholder/);
+  });
+
+  it('does NOT refuse when the pool is sparse but real (≥ 5 substantive lines)', async () => {
+    // Above the threshold — proves we don't over-reject realistic NG/intern pools
+    // (one role with a couple bullets + a degree + a skills line is enough).
+    const sparseRealPool = [
+      '# Resume Pool',
+      '## Experience',
+      '### Software Engineer Intern — Acme',
+      '*Summer 2024*',
+      '- Built ETL pipelines processing 10M rows/day.',
+      '- Wrote integration tests; raised coverage 40%→78%.',
+      '## Education',
+      '### B.S. CS — State University',
+      '*2021 - 2025*',
+      '## Skills',
+      'Python, SQL, Git, Linux, Postgres',
+    ].join('\n');
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ resumePool: sparseRealPool }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).resolves.toMatchObject({
+      tailoredPdfPath: expect.stringContaining('resume.pdf'),
+    });
   });
 });

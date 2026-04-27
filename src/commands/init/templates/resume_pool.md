@@ -41,38 +41,41 @@
 > [!TIP]
 > List every role, including short stints and older jobs — wolf picks what's relevant.
 > Use strong action verbs and include metrics where possible (e.g. "reduced latency by 40%").
-
-### Job Title — Company Name
-*Month Year - Month Year (or Present)*
-- Bullet describing impact or responsibility
-- Bullet with metrics if available
-
-> [!TIP]
-> ## Projects
-> Include personal, open-source, and side projects — not just work projects.
-> Mention the tech stack and what problem it solved.
+>
+> EXAMPLE (delete this block, write your real entries with the same shape):
+> ### Job Title — Company Name
+> *Month Year - Month Year (or Present)*
+> - Bullet describing impact or responsibility
+> - Bullet with metrics if available
 
 ## Projects
 
-### Project Name
-*Year*
-- What it does, what you built, and what tech you used
+> [!TIP]
+> Include personal, open-source, and side projects — not just work projects.
+> Mention the tech stack and what problem it solved.
+>
+> EXAMPLE (delete and write your real entries):
+> ### Project Name
+> *Year*
+> - What it does, what you built, and what tech you used
 
 ## Education
 
 > [!TIP]
 > List degrees in reverse chronological order. Include GPA if 3.5+.
 > Relevant coursework is optional but useful for new grads.
-
-### Degree — University Name
-*Year - Year*
+>
+> EXAMPLE (delete and write your real entries):
+> ### Degree — University Name
+> *Year - Year*
 
 ## Skills
 > [!TIP]
 > Comma-separated list. Group loosely by category if helpful (e.g. Languages, Tools, Platforms).
 > wolf will reformat this to match the JD's preferred phrasing.
-
-TypeScript, Python, SQL, ...
+>
+> EXAMPLE (delete and write your real list):
+> TypeScript, Python, SQL, Postgres, Docker, AWS
 
 > [!TIP]
 > ## Certifications (optional)
