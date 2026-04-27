@@ -1,20 +1,19 @@
 # default
 
-<!--
-Convention:
-  H1 = category
-  H2 = field / question
-  Body under H2 = your answer
-
-Markers (each is a `//` line — stripped before AI sees the file):
-  // REQUIRED — you must answer; AI cannot guess this.
-  // (optional — leave blank if N/A)
-
-Sections without `//` already carry a sensible default; edit if it doesn't fit you.
-
-The whole file gets passed to AI agents (tailor, resume writer, fill, outreach)
-as context. Be honest and specific; the AI will adapt phrasing per role.
--->
+// Convention:
+//   H1 = category
+//   H2 = field / question
+//   Body under H2 = your answer
+//
+// Markers (each is a `//` line — stripped before AI sees the file;
+// also hidden from MD preview so they only show in raw editor view):
+//   // REQUIRED — you must answer; AI cannot guess this.
+//   // (optional — leave blank if N/A)
+//
+// Sections without `//` already carry a sensible default; edit if it doesn't fit you.
+//
+// The whole file gets passed to AI agents (tailor, resume writer, fill, outreach)
+// as context. Be honest and specific; the AI will adapt phrasing per role.
 
 # Identity
 
@@ -99,7 +98,7 @@ no preference
 
 # Demographics
 
-<!-- US ATS EEO fields. All voluntary by law. "Decline to answer" is always valid. -->
+// US ATS EEO fields. All voluntary by law. "Decline to answer" is always valid.
 
 ## Race
 // (optional EEO — "Decline to answer" is a valid value)

@@ -1,23 +1,22 @@
 # Standard Questions
 
-<!--
-Convention:
-  H1 = category (Short Answers / Company-Product Opinions / Documents / ...)
-  H2 = the question itself
-  H3 (Documents only) = a label / alias for an attachment
-  Body under H2 (or H3) = your answer / file name
-
-Markers (each is a `//` line — stripped before AI sees the file):
-  // REQUIRED — you must answer; AI cannot guess this.
-  // (optional — leave blank if N/A)
-
-Sections without `//` carry a sensible default; edit if it doesn't fit you.
-
-This file is consumed by `wolf fill` — when an ATS form asks a question,
-the agent finds the most relevant H2 here and fills the answer (adapting
-{{company}} / {{role}} placeholders, or synthesizing from your "framework"
-answers in the Company / Product Opinions section).
--->
+// Convention:
+//   H1 = category (Short Answers / Company-Product Opinions / Documents / ...)
+//   H2 = the question itself
+//   H3 (Documents only) = a label / alias for an attachment
+//   Body under H2 (or H3) = your answer / file name
+//
+// Markers (each is a `//` line — stripped before AI sees the file;
+// also hidden from MD preview so they only show in raw editor view):
+//   // REQUIRED — you must answer; AI cannot guess this.
+//   // (optional — leave blank if N/A)
+//
+// Sections without `//` carry a sensible default; edit if it doesn't fit you.
+//
+// This file is consumed by `wolf fill` — when an ATS form asks a question,
+// the agent finds the most relevant H2 here and fills the answer (adapting
+// {{company}} / {{role}} placeholders, or synthesizing from your "framework"
+// answers in the Company / Product Opinions section).
 
 # Short Answers
 
@@ -70,14 +69,14 @@ Available immediately
 
 # Company / Product Opinions
 
-<!--
-These appear constantly in ATS forms ("What do you think of <our product>?",
-"How would you improve us?"). In mass-apply you can't pre-write per-company
-answers — so describe your APPROACH here (what dimensions you evaluate on,
-what kinds of feedback you tend to give). The fill agent reads your approach
-plus the actual company/product info from the JD and synthesizes the answer
-at apply time.
--->
+The H2 questions below give your APPROACH (frameworks, not concrete answers).
+The fill agent combines them with company / product info from the JD to
+synthesize a per-company answer at apply time.
+
+// User authoring guidance:
+//   In mass-apply you can't pre-write per-company answers, so describe your
+//   approach (what dimensions you evaluate on, what kinds of feedback you tend
+//   to give, what tone you take). Don't name any specific company or product.
 
 ## How do you view our company? — your framework
 // REQUIRED — describe how you typically form an opinion about a company:
@@ -104,15 +103,16 @@ at apply time.
 
 # Documents
 
-<!--
-H3 = label the agent matches against ATS form labels (e.g. "Transcript").
-Body under H3 = file name inside `attachments/`. Path must be a bare filename;
-the agent prepends `attachments/`. Files outside `attachments/` are not allowed.
+H3 = label the fill agent matches against ATS form upload-field labels.
+Body under H3 = bare file name inside `attachments/`. Files outside
+`attachments/` are not allowed.
 
-Immigration / work-authorization documents are not listed here — ATS forms
-don't consume them at the application stage. They show up post-offer for
-I-9 verification, which is out of wolf's scope.
--->
+// Files referenced here must exist in `attachments/`. If one is missing at
+// fill time, `wolf fill` pauses and asks you to drop it in.
+//
+// Immigration / work-authorization documents are NOT listed here —
+// ATS forms don't consume them at the application stage. They show up
+// post-offer for I-9 verification, which is out of wolf's scope.
 
 ## What academic documents do you have?
 
