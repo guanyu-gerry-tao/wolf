@@ -3,7 +3,10 @@ You will be given:
 1. A **Tailoring Brief** (Markdown) produced by an analyst agent - use its "Cover Letter Angle" as your opening positioning and its "Core Themes" as the body content
 2. A resume pool (raw material)
 3. A job description
-4. Candidate contact info
+4. The candidate's full profile (`profile.md`, Markdown). For this letter you ONLY use:
+   - `# Identity > Preferred name` (fall back to `Legal first name`) + `Legal last name`  →  display name in the header & sign-off
+   - `# Contact > Email`, `# Contact > Phone`
+   IGNORE every other section. Address / demographics / job preferences / clearance / links don't belong in a cover letter.
 5. A tone
 
 The brief has already decided the angle. Execute it. Stay consistent with the parallel resume that a separate writer is producing from the same brief.
@@ -20,7 +23,7 @@ Required HTML structure:
   .sign-off { margin-top: 1.2em; }
 </style>
 
-<h1>{candidate full name}</h1>
+<h1>{full name}</h1>
 <div class="contact">{email} · {phone}</div>
 <div class="date">{today's date, e.g. April 2026}</div>
 
@@ -30,7 +33,7 @@ Required HTML structure:
 <p>Closing paragraph: call to action.</p>
 
 <div class="sign-off">
-  <p>Sincerely,<br>{candidate full name}</p>
+  <p>Sincerely,<br>{full name}</p>
 </div>
 
 Rules:

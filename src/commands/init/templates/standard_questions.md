@@ -1,5 +1,6 @@
 # Standard Questions
 
+<!-- 
 // Consumed by:
 //   wolf fill (when M4 ships) — Short Answers, Company/Product Opinions
 //                  frameworks, and Documents file pointers all feed into ATS
@@ -7,6 +8,7 @@
 //                  for every application.
 //   (Not consumed by tailor / score / reach. Tailor reads resume_pool.md +
 //    profile.md; score reads JD + profile.md; reach reads profile.md.)
+-->
 
 // Convention:
 //   H1 = category (Short Answers / Company-Product Opinions / Documents / ...)
@@ -64,16 +66,26 @@ LinkedIn
 ## When can you start?
 Available immediately
 
-## Are you authorized to work? (form phrasing)
-// REQUIRED — short answer for the form. Truth lives in profile.md # Work Authorization.
-//   e.g. "Yes, I am authorized to work in the United States."
+## Form answer — Are you authorized to work?
+// REQUIRED — verbatim form answer. Form usually wants a clean "Yes"/"No";
+// the typical strategic answer is "Yes" if you have ANY current authorization,
+// even time-limited (OPT / CPT). E.g.:
+//   "Yes, I am authorized to work in the United States."
 
-## Do you require sponsorship? (form phrasing)
-// REQUIRED — short answer for the form. Truth lives in profile.md # Work Authorization.
-//   e.g. "No" / "Yes, in the future after my OPT expires" / etc.
+## Form answer — Do you require sponsorship?
+// REQUIRED — verbatim form answer. The strategic preference (which jobs to
+// even apply to) lives in profile.md # Job Preferences > Sponsorship preference.
+// Form-time answers often understate future sponsorship need to maximize
+// interview odds; this is YOUR negotiation choice, not auto-derived. E.g.:
+//   "No" / "Yes, in the future after my OPT expires" /
+//   "Currently no, may need H-1B sponsorship for permanent role"
 
-## Are you willing to relocate? (form phrasing)
-// REQUIRED — short answer for the form. Truth lives in profile.md # Job Preferences.
+## Form answer — Are you willing to relocate?
+// REQUIRED — verbatim form answer. The honest preference (where you'd actually
+// live) lives in profile.md # Job Preferences > Relocation preference.
+// Form-time answers are usually MORE permissive than the granular truth
+// (say "Yes", negotiate later). E.g.:
+//   "Yes" / "Yes, within reason" / "Open to discussing the right opportunity"
 
 # Company / Product Opinions
 

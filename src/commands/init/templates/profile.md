@@ -1,15 +1,21 @@
 # default
 
+<!-- 
 // Consumed by:
 //   wolf tailor  — currently. Name + contact + links go into the resume header
 //                  and the cover-letter salutation. Job-preferences targets and
 //                  scoring notes feed the analyst's tailoring brief.
-//   wolf fill    — when M4 ships. Reads name, address, demographics, work auth,
-//                  and clearance to fill the matching ATS form fields.
+//   wolf fill    — when M4 ships. Reads name, address, citizenship, current
+//                  country, demographics, and clearance to fill matching ATS
+//                  form fields (these are static facts, not gameable).
+//                  Game-theoretic phrasing — work-auth / sponsorship /
+//                  willingness-to-relocate / salary — comes from
+//                  standard_questions.md instead.
 //   wolf reach   — when M5 ships. Uses name + contact for the outreach email
 //                  sender info and signature.
-//   wolf score   — when M2 ships. Uses scoring notes + job preferences to
-//                  rank jobs by personal fit.
+//   wolf score   — when M2 ships. Uses scoring notes + job preferences (incl.
+//                  sponsorship preference) to rank and filter jobs.
+-->
 
 // Convention:
 //   H1 = category
@@ -46,6 +52,18 @@
 ## Date of birth
 // (optional — required by some non-US ATS; format YYYY-MM-DD)
 
+## Country of citizenship
+// REQUIRED — country whose passport you hold (e.g. "United States", "China", "India").
+// This is a fact, not a strategy. Wolf fill uses it to answer ATS "Country of
+// citizenship" dropdowns and similar.
+
+## Country you're currently in
+United States
+// Where you are physically right now. Used by wolf fill to answer "Are you
+// currently in [country]?" / "Are you authorized to work in [country] from
+// here?" type form questions. Default is United States (most NG mass-apply
+// scenarios). Update if you're abroad.
+
 # Contact
 
 ## Email
@@ -80,8 +98,18 @@
 ## Target locations
 // REQUIRED — comma-separated, e.g. "SF Bay Area, NYC, Remote-US".
 
-## Willing to relocate
-open to relocation
+## Relocation preference — where are you actually willing to live?
+// REQUIRED. This is the HONEST answer for hunt filtering. Mark willingness
+// at each level: "yes" / "no" / "maybe":
+//   - within current metro area: yes
+//   - within current state: yes
+//   - cross-country (e.g. coast to coast): yes
+//   - international (out of current country): no
+// Free notes (e.g. "Anywhere in CA", "NYC and SF only"):
+//
+// Form-time phrasing of "Are you willing to relocate?" lives in
+// standard_questions.md and is often more permissive than this honest
+// answer — that's a strategic choice (say "Yes" on form, negotiate later).
 
 ## Scoring notes
 // (optional — free-form preferences for the AI scorer,
@@ -94,6 +122,20 @@ open to relocation
 
 ## Hard-reject companies (never apply, even if AI suggests)
 // (optional — comma-separated company names. Filtered out at hunt.)
+
+## Sponsorship preference — which jobs do you want to apply to?
+// REQUIRED. This is your STRATEGY for hunt filtering, not your form answer.
+// For each row, mark "yes" / "no" / "only if no other option":
+//   - require H-1B sponsorship: 
+//   - require green-card sponsorship: 
+//   - require CPT (current student): 
+//   - require OPT (current student): 
+//   - don't sponsor at all (citizens / GC / EAD only): 
+// Free notes (e.g. "OPT for summer, H-1B for full-time"):
+//
+// Form-time phrasing of "Do you require sponsorship?" lives in
+// standard_questions.md and may differ — that's a strategic / negotiation
+// choice, not a contradiction.
 
 ## Minimum hourly rate (intern, USD)
 // (optional — e.g. "30" or leave blank for no floor)
@@ -134,35 +176,6 @@ I am not a protected veteran
 
 ## First-generation college student
 No
-
-# Work Authorization
-
-## Citizenship
-// REQUIRED — country of citizenship (e.g. "United States", "China", "India").
-
-## Do you have work authorization now?
-// REQUIRED — Yes / No, with brief explanation.
-
-## Do you have work authorization in the future?
-// REQUIRED — Yes / No, with brief explanation.
-
-## Do you need sponsorship now?
-// REQUIRED — Yes / No (used when JD doesn't specify which visa type).
-
-## Do you need sponsorship in the future?
-// REQUIRED — Yes / No (used when JD doesn't specify which visa type).
-
-## Do you need H-1B?
-No
-// International students: edit per your post-OPT timeline (e.g. "Future: Yes").
-
-## Do you need CPT?
-No
-// F-1 students currently using CPT: change to "Now: Yes".
-
-## Do you need OPT?
-No
-// F-1 students: change to "Now: Yes" or "Future: Yes" per your timeline.
 
 # Clearance
 

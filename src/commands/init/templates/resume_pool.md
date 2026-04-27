@@ -1,5 +1,6 @@
 # Resume Pool
 
+<!--
 // Consumed by:
 //   wolf tailor — full text, both stages. The analyst (briefService) reads
 //                  it to decide which experience to emphasize for a given JD;
@@ -8,6 +9,7 @@
 //   (Not consumed by fill / score / reach. Fill uses the tailored resume
 //    artifact produced by tailor; score works on the JD; reach uses
 //    profile.md.)
+-->
 
 // This is your "everything" resume — wolf reads this and selects the most relevant
 // content for each job. Include ALL experience, projects, and skills, even older ones.
