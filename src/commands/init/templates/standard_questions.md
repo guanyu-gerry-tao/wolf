@@ -1,5 +1,13 @@
 # Standard Questions
 
+// Consumed by:
+//   wolf fill (when M4 ships) — Short Answers, Company/Product Opinions
+//                  frameworks, and Documents file pointers all feed into ATS
+//                  form filling. The fill agent reads this file end-to-end
+//                  for every application.
+//   (Not consumed by tailor / score / reach. Tailor reads resume_pool.md +
+//    profile.md; score reads JD + profile.md; reach reads profile.md.)
+
 // Convention:
 //   H1 = category (Short Answers / Company-Product Opinions / Documents / ...)
 //   H2 = the question itself

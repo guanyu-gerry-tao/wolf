@@ -1,5 +1,16 @@
 # default
 
+// Consumed by:
+//   wolf tailor  — currently. Name + contact + links go into the resume header
+//                  and the cover-letter salutation. Job-preferences targets and
+//                  scoring notes feed the analyst's tailoring brief.
+//   wolf fill    — when M4 ships. Reads name, address, demographics, work auth,
+//                  and clearance to fill the matching ATS form fields.
+//   wolf reach   — when M5 ships. Uses name + contact for the outreach email
+//                  sender info and signature.
+//   wolf score   — when M2 ships. Uses scoring notes + job preferences to
+//                  rank jobs by personal fit.
+
 // Convention:
 //   H1 = category
 //   H2 = field / question
