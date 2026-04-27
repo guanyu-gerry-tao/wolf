@@ -48,8 +48,12 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-# Claude Code memory
-.claude/
+# Claude Code memory — personal config + worktrees stay local;
+# project-shared agent presets are committed. Note: `.claude/*` instead of
+# `.claude/` because gitignore can't re-include a child of a fully-ignored
+# directory (the negation patterns only work when the parent is open).
+.claude/*
+!.claude/agents/
 .superpowers/
 
 # data files
