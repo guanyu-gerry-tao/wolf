@@ -15,7 +15,9 @@ vi.mock('node:fs/promises', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
   writeFile: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockImplementation((p: string) => {
-    if (p.endsWith('hint.md')) return Promise.resolve('// comment-only template\n');
+    // Default hint.md content: only the GitHub-Alert header block, which
+    // stripComments fully removes — so callers see the file as effectively empty.
+    if (p.endsWith('hint.md')) return Promise.resolve('> [!TIP]\n> alert-only template\n');
     return Promise.resolve('# mock brief');
   }),
   access: vi.fn().mockRejectedValue(new Error('ENOENT')),
@@ -232,9 +234,10 @@ describe('TailorApplicationService', () => {
     expect(rewriteSvc.tailorResumeToHtml).not.toHaveBeenCalled();
   });
 
-  // Hint: when no hint parameter is given and hint.md has only comment lines,
-  // the analyst is called with hint=undefined (stripComments leaves it empty).
-  it('passes hint=undefined when hint.md only contains // comments', async () => {
+  // Hint: when no hint parameter is given and hint.md has only the alert
+  // header (no real user content), the analyst is called with hint=undefined
+  // (stripComments removes the alert block, leaving the file effectively empty).
+  it('passes hint=undefined when hint.md contains only the alert header', async () => {
     const briefSvc = makeBriefSvc();
     const svc = makeSvc({ briefSvc });
     await svc.analyze({ jobId: 'job-1' });
@@ -242,14 +245,15 @@ describe('TailorApplicationService', () => {
     expect(hintArg).toBeUndefined();
   });
 
-  // Hint: active hint content (after stripping //) is forwarded to the analyst.
-  it('forwards active hint text to the analyst when hint.md has non-comment content', async () => {
+  // Hint: active hint content (after stripping the > [!TIP] header) is
+  // forwarded to the analyst.
+  it('forwards active hint text to the analyst when hint.md has non-alert content', async () => {
     const { readFile } = await import('node:fs/promises');
     // Path-aware override: hint.md returns real content; brief.md stays as before.
     // Using `as never` keeps vitest's narrow signature happy without widening the mock.
     vi.mocked(readFile).mockImplementation(((p: string) =>
       p.endsWith('hint.md')
-        ? Promise.resolve('// header\nfocus on distributed systems\n')
+        ? Promise.resolve('> [!TIP]\n> header alert\n\nfocus on distributed systems\n')
         : Promise.resolve('# mock brief')
     ) as never);
     const briefSvc = makeBriefSvc();
@@ -286,12 +290,9 @@ describe('TailorApplicationService', () => {
     expect(hintWrite).toBeDefined();
     const body = hintWrite![1] as string;
     expect(body).toContain('hint.md - Pre-analysis guidance');
-    // Strip the header: everything after the last // line should be blank.
-    const active = body
-      .split('\n')
-      .filter(l => !l.trimStart().startsWith('//'))
-      .join('\n')
-      .trim();
-    expect(active).toBe('');
+    // After stripping the GitHub-Alert header block, what reaches the AI
+    // should be effectively empty (modulo whitespace).
+    const { stripComments } = await import('../../utils/stripComments.js');
+    expect(stripComments(body).trim()).toBe('');
   });
 });

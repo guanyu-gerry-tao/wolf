@@ -53,7 +53,7 @@ This is the most important rule of this prompt. Read it before writing anything.
 **Inventory step (do this mentally before writing any HTML)**
 
 1. Read the resume pool top-to-bottom.
-2. List every section heading (`## Title`) that has REAL CONTENT below it (not just `//` comments, not blank).
+2. List every section heading (`## Title`) that has REAL CONTENT below it (not blank, not just `> [!XYZ]` alert blocks — those have already been stripped before you see this, but if any plain `>` quote remains, that IS real content).
 3. Record the order of those sections AS THEY APPEAR in the pool.
 4. Record each section title VERBATIM, including capitalization and exact wording.
 

@@ -21,20 +21,21 @@ import type { RenderService } from '../../service/renderService.js';
 import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../../service/tailoringBriefService.js';
 
-// Self-documenting header written to every fresh hint.md. Lines starting with //
+// Self-documenting header written to every fresh hint.md. Lines starting with `>`
 // are stripped before the file is shown to the analyst (same convention as
 // resume_pool.md), so this preamble never reaches the AI.
-const HINT_FILE_HEADER = `// hint.md - Pre-analysis guidance for the analyst agent.
-//
-// Write plain Markdown below these comments to steer the analyst when it
-// produces the tailoring brief for this job. Example:
-//
-//   Focus on the distributed systems and ML ops themes.
-//   De-emphasize the architecture background.
-//
-// Lines starting with // (like this one) are comments that get stripped
-// before the analyst sees the file. Leave this file empty below the
-// comments and the analyst will run without any guidance.
+const HINT_FILE_HEADER = `> [!TIP]
+> hint.md - Pre-analysis guidance for the analyst agent.
+>
+> Write plain Markdown below this alert block to steer the analyst when it
+> produces the tailoring brief for this job. Example:
+>
+>   Focus on the distributed systems and ML ops themes.
+>   De-emphasize the architecture background.
+>
+> This whole alert block is stripped before the AI sees the file (see
+> stripComments). Leave the file empty below to run the analyst without
+> any guidance.
 
 `;
 
@@ -219,9 +220,9 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     }
   }
 
-  // Reads hint.md and returns the non-comment content (stripComments removes //
-  // lines). Returns undefined when the active portion is empty so the brief
-  // service prompt stays clean.
+  // Reads hint.md and returns the non-comment content (stripComments removes `>`
+  // blockquote lines). Returns undefined when the active portion is empty so the
+  // brief service prompt stays clean.
   private async readActiveHint(hintPath: string): Promise<string | undefined> {
     let raw: string;
     try { raw = await readFile(hintPath, 'utf-8'); }

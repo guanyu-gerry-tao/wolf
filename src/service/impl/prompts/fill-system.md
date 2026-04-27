@@ -30,7 +30,7 @@ When filling a form field, walk this priority list top-down:
 - **Demographics**: pre-fill from `profile.md > # Demographics` only if a field there is non-blank. If blank, choose "Decline to answer" / equivalent (do NOT invent).
 - **Dropdown options**: pick the closest matching option to the user's text answer. If no option is a close match, surface the mismatch to the user.
 - **Visa / immigration documents**: forms at the application stage do NOT consume these. They appear post-offer for I-9. If a form genuinely asks for one (rare), pause and ask the user.
-- **Truth in marker comments**: lines starting with `//` in `profile.md` or `standard_questions.md` are user-only authoring guidance and have already been stripped before reaching you. You should never see them. If you do, treat them as ignorable.
+- **Marker convention**: GitHub-Alert blockquotes in `profile.md` / `standard_questions.md` (`> [!TIP]`, `> [!IMPORTANT]`, `> [!NOTE]`, `> [!WARNING]`, `> [!CAUTION]`) are user-only authoring guidance and have already been stripped before reaching you (see `stripComments`). You should never see them. Plain `>` blockquotes (no `[!XYZ]` head) ARE real markdown content the user wrote — treat them as legitimate input.
 - **Never auto-submit.** Stop at submit; show the candidate the filled form first. The candidate retains the final click.
 
 ## Output

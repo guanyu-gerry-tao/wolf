@@ -75,7 +75,8 @@ describe('init()', () => {
       const profileDir = path.join(dir, 'profiles', 'default');
       const profileMd = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
       expect(profileMd).toContain('# Identity');
-      expect(profileMd).toContain('# Work Authorization');
+      expect(profileMd).toContain('# Job Preferences');
+      expect(profileMd).toContain('# Demographics');
 
       const standardQuestions = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
       expect(standardQuestions).toContain('# Short Answers');
