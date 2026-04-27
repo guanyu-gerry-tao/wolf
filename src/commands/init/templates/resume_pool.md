@@ -79,6 +79,22 @@ TypeScript, Python, SQL, ...
 // - "Paper Title" — NeurIPS 2023
 // - "Blog Post Title" — Personal blog, 2024 (link)
 
+// ## Patents (optional)
+// Granted or pending patents. Important for research / hardware / ML / infra roles.
+// Format: title — patent or application number, year, brief description.
+
+// ## Patents (optional)
+// - "System and method for X" — US Patent 11,234,567, 2024
+// - "Method for distributed Y" — pending, 2025
+
+// ## Hackathons (optional)
+// Wins, finalist runs, notable demo days. NG加分项 — common starting signal.
+// Format: event — placement, year, what you built / used.
+
+// ## Hackathons (optional)
+// - HackMIT 2024 — 2nd place, RAG-powered legal search demo
+// - TreeHacks 2023 — finalist, real-time multiplayer ML game
+
 // ## Open Source (optional)
 // Notable contributions beyond your own projects. Include repo links and impact.
 // Especially valuable if contributions are to well-known projects.
