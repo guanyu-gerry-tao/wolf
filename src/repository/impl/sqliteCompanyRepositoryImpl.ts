@@ -7,15 +7,16 @@ import type { DrizzleDb } from './drizzleDb.js';
 import { companies } from './schema.js';
 import { companyDir } from '../../utils/workspacePaths.js';
 
-// Self-documenting header for freshly created info.md files. Same `//` comment
-// convention as resume_pool.md and hint.md — stripComments filters these before
-// any AI sees the file.
-const INFO_FILE_HEADER = `// info.md - Free-form notes about this company.
-//
-// Any prose below the // header is stored per-company and carried forward for
-// future jobs at the same employer (e.g. interview feedback, product notes,
-// culture observations). Lines starting with // are comments and get stripped
-// before AI agents read this file.
+// Self-documenting header for freshly created info.md files. Same GitHub-Alert
+// blockquote convention as resume_pool.md and hint.md — stripComments removes
+// `> [!XYZ]` blocks before any AI sees the file.
+const INFO_FILE_HEADER = `> [!TIP]
+> info.md - Free-form notes about this company.
+>
+> Any prose below this alert block is stored per-company and carried forward
+> for future jobs at the same employer (e.g. interview feedback, product notes,
+> culture observations). This alert block is user-only and stripped before
+> the AI sees this file (see stripComments).
 
 `;
 

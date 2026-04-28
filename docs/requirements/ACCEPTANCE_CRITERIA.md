@@ -32,7 +32,7 @@ Each section corresponds to a User Story and Use Case.
 **AC-01-5 — Scriptable empty init**
 - Given an automated agent needs a non-interactive workspace
 - When it runs `wolf init --empty`
-- Then wolf writes schema-valid `wolf.toml`, `profiles/default/profile.toml`, an empty `profiles/default/resume_pool.md`, and `data/` without prompting
+- Then wolf writes schema-valid `wolf.toml`, the three template MDs (`profiles/default/profile.md`, `profiles/default/resume_pool.md`, `profiles/default/standard_questions.md`), an empty `profiles/default/attachments/` directory, and `data/` without prompting
 
 **AC-01-6 — Dev init isolation**
 - Given a dev build invoked as `npm run wolf -- init --dev --empty`

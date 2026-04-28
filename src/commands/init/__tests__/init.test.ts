@@ -4,9 +4,12 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { parse } from 'smol-toml';
-import { AppConfigSchema, UserProfileSchema } from '../../../utils/schemas.js';
+import { AppConfigSchema } from '../../../utils/schemas.js';
 
-// Mock @inquirer/prompts so tests never open interactive TTY prompts.
+// Mock @inquirer/prompts so tests never open interactive TTY prompts. Init
+// no longer collects profile data via prompts (everything is markdown the user
+// edits later), but `confirm` is still used for the home-dir warning and the
+// wolf.toml overwrite check, and `input` may surface in API-key setup.
 vi.mock('@inquirer/prompts', () => ({
   input: vi.fn(),
   confirm: vi.fn(),
@@ -22,29 +25,7 @@ function makeTempDir(): string {
 }
 
 // Stub WOLF_ANTHROPIC_API_KEY so init() skips the envSet() call at the end.
-// Without this, tests fail in CI where the key is absent — input() runs out of
-// mock responses and throws on undefined.trim().
 const originalApiKey = process.env.WOLF_ANTHROPIC_API_KEY;
-
-// Default mock answers matching the interactive prompts in the order they fire.
-// The order must stay in sync with the input() / select() / confirm() call sequence in init().
-function setupDefaultMocks(): void {
-  // input calls in order: name, email, phone, firstUrl, secondUrl, thirdUrl, targetRoles, targetLocations
-  vi.mocked(input)
-    .mockResolvedValueOnce('Alex Rivera')       // name
-    .mockResolvedValueOnce('alex@example.com')  // email
-    .mockResolvedValueOnce('+1 555 000 0000')   // phone
-    .mockResolvedValueOnce('')                  // firstUrl (skip)
-    .mockResolvedValueOnce('')                  // secondUrl (skip)
-    .mockResolvedValueOnce('')                  // thirdUrl (skip)
-    .mockResolvedValueOnce('Software Engineer') // targetRoles
-    .mockResolvedValueOnce('Remote');           // targetLocations
-
-  // select calls in order: immigrationStatus, willingToRelocate
-  vi.mocked(select)
-    .mockResolvedValueOnce('no limit')  // immigrationStatus
-    .mockResolvedValueOnce('no');       // willingToRelocate
-}
 
 // Helper: runs init() with cwd temporarily set to dir, restores cwd afterward,
 // then cleans up the temp directory. Assertions must be done inside assertFn
@@ -65,9 +46,6 @@ async function runInitIn(dir: string, assertFn: () => Promise<void>): Promise<vo
 }
 
 describe('init()', () => {
-  // Set a fake API key so init() skips the envSet() call at the end.
-  // Without this, tests fail in CI where the key is absent — input() runs out
-  // of mock responses and throws on undefined.trim().
   beforeEach(() => { process.env.WOLF_ANTHROPIC_API_KEY = 'test-key'; });
   afterEach(() => {
     vi.clearAllMocks();
@@ -78,42 +56,40 @@ describe('init()', () => {
     }
   });
 
-  // Happy path: fresh workspace — all expected files should be created with valid content.
-  it('creates wolf.toml, profile.toml, and resume_pool.md in a fresh directory', async () => {
+  // Happy path: fresh workspace — init writes the four template MD files,
+  // a wolf.toml pointing at the default profile dir, and the standard sidecar
+  // files (.gitignore, CLAUDE.md, AGENTS.md). No data prompts run.
+  it('creates wolf.toml, the three profile MDs, and the attachments dir in a fresh directory', async () => {
     const dir = makeTempDir();
     await fs.mkdir(dir, { recursive: true });
-    setupDefaultMocks();
 
     await runInitIn(dir, async () => {
-      // wolf.toml should parse cleanly with the current AppConfigSchema.
+      // wolf.toml should parse cleanly and point at the conventional default name.
       const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
       const config = AppConfigSchema.parse(parse(raw));
-      expect(config.defaultProfileId).toBe('default');
+      expect(config.default).toBe('default');
       expect(config.tailor.model).toBe('anthropic/claude-sonnet-4-6');
       expect(config.fill.model).toBe('anthropic/claude-haiku-4-5-20251001');
 
-      // profile.toml should round-trip through UserProfileSchema with the entered values.
-      const profileRaw = await fs.readFile(
-        path.join(dir, 'profiles', 'default', 'profile.toml'), 'utf-8'
-      );
-      const profile = UserProfileSchema.parse(parse(profileRaw));
-      expect(profile.name).toBe('Alex Rivera');
-      expect(profile.email).toBe('alex@example.com');
-      expect(profile.phone).toBe('+1 555 000 0000');
-      expect(profile.immigrationStatus).toBe('no limit');
-      expect(profile.willingToRelocate).toBe('no');
-      expect(profile.targetRoles).toEqual(['Software Engineer']);
-      expect(profile.targetLocations).toEqual(['Remote']);
-      // Empty URL inputs should be stored as null, not empty string.
-      expect(profile.firstUrl).toBeNull();
-      expect(profile.secondUrl).toBeNull();
-      expect(profile.thirdUrl).toBeNull();
+      // The three profile MD templates each get written.
+      const profileDir = path.join(dir, 'profiles', 'default');
+      const profileMd = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
+      expect(profileMd).toContain('# Identity');
+      expect(profileMd).toContain('# Job Preferences');
+      expect(profileMd).toContain('# Demographics');
 
-      // resume_pool.md should exist as a starter template.
-      const poolExists = await fs.access(
-        path.join(dir, 'profiles', 'default', 'resume_pool.md')
-      ).then(() => true).catch(() => false);
-      expect(poolExists).toBe(true);
+      const standardQuestions = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
+      expect(standardQuestions).toContain('# Short Answers');
+      expect(standardQuestions).toContain('# Documents');
+
+      const resumePool = await fs.readFile(path.join(profileDir, 'resume_pool.md'), 'utf-8');
+      expect(resumePool).toContain('# Resume Pool');
+
+      // attachments/ exists and contains the explanatory README.
+      const attachmentsReadme = await fs.readFile(
+        path.join(profileDir, 'attachments', 'README.md'), 'utf-8',
+      );
+      expect(attachmentsReadme).toContain('attachments/');
 
       // .gitignore should exclude both data/ and profiles/ to protect PII.
       const gitignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf-8');
@@ -126,29 +102,34 @@ describe('init()', () => {
       const agentsMd = await fs.readFile(path.join(dir, 'AGENTS.md'), 'utf-8');
       expect(claudeMd).toContain('wolf workspace');
       expect(agentsMd).toBe(claudeMd);
+
+      // Crucially: no data prompts (input/select) ran. Profile data lives in
+      // the user-edited MD; init only places skeletons.
+      expect(input).not.toHaveBeenCalled();
+      expect(select).not.toHaveBeenCalled();
     });
   });
 
-  // Idempotent re-run: profile.toml and resume_pool.md that already exist must not be overwritten.
-  it('does not overwrite profile.toml or resume_pool.md on re-run', async () => {
+  // Idempotent re-run: existing profile MDs must not be overwritten.
+  it('does not overwrite profile MDs on re-run', async () => {
     const dir = makeTempDir();
     await fs.mkdir(dir, { recursive: true });
 
     // Pre-create profile files with known sentinel content before running init.
     const profileDir = path.join(dir, 'profiles', 'default');
     await fs.mkdir(profileDir, { recursive: true });
-    await fs.writeFile(path.join(profileDir, 'profile.toml'), 'id = "existing"', 'utf-8');
+    await fs.writeFile(path.join(profileDir, 'profile.md'), '# already-edited', 'utf-8');
     await fs.writeFile(path.join(profileDir, 'resume_pool.md'), '# existing', 'utf-8');
-
-    // wolf.toml is absent so init proceeds past the overwrite check without asking.
-    setupDefaultMocks();
+    await fs.writeFile(path.join(profileDir, 'standard_questions.md'), '# my answers', 'utf-8');
 
     await runInitIn(dir, async () => {
       // Profile files should retain their original content — init must skip writing them.
-      const profileContent = await fs.readFile(path.join(profileDir, 'profile.toml'), 'utf-8');
-      expect(profileContent).toBe('id = "existing"');
+      const profileContent = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
+      expect(profileContent).toBe('# already-edited');
       const poolContent = await fs.readFile(path.join(profileDir, 'resume_pool.md'), 'utf-8');
       expect(poolContent).toBe('# existing');
+      const sqContent = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
+      expect(sqContent).toBe('# my answers');
     });
   });
 
@@ -158,7 +139,7 @@ describe('init()', () => {
     await fs.mkdir(dir, { recursive: true });
 
     // Pre-create a wolf.toml to trigger the overwrite prompt.
-    await fs.writeFile(path.join(dir, 'wolf.toml'), 'defaultProfileId = "old"', 'utf-8');
+    await fs.writeFile(path.join(dir, 'wolf.toml'), 'default = "old"', 'utf-8');
 
     // Mock: confirm is called for "Overwrite existing config?" — user says no.
     vi.mocked(confirm).mockResolvedValueOnce(false);
@@ -166,7 +147,7 @@ describe('init()', () => {
     await runInitIn(dir, async () => {
       // wolf.toml should remain unchanged after the cancelled init.
       const remaining = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
-      expect(remaining).toBe('defaultProfileId = "old"');
+      expect(remaining).toBe('default = "old"');
 
       // No profile directory should have been created.
       const profileDirExists = await fs.access(path.join(dir, 'profiles')).then(() => true).catch(() => false);
@@ -175,8 +156,8 @@ describe('init()', () => {
   });
 
   // Non-interactive init is the acceptance-test bootstrap path. It must not
-  // call any prompt, and it must create schema-valid default files.
-  it('creates an empty workspace without prompts when --empty is set', async () => {
+  // call any prompt, and it must produce the same files as the interactive path.
+  it('creates a workspace without prompts when --empty is set', async () => {
     const dir = makeTempDir();
     await fs.mkdir(dir, { recursive: true });
     const originalCwd = process.cwd();
@@ -187,26 +168,24 @@ describe('init()', () => {
     try {
       const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
       const config = AppConfigSchema.parse(parse(raw));
-      expect(config.defaultProfileId).toBe('default');
+      expect(config.default).toBe('default');
       expect(config.instance?.mode).toBeUndefined();
 
-      const profileRaw = await fs.readFile(
-        path.join(dir, 'profiles', 'default', 'profile.toml'),
-        'utf-8',
-      );
-      const profile = UserProfileSchema.parse(parse(profileRaw));
-      expect(profile.id).toBe('default');
-      expect(profile.name).toBe('');
-      expect(profile.email).toBe('');
-      expect(profile.targetRoles).toEqual([]);
-      expect(profile.targetLocations).toEqual([]);
+      // The same template files appear under --empty.
+      const profileDir = path.join(dir, 'profiles', 'default');
+      const profileMd = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
+      expect(profileMd).toContain('# Identity');
 
-      const resumePool = await fs.readFile(
-        path.join(dir, 'profiles', 'default', 'resume_pool.md'),
-        'utf-8',
-      );
-      expect(resumePool).toBe('');
+      const standardQuestions = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
+      expect(standardQuestions).toContain('# Short Answers');
+
+      const resumePool = await fs.readFile(path.join(profileDir, 'resume_pool.md'), 'utf-8');
+      expect(resumePool).toContain('# Resume Pool');
+
       await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(profileDir, 'attachments'))).resolves.toBeUndefined();
+
+      // Crucially: no prompt of any kind in --empty mode.
       expect(input).not.toHaveBeenCalled();
       expect(confirm).not.toHaveBeenCalled();
       expect(select).not.toHaveBeenCalled();

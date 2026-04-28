@@ -3,7 +3,7 @@ import pino from 'pino';
 import { sink } from 'pino-test';
 import { ResumeCoverLetterServiceImpl } from '../impl/resumeCoverLetterServiceImpl.js';
 import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
-import type { UserProfile } from '../../types/index.js';
+import type { Profile } from '../../types/index.js';
 import type { AiConfig } from '../../types/index.js';
 
 // Mock aiClient so tests never make real API calls.
@@ -13,20 +13,26 @@ vi.mock('../../utils/ai/index.js', () => ({
 
 import { aiClient } from '../../utils/ai/index.js';
 
-const PROFILE: UserProfile = {
-  id: 'default',
-  label: 'Default',
-  name: 'Alex Rivera',
-  email: 'alex@example.com',
-  phone: '+1 555 000 0000',
-  firstUrl: 'linkedin.com/in/alex',
-  secondUrl: 'github.com/alex',
-  thirdUrl: null,
-  immigrationStatus: 'no limit',
-  willingToRelocate: 'no',
-  targetRoles: ['Software Engineer'],
-  targetLocations: ['Remote'],
-  scoringNotes: null,
+// Profile is now `{ name, md }`. The service includes profile.md verbatim
+// in the prompt; the assertions below check that the candidate's name
+// appears in that markdown without depending on field-level access.
+const PROFILE: Profile = {
+  name: 'default',
+  md: `# default
+
+## Identity
+
+### Legal first name
+Alex
+
+### Legal last name
+Rivera
+
+# Contact
+
+### Email
+alex@example.com
+`,
 };
 
 const RESUME_POOL = `# EXPERIENCE
@@ -97,7 +103,10 @@ describe('ResumeCoverLetterServiceImpl', () => {
     expect(result).toContain('Dear Hiring Manager');
     const [prompt, systemPrompt] = vi.mocked(aiClient).mock.calls[0];
     expect(prompt).toContain(JD_TEXT);
-    expect(prompt).toContain(PROFILE.name);
+    // The full profile.md is included verbatim — checking for both name halves
+    // proves the candidate identity reaches the AI.
+    expect(prompt).toContain('Alex');
+    expect(prompt).toContain('Rivera');
     expect(prompt).toContain(BRIEF);
     expect(prompt).toContain(TONE);
     expect(systemPrompt).toContain('cover letter');
@@ -140,11 +149,11 @@ describe('ResumeCoverLetterServiceImpl', () => {
     expect(events).toHaveLength(2);
     expect(events[0].msg).toBe('ai.resume.start');
     expect(events[0].level).toBe(20);
-    expect(events[0].profileId).toBe(PROFILE.id);
+    expect(events[0].profileName).toBe(PROFILE.name);
 
     expect(events[1].msg).toBe('ai.resume.done');
     expect(events[1].level).toBe(30);
-    expect(events[1].profileId).toBe(PROFILE.id);
+    expect(events[1].profileName).toBe(PROFILE.name);
     // The done event must carry the cost signal (durationMs is a number).
     expect(typeof events[1].durationMs).toBe('number');
   });
@@ -194,6 +203,6 @@ Go, TypeScript`;
     const errEvent = events.find((e) => e.msg === 'ai.resume.empty_response');
     expect(errEvent).toBeDefined();
     expect(errEvent?.level).toBe(50); // pino numeric for `error`
-    expect(errEvent?.profileId).toBe(PROFILE.id);
+    expect(errEvent?.profileName).toBe(PROFILE.name);
   });
 });

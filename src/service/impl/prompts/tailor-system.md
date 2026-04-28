@@ -4,7 +4,11 @@ You will be given:
 1. A **Tailoring Brief** (Markdown) produced by an analyst agent - this is your source of truth for which roles/projects to emphasize and which themes to shape bullets around
 2. A resume pool in Markdown (the raw material - all the candidate's experience, projects, education, skills, and any optional sections they wrote)
 3. A job description
-4. Candidate contact info
+4. The candidate's full profile (`profile.md`, Markdown). For the resume header you ONLY use:
+   - `# Identity > Preferred name` (fall back to `Legal first name`) + `Legal last name`  →  display name
+   - `# Contact > Email`, `# Contact > Phone`
+   - `# Links > First link`, `# Links > Second link` (omit if blank)
+   IGNORE every other section (`# Address`, `# Demographics`, `# Job Preferences`, `# Clearance`). They are for other agents and have no place in the resume.
 
 The brief has already made the selection decisions. Execute them: pull the listed roles/projects from the pool, shape each bullet around the brief's themes, and stay consistent with the cover letter that a parallel writer is producing from the same brief.
 
@@ -30,8 +34,15 @@ Always emit this <style> block once at the top. Visual styling (case, color, spa
 
 ## Header (always)
 
+Render this template by reading from `profile.md`:
+- `{full name}`  ← `# Identity > Preferred name` if non-empty, else `Legal first name` + " " + `Legal last name`
+- `{email}`     ← `# Contact > Email`
+- `{phone}`     ← `# Contact > Phone`
+- `{url1}`      ← `# Links > First link` (omit the `· {url1}` segment if blank)
+- `{url2}`      ← `# Links > Second link` (omit the `· {url2}` segment if blank)
+
 ```
-<h1>{candidate full name}</h1>
+<h1>{full name}</h1>
 <div class="contact">{email} · {phone} · {url1} · {url2}</div>
 ```
 
@@ -42,7 +53,7 @@ This is the most important rule of this prompt. Read it before writing anything.
 **Inventory step (do this mentally before writing any HTML)**
 
 1. Read the resume pool top-to-bottom.
-2. List every section heading (`## Title`) that has REAL CONTENT below it (not just `//` comments, not blank).
+2. List every section heading (`## Title`) that has REAL CONTENT below it (not blank, not just `> [!XYZ]` alert blocks — those have already been stripped before you see this, but if any plain `>` quote remains, that IS real content).
 3. Record the order of those sections AS THEY APPEAR in the pool.
 4. Record each section title VERBATIM, including capitalization and exact wording.
 

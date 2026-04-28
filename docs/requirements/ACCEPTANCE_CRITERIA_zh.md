@@ -32,7 +32,7 @@
 **AC-01-5 — 可脚本化的空初始化**
 - Given 自动化 agent 需要一个非交互式 workspace
 - When 它运行 `wolf init --empty`
-- Then wolf 写入 schema-valid 的 `wolf.toml`、`profiles/default/profile.toml`、空的 `profiles/default/resume_pool.md` 和 `data/`，且不触发任何 prompt
+- Then wolf 写入 schema-valid 的 `wolf.toml`、三份模板 MD（`profiles/default/profile.md`、`profiles/default/resume_pool.md`、`profiles/default/standard_questions.md`）、空的 `profiles/default/attachments/` 目录，以及 `data/`，且不触发任何 prompt
 
 **AC-01-6 — Dev 初始化隔离**
 - Given dev build 以 `npm run wolf -- init --dev --empty` 调用

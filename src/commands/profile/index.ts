@@ -1,124 +1,44 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { parse, stringify } from 'smol-toml';
 import { loadConfig, saveConfig, backupConfig } from '../../utils/config.js';
-import { getByPath, setByPath, coerceToShape } from '../../utils/dotPath.js';
 import { resolveWorkspaceDir } from '../../utils/instance.js';
-import { UserProfileSchema } from '../../utils/schemas.js';
-import type { UserProfile } from '../../types/index.js';
 
-// `id` is the profile's directory name under profiles/<id>/. Changing it
-// would orphan the folder, so we reject set operations on it.
-const READ_ONLY_KEYS = new Set(['id']);
+// Files that compose a profile directory. `wolf profile create` clones each one
+// from the source profile (any missing one is silently skipped).
+const PROFILE_FILES = [
+  'profile.md',
+  'resume_pool.md',
+  'standard_questions.md',
+] as const;
 
-function profileTomlPath(profileId: string): string {
-  return path.join(resolveWorkspaceDir(), 'profiles', profileId, 'profile.toml');
-}
+const ATTACHMENTS_DIR = 'attachments';
 
-async function readProfile(profileId: string): Promise<{ profile: UserProfile; tomlPath: string }> {
-  const tomlPath = profileTomlPath(profileId);
-  let raw: string;
-  try {
-    raw = await fs.readFile(tomlPath, 'utf-8');
-  } catch {
-    throw new Error(`Profile '${profileId}' not found at ${tomlPath}`);
-  }
-  return { profile: UserProfileSchema.parse(parse(raw)), tomlPath };
-}
-
-// Falls back to defaultProfileId from wolf.toml when no override is passed.
-async function resolveProfileId(override?: string): Promise<string> {
-  if (override) return override;
-  const config = await loadConfig();
-  return config.defaultProfileId;
-}
-
-/**
- * Prints the value at a dot-path key in profiles/<id>/profile.toml.
- * Scalars print raw (pipe-friendly), null as empty line, everything else JSON.
- */
-export async function profileGet(key: string, profileId?: string): Promise<void> {
-  const id = await resolveProfileId(profileId);
-  const { profile } = await readProfile(id);
-  const value = getByPath(profile, key);
-  if (value === undefined) {
-    throw new Error(`Key not found in profile '${id}': ${key}`);
-  }
-  printValue(value);
-}
-
-/**
- * Writes `valueStr` at `key` in the resolved profile's profile.toml.
- * Coerces to the field's current runtime type and re-validates via Zod.
- *
- * @throws If `key` is read-only, coercion fails, or the result violates the schema.
- */
-export async function profileSet(key: string, valueStr: string, profileId?: string): Promise<void> {
-  if (READ_ONLY_KEYS.has(key)) {
-    throw new Error(`Cannot set read-only field: ${key}`);
-  }
-  const id = await resolveProfileId(profileId);
-  const { profile, tomlPath } = await readProfile(id);
-  const coerced = coerceToShape(valueStr, getByPath(profile, key));
-  const updated = setByPath(profile, key, coerced);
-  const validated = UserProfileSchema.parse(updated);
-  // init writes null optional fields as "" so they stay visible in the TOML;
-  // preserve that convention on rewrites.
-  const serializable = {
-    ...validated,
-    firstUrl:     validated.firstUrl     ?? '',
-    secondUrl:    validated.secondUrl    ?? '',
-    thirdUrl:     validated.thirdUrl     ?? '',
-    scoringNotes: validated.scoringNotes ?? '',
-  };
-  await fs.writeFile(tomlPath, stringify(serializable as unknown as Record<string, unknown>), 'utf-8');
-  console.log(`Set ${key} = ${formatValue(coerced)}`);
-}
-
-function printValue(v: unknown): void {
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
-    console.log(v);
-  } else if (v === null) {
-    console.log('');
-  } else {
-    console.log(JSON.stringify(v));
-  }
-}
-
-function formatValue(v: unknown): string {
-  return typeof v === 'string' ? v : JSON.stringify(v);
-}
-
-// Filesystem-safe IDs: letters, digits, hyphen, underscore. Must start with letter/digit
-// so shells don't mistake leading hyphen for a flag.
-function assertValidProfileId(id: string): void {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(id)) {
+// Filesystem-safe names: letters, digits, hyphen, underscore. Must start with
+// letter/digit so shells don't mistake leading hyphen for a flag.
+function assertValidProfileName(name: string): void {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name)) {
     throw new Error(
-      `Invalid profile id "${id}". Use letters, digits, hyphens, underscores; must start with a letter or digit.`,
+      `Invalid profile name "${name}". Use letters, digits, hyphens, underscores; must start with a letter or digit.`,
     );
   }
 }
 
-// Write a UserProfile to disk preserving the init-time convention of writing
-// null optional fields as empty strings so they remain visible in profile.toml.
-async function writeProfile(profileDir: string, profile: UserProfile): Promise<void> {
-  const serializable = {
-    ...profile,
-    firstUrl:     profile.firstUrl     ?? '',
-    secondUrl:    profile.secondUrl    ?? '',
-    thirdUrl:     profile.thirdUrl     ?? '',
-    scoringNotes: profile.scoringNotes ?? '',
-  };
-  await fs.writeFile(
-    path.join(profileDir, 'profile.toml'),
-    stringify(serializable as unknown as Record<string, unknown>),
-    'utf-8',
-  );
+function profileDir(name: string): string {
+  return path.join(resolveWorkspaceDir(), 'profiles', name);
+}
+
+async function dirExists(dir: string): Promise<boolean> {
+  try {
+    const stat = await fs.stat(dir);
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Lists every profile on disk, marking the default with `*`.
- * Unreadable profile.toml files show as "(unreadable)" instead of crashing the whole list.
+ * Lists every profile directory under profiles/, marking the default with `*`.
+ * Pure directory-level operation — does not parse any markdown.
  */
 export async function profileList(): Promise<void> {
   const profilesDir = path.join(resolveWorkspaceDir(), 'profiles');
@@ -130,118 +50,118 @@ export async function profileList(): Promise<void> {
     return;
   }
 
-  const defaultId = await loadConfig()
-    .then(c => c.defaultProfileId)
+  // The default name comes from wolf.toml; missing config means no marker.
+  const defaultName = await loadConfig()
+    .then(c => c.default)
     .catch(() => undefined);
 
-  if (entries.length === 0) {
-    console.log('No profiles. Run `wolf init` or `wolf profile create <id>`.');
+  // Filter to actual directories — skip stray files like .DS_Store.
+  const dirs: string[] = [];
+  for (const entry of entries) {
+    if (await dirExists(path.join(profilesDir, entry))) dirs.push(entry);
+  }
+
+  if (dirs.length === 0) {
+    console.log('No profiles. Run `wolf init` or `wolf profile create <name>`.');
     return;
   }
 
-  for (const id of entries.sort()) {
-    const tomlPath = path.join(profilesDir, id, 'profile.toml');
-    let name = '(unreadable)';
-    try {
-      const raw = await fs.readFile(tomlPath, 'utf-8');
-      name = UserProfileSchema.parse(parse(raw)).name;
-    } catch { /* leave name as "(unreadable)" */ }
-    const marker = id === defaultId ? '*' : ' ';
-    console.log(`${marker} ${id.padEnd(20)} ${name}`);
+  for (const name of dirs.sort()) {
+    const marker = name === defaultName ? '*' : ' ';
+    console.log(`${marker} ${name}`);
   }
 }
 
 /**
- * Creates a new profile under profiles/<id>/, cloning from another profile.
- * The source defaults to the current default profile so users rarely need --from.
- * The clone's `id` field is updated to match its new directory name.
+ * Creates a new profile under profiles/<name>/, cloning all four MD files +
+ * the attachments/ folder from the source profile (the current default unless
+ * --from is given).
  *
- * @throws If `id` is invalid, the target already exists, or the source profile is missing.
+ * @throws If `name` is invalid, the target already exists, or the source profile is missing.
  */
-export async function profileCreate(id: string, opts: { from?: string } = {}): Promise<void> {
-  assertValidProfileId(id);
+export async function profileCreate(name: string, opts: { from?: string } = {}): Promise<void> {
+  assertValidProfileName(name);
 
-  const workspaceDir = resolveWorkspaceDir();
-  const targetDir = path.join(workspaceDir, 'profiles', id);
-  const targetExists = await fs.access(targetDir).then(() => true).catch(() => false);
-  if (targetExists) {
-    throw new Error(`Profile "${id}" already exists at ${targetDir}`);
+  const targetDir = profileDir(name);
+  if (await dirExists(targetDir)) {
+    throw new Error(`Profile "${name}" already exists at ${targetDir}`);
   }
 
-  const srcId = opts.from ?? (await loadConfig()
-    .then(c => c.defaultProfileId)
+  const srcName = opts.from ?? (await loadConfig()
+    .then(c => c.default)
     .catch(() => { throw new Error('No wolf.toml yet. Run `wolf init` first.'); }));
 
-  const srcDir = path.join(workspaceDir, 'profiles', srcId);
-  const srcTomlPath = path.join(srcDir, 'profile.toml');
-  let srcRaw: string;
-  try {
-    srcRaw = await fs.readFile(srcTomlPath, 'utf-8');
-  } catch {
-    throw new Error(`Source profile "${srcId}" not found at ${srcTomlPath}`);
+  const srcDir = profileDir(srcName);
+  if (!(await dirExists(srcDir))) {
+    throw new Error(`Source profile "${srcName}" not found at ${srcDir}`);
   }
-  const srcProfile = UserProfileSchema.parse(parse(srcRaw));
-
-  // Rewrite `id` so it matches the new directory; keep everything else as a starting point.
-  const newProfile: UserProfile = { ...srcProfile, id, label: `${srcProfile.label} (copy)` };
 
   await fs.mkdir(targetDir, { recursive: true });
-  await writeProfile(targetDir, newProfile);
 
-  // Copy resume_pool.md if the source has one; it's the "big edit" most users clone for.
+  // Clone the three top-level MD files. Each is independent — missing source
+  // files just skip silently so a partial source profile still clones.
+  for (const filename of PROFILE_FILES) {
+    try {
+      await fs.copyFile(path.join(srcDir, filename), path.join(targetDir, filename));
+    } catch { /* source missing this file; skip */ }
+  }
+
+  // Clone the entire attachments/ folder if it exists. fs.cp is recursive
+  // since Node 16.7+ and handles missing source by throwing — caught below.
   try {
-    await fs.copyFile(
-      path.join(srcDir, 'resume_pool.md'),
-      path.join(targetDir, 'resume_pool.md'),
+    await fs.cp(
+      path.join(srcDir, ATTACHMENTS_DIR),
+      path.join(targetDir, ATTACHMENTS_DIR),
+      { recursive: true },
     );
-  } catch { /* source had no resume_pool.md; skip silently */ }
+  } catch { /* source had no attachments dir; skip */ }
 
-  console.log(`Created profile: ${id} (from "${srcId}")`);
+  console.log(`Created profile: ${name} (cloned from "${srcName}")`);
 }
 
 /**
- * Switches the default profile by updating `defaultProfileId` in wolf.toml.
- * Verifies the target profile directory exists first so users don't break lookups.
+ * Switches the default profile by updating `wolf.toml.default`.
+ * Verifies the target profile directory exists first — per the design,
+ * a missing default is a hard error at read time, so we refuse to set
+ * the pointer to something that won't resolve.
  */
-export async function profileUse(id: string): Promise<void> {
-  const targetDir = path.join(resolveWorkspaceDir(), 'profiles', id);
-  const exists = await fs.access(targetDir).then(() => true).catch(() => false);
-  if (!exists) {
-    throw new Error(`Profile "${id}" not found at ${targetDir}`);
+export async function profileUse(name: string): Promise<void> {
+  const targetDir = profileDir(name);
+  if (!(await dirExists(targetDir))) {
+    throw new Error(`Profile "${name}" not found at ${targetDir}`);
   }
 
   const config = await loadConfig();
-  const updated = { ...config, defaultProfileId: id };
+  const updated = { ...config, default: name };
   await backupConfig();
   await saveConfig(updated);
-  console.log(`Default profile set to: ${id}`);
+  console.log(`Default profile set to: ${name}`);
 }
 
 /**
  * Deletes a profile directory. Refuses to delete the current default (switch first)
  * and requires an explicit --yes to prevent accidents in scripts.
  */
-export async function profileDelete(id: string, opts: { yes?: boolean } = {}): Promise<void> {
+export async function profileDelete(name: string, opts: { yes?: boolean } = {}): Promise<void> {
   const config = await loadConfig();
-  if (id === config.defaultProfileId) {
+  if (name === config.default) {
     throw new Error(
-      `Cannot delete the default profile "${id}". Switch defaults first: wolf profile use <other-id>`,
+      `Cannot delete the default profile "${name}". Switch defaults first: wolf profile use <other-name>`,
     );
   }
 
-  const targetDir = path.join(resolveWorkspaceDir(), 'profiles', id);
-  const exists = await fs.access(targetDir).then(() => true).catch(() => false);
-  if (!exists) {
-    throw new Error(`Profile "${id}" not found at ${targetDir}`);
+  const targetDir = profileDir(name);
+  if (!(await dirExists(targetDir))) {
+    throw new Error(`Profile "${name}" not found at ${targetDir}`);
   }
 
   if (!opts.yes) {
     throw new Error(
       `Refusing to delete ${targetDir} without --yes flag. ` +
-      `Run: wolf profile delete ${id} --yes`,
+      `Run: wolf profile delete ${name} --yes`,
     );
   }
 
   await fs.rm(targetDir, { recursive: true, force: true });
-  console.log(`Deleted profile: ${id}`);
+  console.log(`Deleted profile: ${name}`);
 }

@@ -1,5 +1,5 @@
 import type { Job } from '../types/index.js';
-import type { UserProfile } from '../types/index.js';
+import type { Profile } from '../types/index.js';
 
 export type BatchType = 'score' | 'tailor';
 export type BatchAiProvider = 'anthropic' | 'openai';
@@ -7,7 +7,7 @@ export type BatchAiProvider = 'anthropic' | 'openai';
 export interface BatchSubmitOptions {
   type: BatchType;
   aiProvider: BatchAiProvider;
-  profile: UserProfile;
+  profile: Profile;
   profileId: string;
 }
 

@@ -7,7 +7,7 @@ import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterSe
 import type { TailoringBriefService } from '../../service/tailoringBriefService.js';
 import type { AiConfig } from '../../types/index.js';
 import type { Job } from '../../types/job.js';
-import type { UserProfile } from '../../types/index.js';
+import type { Profile } from '../../types/index.js';
 
 // Mock fs/promises so no real files are written during tests.
 // readFile returns path-dependent content so hint.md vs brief.md lookups stay distinct.
@@ -15,7 +15,9 @@ vi.mock('node:fs/promises', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
   writeFile: vi.fn().mockResolvedValue(undefined),
   readFile: vi.fn().mockImplementation((p: string) => {
-    if (p.endsWith('hint.md')) return Promise.resolve('// comment-only template\n');
+    // Default hint.md content: only the GitHub-Alert header block, which
+    // stripComments fully removes — so callers see the file as effectively empty.
+    if (p.endsWith('hint.md')) return Promise.resolve('> [!TIP]\n> alert-only template\n');
     return Promise.resolve('# mock brief');
   }),
   access: vi.fn().mockRejectedValue(new Error('ENOENT')),
@@ -46,12 +48,50 @@ const FAKE_JOB: Job = {
   updatedAt: '2026-04-12T00:00:00.000Z',
 };
 
-const FAKE_PROFILE: UserProfile = {
-  id: 'default', label: 'Default', name: 'Alex', email: 'alex@example.com',
-  phone: '+1 555 000 0000', firstUrl: null, secondUrl: null, thirdUrl: null,
-  immigrationStatus: 'no limit', willingToRelocate: 'no',
-  targetRoles: ['SWE'], targetLocations: ['Remote'], scoringNotes: null,
+// Profile is now `{ name, md }` — name is the directory name, md is the
+// raw profile.md content. The md fixture must satisfy assertReadyForTailor's
+// REQUIRED-fields check: # Identity > Legal first/last name + # Contact >
+// Email/Phone all present with non-empty bodies.
+const FAKE_PROFILE: Profile = {
+  name: 'default',
+  md: [
+    '# default',
+    '',
+    '# Identity',
+    '',
+    '## Legal first name',
+    'Alex',
+    '',
+    '## Legal last name',
+    'Rivera',
+    '',
+    '# Contact',
+    '',
+    '## Email',
+    'alex@example.test',
+    '',
+    '## Phone',
+    '+1 555 010 0100',
+    '',
+  ].join('\n'),
 };
+
+// Resume pool fixture must clear MIN_POOL_CONTENT_LINES (5 substantive
+// non-heading lines). Six bullets / dates clear it cleanly.
+const FAKE_RESUME_POOL = [
+  '# Resume Pool',
+  '',
+  '## Experience',
+  '### SWE — Acme',
+  '*2022 - 2025*',
+  '- Built distributed systems handling 10k req/s.',
+  '- Cut p99 latency 40% via Postgres tuning.',
+  '- Owned the on-call rotation for the ingestion path.',
+  '',
+  '## Skills',
+  'TypeScript, Go, PostgreSQL',
+  '',
+].join('\n');
 
 const DEFAULT_AI: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
 const FAKE_BRIEF = '# Tailoring Brief\n## Selected Roles\nSWE at Example Corp';
@@ -68,10 +108,19 @@ function makeJobRepo(job: Job | null = FAKE_JOB): JobRepository {
   } as unknown as JobRepository;
 }
 
-function makeProfileRepo(): ProfileRepository {
+function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string } = {}): ProfileRepository {
+  // Only the methods this service uses are stubbed; the rest stay as bare vi.fn()
+  // so accidental calls to unmocked methods surface as test failures.
+  const profile = overrides.profile ?? FAKE_PROFILE;
+  const pool = overrides.resumePool ?? FAKE_RESUME_POOL;
   return {
-    get: vi.fn(), getDefault: vi.fn().mockResolvedValue(FAKE_PROFILE),
-    list: vi.fn(), getResumePool: vi.fn().mockResolvedValue('# EXPERIENCE\nBuilt things.'),
+    get: vi.fn(),
+    getDefault: vi.fn().mockResolvedValue(profile),
+    list: vi.fn(),
+    getProfileMd: vi.fn().mockResolvedValue(profile.md),
+    getResumePool: vi.fn().mockResolvedValue(pool),
+    getStandardQuestions: vi.fn(),
+    getAttachmentsList: vi.fn().mockResolvedValue([]),
   } as unknown as ProfileRepository;
 }
 
@@ -97,12 +146,13 @@ function makeBriefSvc(): TailoringBriefService {
 
 function makeSvc(overrides: {
   jobRepo?: JobRepository;
+  profileRepo?: ProfileRepository;
   rewriteSvc?: ResumeCoverLetterService;
   briefSvc?: TailoringBriefService;
 } = {}) {
   return new TailorApplicationServiceImpl(
     overrides.jobRepo ?? makeJobRepo(),
-    makeProfileRepo(),
+    overrides.profileRepo ?? makeProfileRepo(),
     makeRenderSvc(),
     overrides.rewriteSvc ?? makeRewriteSvc(),
     overrides.briefSvc ?? makeBriefSvc(),
@@ -224,9 +274,10 @@ describe('TailorApplicationService', () => {
     expect(rewriteSvc.tailorResumeToHtml).not.toHaveBeenCalled();
   });
 
-  // Hint: when no hint parameter is given and hint.md has only comment lines,
-  // the analyst is called with hint=undefined (stripComments leaves it empty).
-  it('passes hint=undefined when hint.md only contains // comments', async () => {
+  // Hint: when no hint parameter is given and hint.md has only the alert
+  // header (no real user content), the analyst is called with hint=undefined
+  // (stripComments removes the alert block, leaving the file effectively empty).
+  it('passes hint=undefined when hint.md contains only the alert header', async () => {
     const briefSvc = makeBriefSvc();
     const svc = makeSvc({ briefSvc });
     await svc.analyze({ jobId: 'job-1' });
@@ -234,14 +285,15 @@ describe('TailorApplicationService', () => {
     expect(hintArg).toBeUndefined();
   });
 
-  // Hint: active hint content (after stripping //) is forwarded to the analyst.
-  it('forwards active hint text to the analyst when hint.md has non-comment content', async () => {
+  // Hint: active hint content (after stripping the > [!TIP] header) is
+  // forwarded to the analyst.
+  it('forwards active hint text to the analyst when hint.md has non-alert content', async () => {
     const { readFile } = await import('node:fs/promises');
     // Path-aware override: hint.md returns real content; brief.md stays as before.
     // Using `as never` keeps vitest's narrow signature happy without widening the mock.
     vi.mocked(readFile).mockImplementation(((p: string) =>
       p.endsWith('hint.md')
-        ? Promise.resolve('// header\nfocus on distributed systems\n')
+        ? Promise.resolve('> [!TIP]\n> header alert\n\nfocus on distributed systems\n')
         : Promise.resolve('# mock brief')
     ) as never);
     const briefSvc = makeBriefSvc();
@@ -278,12 +330,102 @@ describe('TailorApplicationService', () => {
     expect(hintWrite).toBeDefined();
     const body = hintWrite![1] as string;
     expect(body).toContain('hint.md - Pre-analysis guidance');
-    // Strip the header: everything after the last // line should be blank.
-    const active = body
-      .split('\n')
-      .filter(l => !l.trimStart().startsWith('//'))
-      .join('\n')
-      .trim();
-    expect(active).toBe('');
+    // After stripping the GitHub-Alert header block, what reaches the AI
+    // should be effectively empty (modulo whitespace).
+    const { stripComments } = await import('../../utils/stripComments.js');
+    expect(stripComments(body).trim()).toBe('');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Pre-flight validation: refuse to run tailor on a placeholder profile
+  // (missing legal name / email / phone) or on a near-empty resume pool.
+  // The AI would otherwise faithfully render "Job Title — Company Name" /
+  // empty <h1></h1> headers; far better to fail at the boundary with a clear
+  // message that names the file the user must edit.
+  // ---------------------------------------------------------------------------
+
+  it('refuses tailor when profile.md is missing required fields (Legal first name)', async () => {
+    const profileMissingFirstName: Profile = {
+      name: 'default',
+      // Identity has only Last name; First name H2 absent → assertReady fails.
+      md: '# Identity\n\n## Legal last name\nRivera\n\n# Contact\n\n## Email\nx@x.test\n\n## Phone\n+1\n',
+    };
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: profileMissingFirstName }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
+  });
+
+  // Regression: an H2 whose body is only a `> [!IMPORTANT]` callout (the
+  // un-edited template state right after `wolf init`) must NOT be treated
+  // as filled. assertReadyForTailor strips alert blocks before extracting,
+  // matching what the AI actually sees.
+  it('refuses tailor when profile.md required field body is only a > [!IMPORTANT] callout (fresh init state)', async () => {
+    const calloutOnlyProfile: Profile = {
+      name: 'default',
+      md: [
+        '## Legal first name',
+        '> [!IMPORTANT]',
+        '> you must answer; AI cannot guess this.',
+        '## Legal last name',
+        'Rivera',
+        '## Email',
+        'r@x.test',
+        '## Phone',
+        '+1 555 0100',
+      ].join('\n'),
+    };
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: calloutOnlyProfile }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
+  });
+
+  it('refuses tailor when profile.md required field is blank-bodied', async () => {
+    const profileBlankEmail: Profile = {
+      name: 'default',
+      md: '## Legal first name\nAlex\n## Legal last name\nRivera\n## Email\n\n## Phone\n+1\n',
+    };
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: profileBlankEmail }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Email/);
+  });
+
+  it('refuses tailor when resume_pool.md has only placeholder examples (post-strip empty)', async () => {
+    // Mimics what `wolf init --empty` produces now: every example block lives
+    // inside a > [!TIP] alert, so stripComments removes them and only the H2
+    // headings remain. No bullets, no real content, nothing to tailor from.
+    const placeholderPool = [
+      '# Resume Pool',
+      '## Experience',
+      '> [!TIP]',
+      '> EXAMPLE',
+      '> ### Job Title — Company Name',
+      '> *Month Year - Month Year*',
+      '> - Bullet describing impact',
+      '## Skills',
+      '> [!TIP]',
+      '> EXAMPLE',
+      '> TypeScript, Python, SQL',
+    ].join('\n');
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ resumePool: placeholderPool }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/empty or only has placeholder/);
+  });
+
+  it('does NOT refuse when the pool is sparse but real (≥ 5 substantive lines)', async () => {
+    // Above the threshold — proves we don't over-reject realistic NG/intern pools
+    // (one role with a couple bullets + a degree + a skills line is enough).
+    const sparseRealPool = [
+      '# Resume Pool',
+      '## Experience',
+      '### Software Engineer Intern — Acme',
+      '*Summer 2024*',
+      '- Built ETL pipelines processing 10M rows/day.',
+      '- Wrote integration tests; raised coverage 40%→78%.',
+      '## Education',
+      '### B.S. CS — State University',
+      '*2021 - 2025*',
+      '## Skills',
+      'Python, SQL, Git, Linux, Postgres',
+    ].join('\n');
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ resumePool: sparseRealPool }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).resolves.toMatchObject({
+      tailoredPdfPath: expect.stringContaining('resume.pdf'),
+    });
   });
 });

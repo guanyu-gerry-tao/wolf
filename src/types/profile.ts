@@ -1,27 +1,24 @@
 import type { ProviderId } from "../utils/ai/registry.js";
-import { Status } from "./sponsorship.js";
 
 /**
- * A complete identity used when applying.
- * Wolf supports multiple profiles to handle ATS workarounds, different
- * immigration statuses, or name variants.
+ * A profile = one identity directory under `profiles/<name>/`.
  *
- * Each profile lives in profiles/<id>/profile.toml inside the workspace.
+ * The directory name IS the identifier — it's used as the foreign key from
+ * `jobs.applied_profile_id` and as the value of `wolf.toml.default`. There is
+ * no separate `id` field stored anywhere.
+ *
+ * `md` is the full text of `profiles/<name>/profile.md` — the single source of
+ * identity facts (name, contact, address, demographics, work auth, clearance).
+ * AI agents (tailor / fill / outreach) consume it verbatim as prompt context.
+ *
+ * Two sibling files live next to `profile.md` in the same directory:
+ *   - `resume_pool.md`        — full experience bank (read by tailor)
+ *   - `standard_questions.md` — application-only Q&A and document pointers
+ * Plus an `attachments/` folder holding files referenced by standard_questions.md.
  */
-export interface UserProfile {
-  id: string; // e.g. "default", "gc-persona"
-  label: string; // human-readable name of the profile, e.g. "Default", "Green Card"
-  name: string; // full name as on resume;
-  email: string;
-  phone: string; // required — most forms demand a phone number
-  firstUrl: string | null; // e.g. LinkedIn
-  secondUrl: string | null; // e.g. GitHub
-  thirdUrl: string | null; // e.g. personal website
-  immigrationStatus: Status; // required — affects scoring; e.g. "F-1 OPT", "US citizen"
-  willingToRelocate: string;  // e.g. "yes" / "no" / "domestic only" / "open to relocation"
-  targetRoles: string[]; // e.g. ["Software Engineer", "Full Stack Developer"]
-  targetLocations: string[]; // e.g. ["NYC", "SF", "Remote"]
-  scoringNotes: string | null; // free-form notes to AI, e.g. "prefer backend, open to hybrid"
+export interface Profile {
+  name: string;  // directory name, e.g. "default" or "gc-persona"
+  md: string;    // full text of profile.md
 }
 
 /**
@@ -33,14 +30,14 @@ export type ModelRef = string;
 
 /**
  * Top-level config loaded from wolf.toml on startup.
- * Profiles are stored as separate files under profiles/<id>/ — not embedded here.
+ * Profiles are stored as separate directories under `profiles/<name>/` — not embedded here.
  * default* fields are baselines — individual command runs can override them via options.
  */
 export interface AppConfig {
   instance?: {
     mode: 'stable' | 'dev';
   };
-  defaultProfileId: string;            // which profile folder to use by default
+  default: string;                     // which profile folder is the default (must exist on disk)
   hunt: {
     minScore: number;                  // default 0.5
     maxResults: number;                // default 50

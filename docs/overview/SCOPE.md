@@ -62,7 +62,7 @@ Collect and store personal information needed for applications and outreach.
 - **Target roles and locations**
 - **Skills and experience summary**
 - **Contact info** (name, email, phone, LinkedIn URL)
-- Stored locally in `wolf.toml` (workspace-level) and `profile.toml` (per-profile, inside the profile folder) — never uploaded unless you initiate an API call
+- Stored locally in `wolf.toml` (workspace-level) and three Markdown files per profile — `profile.md` / `resume_pool.md` / `standard_questions.md` — plus an `attachments/` directory inside the profile folder. Never uploaded unless you initiate an API call.
 - Used by `wolf fill` (form filling), `wolf reach` (email drafting), and `wolf tailor` (resume context)
 
 ### Form Filling (`wolf fill`)

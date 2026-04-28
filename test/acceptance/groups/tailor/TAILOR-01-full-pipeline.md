@@ -42,63 +42,17 @@ Initialize the workspace:
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-Populate the default profile and resume pool with truthful fixture content:
+Drop in the shared NG SWE fixture (see `test/fixtures/wolf-profile/ng-swe/`).
+This is wolf's primary user persona — a new-grad SWE on F-1 OPT applying
+to backend-flavored roles. The fixture has a populated `profile.md`
+(REQUIRED Identity / Contact / Job Preferences fields filled, including
+F-1 + H-1B sponsorship preference) and a `resume_pool.md` dense enough
+that the renderer's underflow guard accepts the resulting single-page
+resume (2 internships + 2 projects + Education + Skills + Awards):
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set targetRoles "Backend Engineer, Data Infrastructure Engineer"
-```
-
-Edit `/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01/profiles/default/resume_pool.md`
-to contain only fixture facts. The pool must be dense enough that a tailored
-single-page resume can fill the page at default font/spacing — too-thin pools
-are correctly rejected by the renderer's underflow guard, so the fixture below
-is intentionally a realistic mid-career resume's worth of material.
-
-```md
-# Test Candidate Resume Pool
-
-## Experience
-
-### Backend Engineer - Northwind Systems
-*2022 - 2025*
-- Built Java and Scala backend services running 200+ event-processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
-- Designed internal REST APIs and on-call runbooks for distributed job processing.
-- Migrated legacy Hadoop jobs to Spark Structured Streaming with zero data loss.
-
-### Data Platform Engineer - Vega Logistics
-*2020 - 2022*
-- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
-- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
-- Authored the team's data-quality framework (Great Expectations + custom Scala validators).
-
-### Software Engineer Intern - Atlas Tools
-*2019*
-- Built Java API integrations between internal reporting tools and a third-party billing system.
-- Wrote integration tests for batch processing endpoints; raised coverage from 41% to 78%.
-
-## Projects
-
-### Internal Job Scheduler
-*2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
-- Replaced four bespoke scripts and reduced on-call paging by ~30%.
-
-### Open-Source Spark Connector
-*2023*
-- Maintainer of a small Spark connector for an internal columnar format.
-- Two minor releases shipped, used by three downstream teams.
-
-## Education
-
-### B.S. Computer Science - Northwind State University
-*2015 - 2019*
-
-## Skills
-
-Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
+cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
 ```
 
 Add the fixture job and capture `jobId`:
@@ -141,10 +95,17 @@ shared rubric — do not duplicate the shared checks here.
 
 ### Case-specific checks
 
-- Resume emphasizes backend systems, data infrastructure, Java/Scala, Spark or
-  Hadoop-style pipeline work, API design, and distributed processing.
+- Resume tailors the NG candidate's backend-leaning material to the JD:
+  TypeScript / Go / Python services, real-time data work, API integration,
+  Postgres / Redis / Airflow / WebSocket / gRPC stack as applicable. The
+  tailoring should pull internship-scale work into a coherent backend-aimed
+  story without inventing senior-scale ownership the candidate doesn't have.
+- Resume must NOT fabricate experience the pool doesn't contain (no Java,
+  Scala, Spark, or Kafka unless the JD specifically requires them — and even
+  then the resume must not claim hands-on use the pool doesn't back).
 - Cover letter names `Fixture Company` and `Member of Technical Staff, Backend`
-  exactly as written.
+  exactly as written, and frames the candidate's NG background honestly
+  (early-career, growth-oriented) rather than overclaiming seniority.
 
 ## Pass Criteria
 

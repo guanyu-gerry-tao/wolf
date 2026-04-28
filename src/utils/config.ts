@@ -20,9 +20,10 @@ export function loadConfigSync(): AppConfig {
     return AppConfigSchema.parse(parse(raw));
   } catch {
     // wolf.toml absent or unparseable — return a minimal config using schema defaults.
-    // defaultProfileId falls back to 'default'; other fields use their zod defaults.
+    // `default` falls back to 'default' (the conventional initial profile dirname);
+    // other fields use their zod defaults.
     return AppConfigSchema.parse({
-      defaultProfileId: 'default',
+      default: 'default',
       hunt: {},
       tailor: {},
       reach: {},

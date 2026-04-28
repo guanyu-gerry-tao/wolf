@@ -3,7 +3,7 @@ import pino from 'pino';
 import { sink } from 'pino-test';
 import { TailoringBriefServiceImpl } from '../impl/tailoringBriefServiceImpl.js';
 import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
-import type { UserProfile, AiConfig } from '../../types/index.js';
+import type { Profile, AiConfig } from '../../types/index.js';
 
 // Mock aiClient so tests never touch the network.
 vi.mock('../../utils/ai/index.js', () => ({
@@ -12,11 +12,12 @@ vi.mock('../../utils/ai/index.js', () => ({
 
 import { aiClient } from '../../utils/ai/index.js';
 
-const PROFILE: UserProfile = {
-  id: 'default', label: 'Default', name: 'Alex', email: 'alex@example.com',
-  phone: '+1 555 000 0000', firstUrl: null, secondUrl: null, thirdUrl: null,
-  immigrationStatus: 'no limit', willingToRelocate: 'no',
-  targetRoles: ['SWE'], targetLocations: ['Remote'], scoringNotes: null,
+// Profile is the new MD-only shape: directory name + raw profile.md text.
+// The brief service includes profile.md verbatim in the prompt — minimal
+// content here keeps assertions readable.
+const PROFILE: Profile = {
+  name: 'default',
+  md: '# default\n\n## Identity\n\n### Legal first name\nAlex\n\n### Legal last name\nRivera\n',
 };
 const POOL = '# EXPERIENCE\nSenior SWE at Acme (2022-present)';
 const JD = 'Looking for backend engineer with Go experience';
@@ -89,6 +90,6 @@ describe('TailoringBriefService', () => {
     const errEvent = events.find((e) => e.msg === 'ai.brief.empty_response');
     expect(errEvent).toBeDefined();
     expect(errEvent?.level).toBe(50); // pino numeric for `error`
-    expect(errEvent?.profileId).toBe(PROFILE.id);
+    expect(errEvent?.profileName).toBe(PROFILE.name);
   });
 });

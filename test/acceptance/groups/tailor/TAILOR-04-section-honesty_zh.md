@@ -37,17 +37,14 @@
 npm run build:dev
 ```
 
-每个 sub-case 都先初始化独立 workspace 并配置和 TAILOR-01 一致的 fixture profile：
+每个 sub-case 都先初始化独立 workspace,然后拷入共享的中级 SWE fixture
+(和 TAILOR-01 同一个 persona):
 
 ```bash
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
   npm run wolf -- init --dev --empty
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- profile set targetRoles "Backend Engineer"
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub>
+cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
 ```
 
 添加和 TAILOR-01 相同的 fixture job（JD CSV 第 119 行）：

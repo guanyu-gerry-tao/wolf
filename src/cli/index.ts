@@ -6,12 +6,13 @@ import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from '../command
 import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
 import { status, formatStatus } from '../commands/status/index.js';
-import { jobList, formatJobList } from '../commands/job/index.js';
+import { doctor, formatDoctor } from '../commands/doctor/index.js';
+import { runJobListCli } from '../commands/job/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
 import { envShow, envSet, envSetOne, envClear } from '../commands/env/index.js';
 import { configGet, configSet } from '../commands/config/index.js';
-import { profileGet, profileSet, profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
+import { profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
 
@@ -181,6 +182,15 @@ program
     console.log(formatStatus(result));
   });
 
+program
+  .command('doctor')
+  .description('Check whether the default profile is filled enough for tailor / fill / reach to run')
+  .action(async () => {
+    const report = await doctor();
+    console.log(formatDoctor(report));
+    if (!report.ready) process.exitCode = 1;
+  });
+
 // Commander's collector for repeatable flags. Each occurrence of --search
 // appends one term to the accumulator. Needs to live at module scope so the
 // initial empty array is captured per option definition.
@@ -221,21 +231,21 @@ jobCmd
     // so we hand `undefined` through to keep JobQuery's contract clean.
     const search: string[] | undefined = opts.search.length > 0 ? opts.search : undefined;
 
-    const result = await jobList({
-      search,
-      status: opts.status,
-      minScore: opts.minScore,
-      start: opts.start,
-      end: opts.end,
-      source: opts.source,
-      limit: opts.limit,
-    });
-
-    if (opts.json) {
-      console.log(JSON.stringify(result, null, 2));
-    } else {
-      console.log(formatJobList(result));
-    }
+    // Delegate to the CLI wrapper so validation errors are rendered as a
+    // single stderr line + non-zero exit code instead of an unhandled
+    // promise rejection (which would dump a Node stack trace).
+    await runJobListCli(
+      {
+        search,
+        status: opts.status,
+        minScore: opts.minScore,
+        start: opts.start,
+        end: opts.end,
+        source: opts.source,
+        limit: opts.limit,
+      },
+      Boolean(opts.json),
+    );
   });
 program.addCommand(jobCmd);
 
@@ -250,32 +260,22 @@ configCmd
   .action(async (key: string, value: string) => { await configSet(key, value); });
 program.addCommand(configCmd);
 
-const profileCmd = new Command('profile').description('Get or set profile.toml fields by dot-path key');
-profileCmd
-  .command('get <key>')
-  .description('Print value at key (e.g. name, email, targetRoles)')
-  .option('-p, --profile <id>', 'Profile ID (defaults to defaultProfileId from wolf.toml)')
-  .action(async (key: string, opts: { profile?: string }) => { await profileGet(key, opts.profile); });
-profileCmd
-  .command('set <key> <value>')
-  .description('Set value at key and save profile.toml (arrays accept comma-separated)')
-  .option('-p, --profile <id>', 'Profile ID (defaults to defaultProfileId from wolf.toml)')
-  .action(async (key: string, value: string, opts: { profile?: string }) => {
-    await profileSet(key, value, opts.profile);
-  });
+// Profile fields are stored as markdown — edit profiles/<name>/profile.md
+// directly with $EDITOR, no get/set CLI to keep the API surface small.
+const profileCmd = new Command('profile').description('Manage profile directories');
 profileCmd
   .command('list')
-  .description('List all profiles (default marked with *)')
+  .description('List all profile directories (default marked with *)')
   .action(async () => { await profileList(); });
 profileCmd
-  .command('create <id>')
-  .description('Create a new profile (clones default unless --from is given)')
+  .command('create <name>')
+  .description('Create a new profile directory (clones default unless --from is given)')
   .option('-f, --from <src>', 'Source profile to clone from')
-  .action(async (id: string, opts: { from?: string }) => { await profileCreate(id, opts); });
+  .action(async (name: string, opts: { from?: string }) => { await profileCreate(name, opts); });
 profileCmd
-  .command('use <id>')
-  .description('Set <id> as the default profile in wolf.toml')
-  .action(async (id: string) => { await profileUse(id); });
+  .command('use <name>')
+  .description('Set <name> as the default profile in wolf.toml')
+  .action(async (name: string) => { await profileUse(name); });
 profileCmd
   .command('delete <id>')
   .description('Delete profile directory (requires --yes)')

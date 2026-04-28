@@ -1,7 +1,7 @@
 import type { JobSource, JobStatus } from "./job.js";
 
 export interface HuntOptions {
-  profileId?: string;      // defaults to defaultProfileId
+  profileId?: string;      // defaults to wolf.toml.default
   role?: string;           // overrides profile.targetRoles
   location?: string;       // overrides profile.targetLocations
   companyIds?: string[];   // restrict to specific companies
@@ -19,7 +19,7 @@ export interface AddOptions {
   company: string;
   jdText: string;
   url?: string;         // original job posting URL, if available
-  profileId?: string;   // defaults to defaultProfileId
+  profileId?: string;   // defaults to wolf.toml.default
 }
 
 export interface AddResult {
@@ -27,7 +27,7 @@ export interface AddResult {
 }
 
 export interface ScoreOptions {
-  profileId?: string;                    // defaults to defaultProfileId
+  profileId?: string;                    // defaults to wolf.toml.default
   jobIds?: string[];                     // score only specific jobs; defaults to all with score: null
   poll?: boolean;                        // default false — if true, poll pending batches instead of submitting new
   single?: boolean;                      // default false — if true, skip Batch API and score synchronously via Haiku
@@ -45,7 +45,7 @@ export interface ScoreResult {
 
 export interface TailorOptions {
   jobId: string;
-  profileId?: string;      // defaults to defaultProfileId
+  profileId?: string;      // defaults to wolf.toml.default
   resume?: string;         // path to .tex; defaults to profile.resumePath
   coverLetter?: boolean;   // default true
   diff?: boolean;          // show before/after comparison
@@ -73,7 +73,7 @@ export interface FormField {
 
 export interface FillOptions {
   jobId: string;
-  profileId?: string;          // defaults to defaultProfileId
+  profileId?: string;          // defaults to wolf.toml.default
   dryRun?: boolean;            // default true — preview only, don't submit
   resumePath?: string;         // defaults to tailored resume for this job
   coverLetterPath?: string;    // defaults to tailored CL for this job
@@ -97,7 +97,7 @@ export interface Contact {
 
 export interface ReachOptions {
   jobId: string;
-  profileId?: string;   // defaults to defaultProfileId; determines sender name/email
+  profileId?: string;   // defaults to wolf.toml.default; determines sender name/email
   send?: boolean;       // default false — draft only
 }
 

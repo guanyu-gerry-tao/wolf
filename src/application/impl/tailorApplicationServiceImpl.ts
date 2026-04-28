@@ -2,6 +2,7 @@ import path from 'node:path';
 import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { parseModelRef } from '../../utils/parseModelRef.js';
 import { stripComments } from '../../utils/stripComments.js';
+import { extractH2Content } from '../../utils/extractH2.js';
 import type {
   TailorApplicationService,
   AnalyzeResult,
@@ -11,7 +12,7 @@ import type {
   TailorOptions,
   TailorResult,
   AiConfig,
-  UserProfile,
+  Profile,
   Job,
 } from '../../types/index.js';
 import { log } from '../../utils/logger.js';
@@ -21,20 +22,21 @@ import type { RenderService } from '../../service/renderService.js';
 import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../../service/tailoringBriefService.js';
 
-// Self-documenting header written to every fresh hint.md. Lines starting with //
+// Self-documenting header written to every fresh hint.md. Lines starting with `>`
 // are stripped before the file is shown to the analyst (same convention as
 // resume_pool.md), so this preamble never reaches the AI.
-const HINT_FILE_HEADER = `// hint.md - Pre-analysis guidance for the analyst agent.
-//
-// Write plain Markdown below these comments to steer the analyst when it
-// produces the tailoring brief for this job. Example:
-//
-//   Focus on the distributed systems and ML ops themes.
-//   De-emphasize the architecture background.
-//
-// Lines starting with // (like this one) are comments that get stripped
-// before the analyst sees the file. Leave this file empty below the
-// comments and the analyst will run without any guidance.
+const HINT_FILE_HEADER = `> [!TIP]
+> hint.md - Pre-analysis guidance for the analyst agent.
+>
+> Write plain Markdown below this alert block to steer the analyst when it
+> produces the tailoring brief for this job. Example:
+>
+>   Focus on the distributed systems and ML ops themes.
+>   De-emphasize the architecture background.
+>
+> This whole alert block is stripped before the AI sees the file (see
+> stripComments). Leave the file empty below to run the analyst without
+> any guidance.
 
 `;
 
@@ -42,7 +44,7 @@ const HINT_FILE_HEADER = `// hint.md - Pre-analysis guidance for the analyst age
 // Prepared once per call so each step writes to consistent locations.
 interface JobContext {
   job: Job;
-  profile: UserProfile;
+  profile: Profile;
   resumePool: string;
   jdText: string;
   aiConfig: AiConfig;
@@ -77,7 +79,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const pipelineStartedAt = Date.now();
     log.info('tailor.pipeline.start', {
       jobId: ctx.job.id,
-      profileId: ctx.profile.id,
+      profileName: ctx.profile.name,
       coverLetterIncluded: writeCoverLetter,
     });
 
@@ -173,12 +175,19 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       throw new Error(`Job not found: ${jobId}`);
     }
 
+    // profileId here is the profile directory name (e.g. "default" or "gc-persona").
     const profile = profileId
       ? (await this.profileRepository.get(profileId)) ?? (await this.profileRepository.getDefault())
       : await this.profileRepository.getDefault();
 
-    const resumePool = await this.profileRepository.getResumePool(profile.id);
+    const resumePool = await this.profileRepository.getResumePool(profile.name);
     const jdText = await this.jobRepository.readJdText(jobId);
+
+    // Pre-flight: refuse to run tailor on a placeholder profile or pool.
+    // Otherwise the AI would faithfully build a resume from "Job Title — Company
+    // Name" / blank legal name, etc. — garbage in, garbage out. Fail early with
+    // a clear message so the user fills the files in before spending API tokens.
+    assertReadyForTailor(profile, resumePool);
 
     const outputDir = await this.jobRepository.getWorkspaceDir(jobId);
     const srcDir = path.join(outputDir, 'src');
@@ -218,9 +227,9 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     }
   }
 
-  // Reads hint.md and returns the non-comment content (stripComments removes //
-  // lines). Returns undefined when the active portion is empty so the brief
-  // service prompt stays clean.
+  // Reads hint.md and returns the non-comment content (stripComments removes `>`
+  // blockquote lines). Returns undefined when the active portion is empty so the
+  // brief service prompt stays clean.
   private async readActiveHint(hintPath: string): Promise<string | undefined> {
     let raw: string;
     try { raw = await readFile(hintPath, 'utf-8'); }
@@ -286,5 +295,76 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const pdf = await this.renderService.renderCoverLetterPdf(html);
     await writeFile(ctx.coverLetterPdfPath, pdf);
     return { htmlPath: ctx.coverLetterHtmlPath, pdfPath: ctx.coverLetterPdfPath };
+  }
+}
+
+// Minimum non-blank, non-heading lines required in resume_pool.md (after
+// stripping alert blocks) before we let tailor proceed. The init template
+// produces 0 such lines (each section is `## Title` followed by an empty
+// `> [!TIP]` example block). 5 means "at least one bullet of one role" and
+// is generous enough not to bother people who only have a sparse pool.
+const MIN_POOL_CONTENT_LINES = 5;
+
+// REQUIRED H2 fields in profile.md that tailor surfaces directly (resume
+// header, cover-letter salutation). If any are blank the resume comes out
+// nameless / with no contact — fail loudly here instead of producing junk.
+const REQUIRED_PROFILE_FIELDS = [
+  'Legal first name',
+  'Legal last name',
+  'Email',
+  'Phone',
+] as const;
+
+/**
+ * Throws a user-facing Error if the profile or pool can't safely back a
+ * tailor run. The message names the file to edit so the user can act on it
+ * without reading source.
+ *
+ * Validation is intentionally narrow:
+ *   - REQUIRED_PROFILE_FIELDS in profile.md must have a non-empty body
+ *   - resume_pool.md after stripComments must have ≥ MIN_POOL_CONTENT_LINES
+ *     non-blank, non-heading lines (proxy for "real experience exists")
+ *
+ * We do NOT try to detect template-shaped content — wrapping the example
+ * blocks in `> [!TIP]` already removes them at strip time, so anything that
+ * survives strip is either real content or the user's intentional placeholder.
+ */
+function assertReadyForTailor(profile: Profile, resumePool: string): void {
+  // Strip alert callouts before extraction: an H2 whose body is only a
+  // `> [!IMPORTANT]` block (the un-edited template state) must count as
+  // empty, not "answered".
+  const strippedProfile = stripComments(profile.md);
+  const missing = REQUIRED_PROFILE_FIELDS.filter(
+    (field) => extractH2Content(strippedProfile, field).length === 0,
+  );
+  if (missing.length > 0) {
+    log.error('tailor.context.profile_incomplete', {
+      profileName: profile.name,
+      missingFields: missing,
+    });
+    throw new Error(
+      `Profile '${profile.name}' is missing required field(s) for tailor: ${missing.join(', ')}.\n` +
+      `Open profiles/${profile.name}/profile.md and fill in the H2 sections under # Identity / # Contact.`,
+    );
+  }
+
+  const stripped = stripComments(resumePool);
+  const substantiveLines = stripped
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      return t.length > 0 && !t.startsWith('#');
+    });
+  if (substantiveLines.length < MIN_POOL_CONTENT_LINES) {
+    log.error('tailor.context.pool_empty', {
+      profileName: profile.name,
+      substantiveLines: substantiveLines.length,
+      minRequired: MIN_POOL_CONTENT_LINES,
+    });
+    throw new Error(
+      `Resume pool for profile '${profile.name}' is empty or only has placeholder examples.\n` +
+      `Open profiles/${profile.name}/resume_pool.md and write at least one real experience entry ` +
+      `(role + company + dates + bullets) before running tailor — otherwise the AI builds a resume from nothing.`,
+    );
   }
 }

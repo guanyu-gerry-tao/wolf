@@ -41,59 +41,16 @@ npm run build:dev
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-填充 default profile 和 resume pool：
+把共享的 NG SWE fixture 拷进去(见 `test/fixtures/wolf-profile/ng-swe/`)。
+这是 wolf 的主用户画像 —— F-1 OPT 上的 NG SWE,投后端方向。fixture 提供
+完整 `profile.md`(REQUIRED 的 Identity / Contact / Job Preferences 字段已
+填,含 F-1 + H-1B sponsor 偏好),`resume_pool.md` 密度足够让渲染器的
+underflow 守卫接受单页 resume(2 段实习 + 2 个 project + Education + Skills
++ Awards):
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set name "Test Candidate"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set email "candidate@example.test"
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- profile set targetRoles "Backend Engineer, Data Infrastructure Engineer"
-```
-
-编辑 `/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01/profiles/default/resume_pool.md`，只写入 fixture facts。Pool 内容必须**足够密**，能让定制后的单页 resume 在默认字号/行距下填满整页 —— 过稀的 pool 会被渲染器的 underflow 守卫正确拒绝，因此下面这份 fixture 故意按一份真实中级工程师 resume 的体量给出：
-
-```md
-# Test Candidate Resume Pool
-
-## Experience
-
-### Backend Engineer - Northwind Systems
-*2022 - 2025*
-- Built Java and Scala backend services running 200+ event-processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
-- Designed internal REST APIs and on-call runbooks for distributed job processing.
-- Migrated legacy Hadoop jobs to Spark Structured Streaming with zero data loss.
-
-### Data Platform Engineer - Vega Logistics
-*2020 - 2022*
-- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
-- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
-- Authored the team's data-quality framework (Great Expectations + custom Scala validators).
-
-### Software Engineer Intern - Atlas Tools
-*2019*
-- Built Java API integrations between internal reporting tools and a third-party billing system.
-- Wrote integration tests for batch processing endpoints; raised coverage from 41% to 78%.
-
-## Projects
-
-### Internal Job Scheduler
-*2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
-- Replaced four bespoke scripts and reduced on-call paging by ~30%.
-
-### Open-Source Spark Connector
-*2023*
-- Maintainer of a small Spark connector for an internal columnar format.
-- Two minor releases shipped, used by three downstream teams.
-
-## Education
-
-### B.S. Computer Science - Northwind State University
-*2015 - 2019*
-
-## Skills
-
-Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
+WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
+cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
 ```
 
 添加 fixture job 并捕获 `jobId`：
@@ -135,10 +92,15 @@ format 执行。下面只列本 case 独有的检查项，不要重复共享 rub
 
 ### 本 case 独有检查
 
-- Resume 强调 backend systems、data infrastructure、Java/Scala、Spark 或
-  Hadoop-style pipeline work、API design 和 distributed processing。
+- Resume 把 NG 候选人的偏后端材料按 JD 做剪裁:TypeScript / Go / Python
+  服务、real-time data 工作、API 集成、Postgres / Redis / Airflow /
+  WebSocket / gRPC 栈(按 JD 取舍)。剪裁应把 intern 体量的工作组织成连贯
+  的后端故事,不能编造候选人没有的资深级别 ownership。
+- Resume **不得**杜撰 pool 里没有的经验(没有 Java / Scala / Spark / Kafka,
+  除非 JD 强行要求 —— 即便如此,也不得宣称 pool 没背书的实操)。
 - Cover letter 中原样出现 `Fixture Company` 和
-  `Member of Technical Staff, Backend`。
+  `Member of Technical Staff, Backend`,并诚实地把候选人定位成 NG / 早期
+  / 成长导向,而不是夸成资深。
 
 ## 通过标准
 

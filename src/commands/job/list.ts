@@ -156,6 +156,29 @@ export async function jobList(
 }
 
 /**
+ * CLI-edge wrapper around `jobList`. Catches validation errors from
+ * `validateAndNormalize` and renders them as a friendly stderr line plus
+ * exitCode=1 instead of letting them escape into Node's unhandled-error
+ * formatter (which dumps a stack trace under the message). Programmatic
+ * callers should keep using `jobList` directly — its throw-on-bad-input
+ * contract is unchanged.
+ */
+export async function runJobListCli(
+  options: JobListOptions,
+  asJson: boolean,
+  ctx: AppContext = createAppContext(),
+): Promise<void> {
+  try {
+    const result = await jobList(options, ctx);
+    console.log(asJson ? JSON.stringify(result, null, 2) : formatJobList(result));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`error: ${message}`);
+    process.exitCode = 1;
+  }
+}
+
+/**
  * Renders a JobListResult as a fixed-width table with an overflow footer
  * when applicable. Pure function over the result so the CLI layer stays
  * thin and the output is unit-testable without any AppContext setup.
