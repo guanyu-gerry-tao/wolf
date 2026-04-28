@@ -10,7 +10,7 @@ import resumePoolTemplate from './templates/resume_pool.md';
 import { backupConfig, saveConfig } from '../../utils/config.js';
 import { envSet } from '../env/index.js';
 import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir } from '../../utils/instance.js';
-import type { AppConfig } from '../../types/index.js';
+import type { AppConfig } from '../../utils/types/index.js';
 
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;

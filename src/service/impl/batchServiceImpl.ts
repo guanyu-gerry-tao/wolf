@@ -1,7 +1,7 @@
 import type { BatchService, BatchSubmitOptions } from '../batchService.js';
 import type { BatchRepository } from '../../repository/batchRepository.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
-import type { Job } from '../../types/index.js';
+import type { Job } from '../../utils/types/index.js';
 
 export class BatchServiceImpl implements BatchService {
   constructor(

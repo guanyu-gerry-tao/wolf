@@ -8,9 +8,9 @@
  * Repositories import table references from here.
  */
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import type { CompanySize } from '../../types/company.js';
-import type { JobError, JobSource, JobStatus, Salary } from '../../types/job.js';
-import type { Sponsorship } from '../../types/sponsorship.js';
+import type { CompanySize } from '../../utils/types/company.js';
+import type { JobError, JobSource, JobStatus, Salary } from '../../utils/types/job.js';
+import type { Sponsorship } from '../../utils/types/sponsorship.js';
 
 type BatchType = 'score' | 'tailor';
 type BatchAiProvider = 'anthropic' | 'openai';

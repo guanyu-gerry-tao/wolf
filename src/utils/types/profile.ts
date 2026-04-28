@@ -1,4 +1,4 @@
-import type { ProviderId } from "../utils/ai/registry.js";
+import type { ProviderId } from "../../service/ai/registry.js";
 
 /**
  * A profile = one identity directory under `profiles/<name>/`.

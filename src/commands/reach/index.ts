@@ -1,4 +1,4 @@
-import type { ReachOptions, ReachResult } from '../../types/index.js';
+import type { ReachOptions, ReachResult } from '../../utils/types/index.js';
 
 /**
  * Finds HR contacts and drafts an outreach email for a job.

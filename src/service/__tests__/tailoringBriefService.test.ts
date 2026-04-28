@@ -3,14 +3,14 @@ import pino from 'pino';
 import { sink } from 'pino-test';
 import { TailoringBriefServiceImpl } from '../impl/tailoringBriefServiceImpl.js';
 import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
-import type { Profile, AiConfig } from '../../types/index.js';
+import type { Profile, AiConfig } from '../../utils/types/index.js';
 
 // Mock aiClient so tests never touch the network.
 vi.mock('../../utils/ai/index.js', () => ({
   aiClient: vi.fn(),
 }));
 
-import { aiClient } from '../../utils/ai/index.js';
+import { aiClient } from '../../service/ai/index.js';
 
 // Profile is the new MD-only shape: directory name + raw profile.md text.
 // The brief service includes profile.md verbatim in the prompt — minimal

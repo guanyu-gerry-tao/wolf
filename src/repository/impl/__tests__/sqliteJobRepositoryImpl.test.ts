@@ -4,8 +4,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { initializeSchema } from '../initializeSchema.js';
 import { SqliteJobRepositoryImpl } from '../sqliteJobRepositoryImpl.js';
 import { SqliteCompanyRepositoryImpl } from '../sqliteCompanyRepositoryImpl.js';
-import type { Job } from '../../../types/job.js';
-import type { Company } from '../../../types/company.js';
+import type { Job } from '../../../utils/types/job.js';
+import type { Company } from '../../../utils/types/company.js';
 
 // Integration tests for the new count/query surface added in this PR.
 // These hit a real in-memory SQLite via the same Drizzle layer production
@@ -304,7 +304,7 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
     // If a future edit adds a filter to buildConditions but forgets to
     // cover it in one of the two, this test fails immediately instead of
     // users seeing wrong counts in the wild.
-    const filterShapes: import('../../../types/job.js').JobQuery[] = [
+    const filterShapes: import('../../../utils/types/job.js').JobQuery[] = [
       {},
       { status: 'applied' },
       { minScore: 0.7 },

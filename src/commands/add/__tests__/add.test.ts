@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { add } from '../index.js';
 import type { AppContext } from '../../../cli/appContext.js';
-import type { Company } from '../../../types/company.js';
+import type { Company } from '../../../utils/types/company.js';
 
 // Build a fake AppContext where every repository/service method is a vi.fn() spy.
 // Default: companyRepository.getByName returns null (simulates company-not-found).

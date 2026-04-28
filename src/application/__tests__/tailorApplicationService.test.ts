@@ -5,9 +5,9 @@ import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
 import type { ResumeCoverLetterService } from '../../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../../service/tailoringBriefService.js';
-import type { AiConfig } from '../../types/index.js';
-import type { Job } from '../../types/job.js';
-import type { Profile } from '../../types/index.js';
+import type { AiConfig } from '../../utils/types/index.js';
+import type { Job } from '../../utils/types/job.js';
+import type { Profile } from '../../utils/types/index.js';
 
 // Mock fs/promises so no real files are written during tests.
 // readFile returns path-dependent content so hint.md vs brief.md lookups stay distinct.

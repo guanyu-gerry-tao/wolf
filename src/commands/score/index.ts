@@ -1,4 +1,4 @@
-import type { ScoreOptions, ScoreResult } from '../../types/index.js';
+import type { ScoreOptions, ScoreResult } from '../../utils/types/index.js';
 
 /**
  * Processes unscored jobs from the database: extracts structured fields via AI,

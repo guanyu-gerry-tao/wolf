@@ -1,4 +1,4 @@
-import type { HuntOptions, HuntResult } from '../../types/index.js';
+import type { HuntOptions, HuntResult } from '../../utils/types/index.js';
 
 /**
  * Fetches raw job listings from all enabled providers and saves them to the database.

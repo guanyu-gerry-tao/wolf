@@ -5,7 +5,7 @@ import path from 'node:path';
 import { parse } from 'smol-toml';
 import { profileList, profileCreate, profileUse, profileDelete } from '../index.js';
 import { saveConfig } from '../../../utils/config.js';
-import type { AppConfig } from '../../../types/index.js';
+import type { AppConfig } from '../../../utils/types/index.js';
 
 // Minimal config — `default` points at the conventional initial profile dir.
 const CONFIG: AppConfig = {

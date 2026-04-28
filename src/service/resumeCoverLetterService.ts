@@ -1,4 +1,4 @@
-import type { AiConfig, Profile } from '../types/index.js';
+import type { AiConfig, Profile } from '../utils/types/index.js';
 
 export interface ResumeCoverLetterService {
   /**

@@ -6,7 +6,7 @@ import BetterSqlite3 from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { initializeSchema } from '../initializeSchema.js';
 import { SqliteCompanyRepositoryImpl } from '../sqliteCompanyRepositoryImpl.js';
-import type { Company } from '../../../types/company.js';
+import type { Company } from '../../../utils/types/company.js';
 
 // Integration tests for SqliteCompanyRepositoryImpl. Focused on `query()` and
 // the new `nameContains` substring filter, plus the existing upsert + get

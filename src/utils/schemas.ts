@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PROVIDER_IDS } from './ai/registry.js';
+import { PROVIDER_IDS } from '../service/ai/registry.js';
 
 // --- AppConfig ---
 

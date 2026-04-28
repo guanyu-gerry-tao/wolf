@@ -4,8 +4,8 @@ import {
   type JobListItem,
   type JobListOptions,
   type JobListResult,
-} from '../../types/commands.js';
-import { ALL_JOB_STATUSES, type JobQuery } from '../../types/job.js';
+} from '../../utils/types/commands.js';
+import { ALL_JOB_STATUSES, type JobQuery } from '../../utils/types/job.js';
 
 const ID_WIDTH = 8;
 

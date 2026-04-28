@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { parse } from 'smol-toml';
 import { configGet, configSet } from '../index.js';
 import { saveConfig } from '../../../utils/config.js';
-import type { AppConfig } from '../../../types/index.js';
+import type { AppConfig } from '../../../utils/types/index.js';
 
 // A complete, schema-valid baseline so tests can focus on the field they care about.
 const BASELINE: AppConfig = {

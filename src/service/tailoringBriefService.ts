@@ -1,4 +1,4 @@
-import type { AiConfig, Profile } from '../types/index.js';
+import type { AiConfig, Profile } from '../utils/types/index.js';
 
 /**
  * Produces a "tailoring brief" — a structured Markdown decision doc that the

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AddOptions, AddResult } from '../../types/index.js';
+import type { AddOptions, AddResult } from '../../utils/types/index.js';
 import { createAppContext, type AppContext } from '../../cli/appContext.js';
 
 /**

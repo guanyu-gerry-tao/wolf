@@ -1,4 +1,4 @@
-import type { FillOptions, FillResult } from '../../types/index.js';
+import type { FillOptions, FillResult } from '../../utils/types/index.js';
 
 /**
  * Auto-fills a job application form using Playwright.

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { jobList, formatJobList, runJobListCli } from '../list.js';
 import type { AppContext } from '../../../cli/appContext.js';
-import type { Job, JobQuery } from '../../../types/job.js';
-import type { Company } from '../../../types/company.js';
-import type { JobListResult } from '../../../types/commands.js';
+import type { Job, JobQuery } from '../../../utils/types/job.js';
+import type { Company } from '../../../utils/types/company.js';
+import type { JobListResult } from '../../../utils/types/commands.js';
 
 // `wolf job list` is the single place where filters, limits, and company-name
 // resolution meet. Tests here cover both the happy path (SQL filters pass

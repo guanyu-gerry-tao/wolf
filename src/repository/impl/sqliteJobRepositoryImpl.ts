@@ -4,8 +4,8 @@ import { and, eq, gte, inArray, isNotNull, like, lte, or, sql } from 'drizzle-or
 import type { SQL } from 'drizzle-orm';
 import type { JobRepository } from '../jobRepository.js';
 import type { CompanyRepository } from '../companyRepository.js';
-import type { Job, JobQuery, JobStatus, JobUpdate } from '../../types/job.js';
-import { ALL_JOB_STATUSES } from '../../types/job.js';
+import type { Job, JobQuery, JobStatus, JobUpdate } from '../../utils/types/job.js';
+import { ALL_JOB_STATUSES } from '../../utils/types/job.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { companies, jobs } from './schema.js';
 import { jobDir } from '../../utils/workspacePaths.js';

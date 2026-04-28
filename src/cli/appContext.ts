@@ -55,7 +55,7 @@ import type {
   StatusCounter,
 } from '../application/statusApplicationService.js';
 import type { TailorApplicationService } from '../application/tailorApplicationService.js';
-import type { AiConfig } from '../types/index.js';
+import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
   // repositories

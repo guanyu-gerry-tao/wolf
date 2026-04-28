@@ -1,9 +1,9 @@
-import { aiClient } from '../../utils/ai/index.js';
+import { aiClient } from '../../service/ai/index.js';
 import { log } from '../../utils/logger.js';
 import { stripComments } from '../../utils/stripComments.js';
 import ANALYST_SYSTEM_PROMPT from './prompts/analyst-system.md';
 import type { TailoringBriefService } from '../tailoringBriefService.js';
-import type { AiConfig, Profile } from '../../types/index.js';
+import type { AiConfig, Profile } from '../../utils/types/index.js';
 
 export class TailoringBriefServiceImpl implements TailoringBriefService {
   async analyze(

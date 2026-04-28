@@ -2,7 +2,7 @@ import path from 'node:path';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { and, eq, inArray, like } from 'drizzle-orm';
 import type { CompanyRepository } from '../companyRepository.js';
-import type { Company, CompanyQuery, CompanyUpdate } from '../../types/company.js';
+import type { Company, CompanyQuery, CompanyUpdate } from '../../utils/types/company.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { companies } from './schema.js';
 import { companyDir } from '../../utils/workspacePaths.js';

@@ -1,10 +1,10 @@
-import { aiClient } from '../../utils/ai/index.js';
+import { aiClient } from '../../service/ai/index.js';
 import { log } from '../../utils/logger.js';
 import { stripComments } from '../../utils/stripComments.js';
 import SYSTEM_PROMPT from './prompts/tailor-system.md';
 import COVER_LETTER_SYSTEM_PROMPT from './prompts/cover-letter-system.md';
 import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
-import type { AiConfig, Profile } from '../../types/index.js';
+import type { AiConfig, Profile } from '../../utils/types/index.js';
 
 export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
   async tailorResumeToHtml(

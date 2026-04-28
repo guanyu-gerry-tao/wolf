@@ -1,5 +1,5 @@
-import type { Job } from '../types/index.js';
-import type { Profile } from '../types/index.js';
+import type { Job } from '../utils/types/index.js';
+import type { Profile } from '../utils/types/index.js';
 
 export type BatchType = 'score' | 'tailor';
 export type BatchAiProvider = 'anthropic' | 'openai';
