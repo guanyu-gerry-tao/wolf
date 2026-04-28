@@ -56,15 +56,21 @@ LinkedIn
 
 ## Biggest strength
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> Just name 1-2 strengths and the angle (technical depth / leadership /
+> speed / cross-functional). AI pulls supporting examples from resume_pool
+> and phrases it for the role.
 
 ## Biggest weakness (with what you're doing about it)
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> Name a real weakness + what you're actively doing about it.
+> Skip the "I work too hard" trope — interviewers see through it.
+> AI will phrase it diplomatically and match the role's tone.
 
 ## Where do you see yourself in 5 years?
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> Sketch the direction only (IC depth / management track / domain mastery /
+> founder path / learning trajectory). AI tailors the specifics per role
+> so it lands as ambitious-but-aligned, not generic.
 
 ## Tell me about a time you faced conflict
 > [!IMPORTANT]
@@ -76,12 +82,16 @@ LinkedIn
 
 ## How do you handle stress / failure?
 > [!IMPORTANT]
-> Behavioral question; common in NG / intern interviews. Write a short
-> story (situation + your reaction + outcome) you can adapt across roles.
+> You can either write one full STAR+R story, OR just sketch your default
+> coping pattern (break-it-down / data-driven / talk-to-teammate / step-back
+> -then-retry) and AI pulls a matching example from resume_pool.
+> Common in NG / intern interviews.
 
 ## What motivates you?
 > [!IMPORTANT]
-> Reused across "why this role" / "why this company" follow-ups.
+> List 2-3 motivators in your own words (problem complexity / user impact /
+> learning curve / autonomy / craft). AI picks whichever fits each role's
+> pitch and weaves it into "why this role" / "why this company" answers too.
 
 ## Describe a time you led a team or project
 > [!IMPORTANT]
@@ -96,7 +106,9 @@ LinkedIn
 ## What is your management style?
 > [!TIP]
 > Optional for NG / IC roles. Fill if you've led people (TA, intern lead,
-> club president) or if the role is manager-track.
+> club president) or if the role is manager-track. You can also just give
+> the principles you lead by (high-trust / low-meeting / 1:1-heavy /
+> ownership-first) and AI will write the story per role.
 
 ## Tell me about a project you're proud of
 > [!IMPORTANT]
