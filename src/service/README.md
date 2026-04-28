@@ -6,14 +6,14 @@ Single-responsibility business operations. Each service does one thing well.
 
 - Call external tools (Playwright, Anthropic SDK, subprocesses)
 - Wrap SDKs with typed inputs and outputs
-- Throw typed errors on failure (from `src/errors/`)
+- Throw typed errors on failure (from `src/utils/errors/`)
 - Return data; do not persist
 
 ## NOT responsibilities
 
 - Multi-step orchestration (that's `src/application/`)
 - Reading from / writing to storage (that's `src/repository/`)
-- Knowing about CLI options (that's `src/cli/` + `src/commands/`)
+- Knowing about CLI options (that's `src/cli/commands/`)
 
 ## Interface + impl/ pattern
 
@@ -48,7 +48,7 @@ This lets wolf run end-to-end without any API key: clone → `npm install` → `
 1. Define the interface in `src/service/<name>.ts`
 2. Add `src/service/impl/real<Name>Service.ts` for the real implementation
 3. Add `src/service/impl/mock<Name>Service.ts` for the mock
-4. Register both in `src/cli/appContext.ts`
+4. Register both in `src/runtime/appContext.ts`
 5. Consumers (application services, CLI) import only the interface
 
 ## Example

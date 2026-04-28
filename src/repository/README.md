@@ -36,7 +36,7 @@ Callers import the interface, AppContext constructs the implementation. Swap sto
 
 1. Create new file under `src/repository/impl/<name>.ts`
 2. Implement the same interface as the existing impl
-3. Edit `src/cli/appContext.ts` to construct the new impl instead
+3. Edit `src/runtime/appContext.ts` to construct the new impl instead
 4. No other files change
 
 ## Example interface

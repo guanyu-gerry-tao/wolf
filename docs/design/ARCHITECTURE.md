@@ -45,20 +45,17 @@ wolf is a dual-interface application: it runs as both a **CLI tool** (for human 
 
 ## Layered Architecture
 
-wolf is structured in six layers. Each layer may only depend on the layers below it — never sideways or upward.
+wolf is structured in five layers. Each layer may only depend on the layers below it — never sideways or upward.
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Presentation  src/cli/  src/mcp/                    │
-│  Parse args, format output. No logic.                │
-├──────────────────────────────────────────────────────┤
-│  Commands      src/commands/                         │
-│  Thin wrappers — map CLI/MCP input to Application.   │
-│  No business logic.                                  │
+│  Presentation  src/cli/index.ts  src/mcp/            │
+│  Parse args, format output. Each src/cli/commands/   │
+│  <verb>.ts is one delegate line + a formatter.       │
 ├──────────────────────────────────────────────────────┤
 │  Application   src/application/                      │
 │  Use-case orchestration. Multi-step pipelines.       │
-│  No I/O, no DB, no CLI/MCP awareness.                │
+│  Every command — even three-line ones — routes here. │
 ├──────────────────────────────────────────────────────┤
 │  Service       src/service/                          │
 │  Single-responsibility domain operations.            │
@@ -68,40 +65,55 @@ wolf is structured in six layers. Each layer may only depend on the layers below
 │  Data access — SQLite (Drizzle) + workspace files.   │
 │  Interface per entity; impl/ for concrete backends.  │
 ├──────────────────────────────────────────────────────┤
-│  Types         src/types/                            │
-│  Shared domain types. No logic.                      │
+│  Utils         src/utils/                            │
+│  Cross-cutting helpers, types/, errors/. Not a layer │
+│  in the dependency sense — anything may import it.   │
 └──────────────────────────────────────────────────────┘
 
-Utils (src/utils/) — cross-cutting helpers. Not a layer.
-AppContext (src/cli/appContext.ts) — manual DI container.
+AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI and MCP.
 ```
 
-**Layer dependency direction:** `CLI/Commands → Application → Service → Repository → Types`
+**Layer dependency direction:** `cli → application → service → repository → utils`
 
 ### Layer responsibilities
 
 | Layer | Directory | Does | Does NOT |
 |---|---|---|---|
-| **Types** | `src/types/` | Define domain types (`Job`, `Company`, `Profile`, `AppConfig`) | Contain any logic |
+| **Utils** | `src/utils/` (with `types/`, `errors/`) | Cross-cutting helpers (logger, config, env, parseModelRef); shared domain types; typed error classes | Contain command logic or hold state |
 | **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | Contain business logic or call other layers |
-| **Service** | `src/service/` | Single-responsibility operations (AI calls, external API fetch, batch submit) | Orchestrate multi-step flows or access DB directly |
-| **Application** | `src/application/` | Orchestrate use-cases (hunt pipeline, score pipeline, tailor pipeline) | Know about CLI options, MCP schemas, or file formats |
-| **Commands** | `src/commands/` | Map typed options → Application call; format errors | Contain business logic — delegate everything to Application |
-| **Presentation** | `src/cli/` `src/mcp/` | Parse input, format output | Contain any logic beyond argument mapping |
+| **Service** | `src/service/` (incl. `service/ai/`) | Single-responsibility operations (AI provider registry + clients, external API fetch, rendering, batch submit) | Orchestrate multi-step flows or access DB directly |
+| **Application** | `src/application/` | Orchestrate every use-case — even one-line ones like config get/set or env list. Owns init templates. | Know about CLI options, MCP schemas, or terminal formatting |
+| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/` | Parse input, format output, hold inquirer prompts | Contain logic beyond argument mapping + formatting |
 
 ### Dependency injection — AppContext
 
-All concrete implementations are constructed in `src/cli/appContext.ts`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
+All concrete implementations are constructed in `src/runtime/appContext.ts`. Both `src/cli/` and `src/mcp/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
 
 ```typescript
-// src/cli/appContext.ts
+// src/runtime/appContext.ts
 export interface AppContext {
+  // repositories
   jobRepository: JobRepository;
   companyRepository: CompanyRepository;
   batchRepository: BatchRepository;
   profileRepository: ProfileRepository;
+  // services
   batchService: BatchService;
-  jobProviderService: JobProviderService;
+  // ...renderService, rewriteService, briefService, fillService, ...
+  // application services (one per CLI verb)
+  addApp: AddApplicationService;
+  configApp: ConfigApplicationService;
+  doctorApp: DoctorApplicationService;
+  envApp: EnvApplicationService;
+  fillApp: FillApplicationService;
+  huntApp: HuntApplicationService;
+  initApp: InitApplicationService;
+  jobApp: JobApplicationService;
+  profileApp: ProfileApplicationService;
+  reachApp: ReachApplicationService;
+  scoreApp: ScoreApplicationService;
+  statusApp: StatusApplicationService;
+  tailorApp: TailorApplicationService;
 }
 ```
 
@@ -125,39 +137,43 @@ every command and must only create/delete paths under `/tmp/wolf-test/`.
 
 ```
 src/
-├── cli/              # Presentation — commander.js
-│   ├── index.ts          # CLI entry point
-│   └── appContext.ts     # Manual DI — wires all repos + services
-├── mcp/              # Presentation — MCP SDK (paused, same AppContext)
-├── commands/         # Thin wrappers — one folder per subcommand
-├── application/      # Use-case orchestration (interfaces + impl/ + model/)
-├── service/          # Domain services (interfaces + impl/ + model/)
-│   ├── batch.ts          # BatchService interface
-│   ├── jobProvider.ts    # JobProviderService interface
+├── cli/                                # Presentation — commander.js
+│   ├── index.ts                            # CLI entry; registers every subcommand
+│   └── commands/                           # one file per verb (hunt.ts, tailor.ts, ...)
+│       ├── job/                            # multi-subcommand verbs get a folder
+│       └── __tests__/                      # CLI-edge tests
+├── mcp/                                # Presentation — MCP SDK (shares AppContext)
+├── runtime/
+│   └── appContext.ts                       # Manual DI — wires every repo + service + app
+├── application/                        # Use-case orchestration
+│   ├── <name>ApplicationService.ts         # interface
 │   └── impl/
-│       ├── apiProviderService.ts   # Real HTTP provider
-│       └── batchServiceImpl.ts    # Batch API stub (M3+)
-├── repository/       # Data access (interfaces + impl/)
-│   ├── job.ts            # JobRepository interface
-│   ├── company.ts        # CompanyRepository interface
-│   ├── batch.ts          # BatchRepository interface
-│   ├── profile.ts        # ProfileRepository interface
+│       ├── <name>ApplicationServiceImpl.ts # implementation
+│       └── templates/                      # init workspace markdown templates
+├── service/                            # Domain services
+│   ├── ai/                                 # provider registry + family modules
+│   ├── <name>Service.ts                    # interface
 │   └── impl/
-│       ├── drizzleDb.ts          # DrizzleDb type alias
-│       ├── schema.ts             # Drizzle table definitions
-│       ├── initializeSchema.ts   # CREATE TABLE IF NOT EXISTS (one place only)
-│       ├── sqliteJobRepository.ts
-│       ├── sqliteCompanyRepository.ts
-│       ├── sqliteBatchRepository.ts
-│       └── fileProfileRepository.ts  # Reads profiles/<id>/ on disk
-├── errors/           # Typed custom error classes
-├── types/            # Shared domain types (cross-cutting, not a layer)
-└── utils/            # Cross-cutting helpers (logger, config, env, ai) — not a layer
-    ├── ai.ts             # Anthropic SDK client
-    ├── config.ts         # wolf.toml read (AppConfigSchema.parse)
-    ├── env.ts            # WOLF_* env vars
-    ├── logger.ts         # structured logging
-    └── schemas.ts        # Zod schemas for TOML validation
+│       ├── prompts/                        # system prompts (analyst / writers / fill)
+│       ├── render/                         # shell.html + fit() loop
+│       └── <name>ServiceImpl.ts
+├── repository/                         # Data access
+│   ├── <name>Repository.ts                 # interface
+│   └── impl/
+│       ├── drizzleDb.ts                    # DrizzleDb type alias
+│       ├── schema.ts                       # Drizzle table definitions
+│       ├── initializeSchema.ts             # CREATE TABLE IF NOT EXISTS
+│       ├── sqlite<Name>RepositoryImpl.ts
+│       └── fileProfileRepositoryImpl.ts    # Reads profiles/<id>/ on disk
+└── utils/                              # Cross-cutting helpers
+    ├── types/                              # Shared domain types
+    ├── errors/                             # Typed custom error classes
+    ├── config.ts                           # wolf.toml read (AppConfigSchema.parse)
+    ├── env.ts                              # WOLF_* env vars
+    ├── instance.ts                         # build-mode + workspace resolution
+    ├── logger.ts                           # structured logging
+    ├── schemas.ts                          # Zod schemas for TOML validation
+    └── parseModelRef.ts                    # "anthropic/claude-sonnet-4-6" → AiConfig
 ```
 
 ### Example: tailor flow across layers (3-agent checkpoint pipeline)
@@ -220,8 +236,8 @@ these paths internally: `JobRepository.getWorkspaceDir(jobId)`,
 
 ## Design Principles
 
-1. **Interface-agnostic core** — Command logic lives in `src/commands/`, never in `src/cli/` or `src/mcp/`. CLI and MCP are thin wrappers that parse input, call the command, and format output.
-2. **Shared types as contracts** — `src/types/` defines the data shapes (Job, Resume, AppConfig) that every layer depends on. This is the single source of truth.
+1. **Interface-agnostic core** — Command logic lives in `src/application/`, never in `src/cli/` or `src/mcp/`. CLI and MCP are thin wrappers that parse input, call the application service, and format output.
+2. **Shared types as contracts** — `src/utils/types/` defines the data shapes (Job, Resume, AppConfig) that every layer depends on. This is the single source of truth.
 3. **Fail-safe by default** — Destructive operations (form submission, email sending) require explicit flags (`--send`, without `--dry-run`). Default behavior is always preview/dry-run.
 4. **Local-first data** — All job data, configs, and tailored resumes are stored locally. No cloud dependency for core state.
 
@@ -265,27 +281,33 @@ src/mcp/
 
 The MCP layer registers tools: `wolf_hunt`, `wolf_add`, `wolf_score`, `wolf_list`, `wolf_select`, `wolf_tailor`, `wolf_cover_letter`, `wolf_fill`, `wolf_reach`, `wolf_status`. `wolf_add` is MCP-only — its caller (an AI agent) extracts structure from user input; wolf only stores it. Input/output schemas are defined in `src/mcp/tools.ts`.
 
-### 3. Commands Layer (`src/commands/`)
+### 3. CLI command wrappers (`src/cli/commands/`)
 
-The core of wolf. Each file exports a single async function containing all business logic for one command.
+One file per verb. Each wrapper is a single delegate line that calls
+`ctx.<verb>App.<method>(opts)` plus an optional formatter for terminal output.
+Business logic lives in the corresponding `*ApplicationService` — never inline.
 
 ```
-src/commands/
-├── hunt/             # Job ingestion — fetch raw jobs from providers, save to DB
-├── add/              # Single job ingestion — store AI-structured job from MCP caller
-├── score/            # Job processing — AI extraction, dealbreaker filtering, scoring
-├── tailor/           # Resume tailoring — resume.tex + resume.txt + JD → tailored PDF
-├── list/             # Job listing — filter and display jobs or companies
-├── select/           # Job selection — toggle selected flag in DB
-├── cover-letter/     # Cover letter generation — draft, save, convert to PDF
-├── fill/             # Form auto-fill
-├── reach/            # HR contact finding and outreach
-├── env/              # API key management (set/show/clear)
-└── init/             # Setup wizard
+src/cli/commands/
+├── add.ts            # → ctx.addApp.add(opts)
+├── config.ts         # → ctx.configApp.get/set
+├── doctor.ts         # → ctx.doctorApp.run + formatDoctor
+├── env.ts            # → singleton EnvApplicationService (env has no DB deps)
+├── fill.ts           # → ctx.fillApp.fill (stub-M4)
+├── hunt.ts           # → ctx.huntApp.hunt (stub-M2)
+├── init.ts           # → singleton InitApplicationService (runs before wolf.toml exists)
+├── job/
+│   ├── index.ts          # re-exports list helpers
+│   └── list.ts           # → ctx.jobApp.list + formatJobList
+├── profile.ts        # → ctx.profileApp.list/create/use/delete
+├── reach.ts          # → ctx.reachApp.reach (stub-M5)
+├── score.ts          # → ctx.scoreApp.score (stub-M2)
+├── status.ts         # → ctx.statusApp.summarize + formatStatus
+└── tailor.ts         # → ctx.tailorApp.tailor / analyze / writeResume / writeCoverLetter
 ```
 
-**Each command function:**
-- Accepts a typed options object (defined in `src/types/`)
+**Each application-service method:**
+- Accepts a typed options object (defined in `src/utils/types/`)
 - Returns a typed result object (never prints directly)
 - Handles its own error cases and returns structured errors
 - Is fully testable in isolation (no CLI/MCP dependencies)
@@ -293,14 +315,14 @@ src/commands/
 **Example signatures:**
 
 ```typescript
-// src/commands/add/index.ts — single job from AI orchestrator (MCP only)
+// src/application/impl/add/index.ts — single job from AI orchestrator (MCP only)
 export async function add(options: AddOptions): Promise<AddResult> {
   // 1. Receive already-structured { title, company, jdText, url? } from AI caller
   // 2. Save to DB with status: raw, score: null
   // 3. Return jobId for chaining into wolf_score or wolf_tailor
 }
 
-// src/commands/hunt/index.ts — fetch only
+// src/application/impl/hunt/index.ts — fetch only
 export async function hunt(options: HuntOptions): Promise<HuntResult> {
   // 1. Load enabled providers from config
   // 2. Run each provider, collect raw jobs
@@ -309,7 +331,7 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
   // 5. Return ingested count
 }
 
-// src/commands/score/index.ts — process only
+// src/application/impl/score/index.ts — process only
 export async function score(options: ScoreOptions): Promise<ScoreResult> {
   // 1. Read unscored jobs (score: null) from DB
   // 2. AI field extraction (sponsorship, tech stack, remote, salary)
@@ -319,9 +341,9 @@ export async function score(options: ScoreOptions): Promise<ScoreResult> {
 }
 ```
 
-### 4. Types (`src/types/`)
+### 4. Types (`src/utils/types/`)
 
-The types layer defines shared data structures across all layers — the single source of truth for wolf. Core types include:
+The types module defines shared data structures across all layers — the single source of truth for wolf. Core types include:
 
 - `Company` — a first-class entity, stored separately from jobs. Multiple jobs share one company record. `Job.companyId` is a foreign key to `Company.id`. The `reach` command uses `Company.domain` to infer email patterns.
 - `Job` — job listing data, the core object persisted to SQLite.
@@ -329,7 +351,7 @@ The types layer defines shared data structures across all layers — the single 
 - `AppConfig` — workspace-level config, loaded from `wolf.toml`. Contains `defaultProfileId` and provider/hunt/reach settings. Validated at parse time by `AppConfigSchema` (zod). Does **not** embed profile data.
 - Per-command Options/Result pairs.
 
-Full definitions in `src/types/`.
+Full definitions in `src/utils/types/`.
 
 ### 5. Utils (`src/utils/`)
 
@@ -337,11 +359,23 @@ Shared helper functions used across commands.
 
 ```
 src/utils/
+├── types/            # Shared domain types
+├── errors/           # Typed custom error classes
 ├── config.ts         # Read/write wolf.toml in workspace root (process.cwd())
-├── db.ts             # SQLite database access (CRUD for jobs)
 ├── env.ts            # Read WOLF_* system environment variables (no .env file)
-└── logger.ts         # Structured logging
+├── instance.ts       # build-mode + workspace resolution
+├── logger.ts         # Structured logging
+├── parseModelRef.ts  # "anthropic/claude-sonnet-4-6" → AiConfig
+├── schemas.ts        # Zod schemas for TOML validation
+├── stripComments.ts  # remove `> [!IMPORTANT]` / `> [!TIP]` callout blocks
+├── extractH2.ts      # `## Heading` body lookup
+├── dotPath.ts        # safe dot-path get/set/coerce for wolf.toml edits
+└── workspacePaths.ts # canonical paths inside a workspace
 ```
+
+`src/service/ai/` (provider registry) was historically under `utils/ai/`; it
+moved to `service/` as part of the 2026-04-27 layer refactor — wolf treats AI
+as a domain capability, not a cross-cutting helper.
 
 ### 6. Job Source Provider System
 
@@ -363,7 +397,7 @@ Job data can come from **many different channels**. The `hunt` command uses a **
 **How `hunt` uses providers (ingest only):**
 
 ```typescript
-// src/commands/hunt/index.ts
+// src/application/impl/hunt/index.ts
 export async function hunt(options: HuntOptions): Promise<HuntResult> {
   const providers = loadEnabledProviders(config);  // from config
   const allJobs: RawJob[] = [];
@@ -382,7 +416,7 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
 **How `score` processes ingested jobs:**
 
 ```typescript
-// src/commands/score/index.ts
+// src/application/impl/score/index.ts
 export async function score(options: ScoreOptions): Promise<ScoreResult> {
   const jobs = await db.getJobs({ score: null });           // unscored only
   const extracted = await ai.extractFields(jobs);           // AI: sponsorship, techStack, remote, salary
@@ -438,7 +472,7 @@ AI batch jobs (scoring, and future batch tailoring) are tracked in a shared `bat
 
 ### 8. External Service Integrations
 
-Each external service is accessed only from `src/commands/`, `src/utils/`, or job providers. No direct service calls from CLI/MCP layers.
+Each external service is accessed only from `src/service/`, `src/application/`, or job providers. No direct service calls from CLI/MCP layers.
 
 | Service | SDK / Method | Used By |
 |---|---|---|
@@ -746,7 +780,7 @@ it('should require score justification field', async () => {
 
 ### Test Levels
 
-- **Unit tests** for `src/commands/` — mock external services, test business logic
+- **Unit tests** for `src/application/` — mock external services, test business logic
 - **Integration tests** for CLI and MCP layers — verify argument parsing and output formatting
 - **E2E tests** for `wolf fill` — Playwright tests against sample forms
 - Test runner: vitest (lightweight, TypeScript-native)
