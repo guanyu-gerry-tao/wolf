@@ -39,6 +39,7 @@ import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicat
 import { AddApplicationServiceImpl } from '../application/impl/addApplicationServiceImpl.js';
 import { ConfigApplicationServiceImpl } from '../application/impl/configApplicationServiceImpl.js';
 import { EnvApplicationServiceImpl } from '../application/impl/envApplicationServiceImpl.js';
+import { ProfileApplicationServiceImpl } from '../application/impl/profileApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
@@ -61,6 +62,7 @@ import type { TailorApplicationService } from '../application/tailorApplicationS
 import type { AddApplicationService } from '../application/addApplicationService.js';
 import type { ConfigApplicationService } from '../application/configApplicationService.js';
 import type { EnvApplicationService } from '../application/envApplicationService.js';
+import type { ProfileApplicationService } from '../application/profileApplicationService.js';
 import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
@@ -81,6 +83,7 @@ export interface AppContext {
   addApp: AddApplicationService;
   configApp: ConfigApplicationService;
   envApp: EnvApplicationService;
+  profileApp: ProfileApplicationService;
   // config
   defaultAiConfig: AiConfig;
 }
@@ -134,6 +137,7 @@ function wireContext(
   const addApp = new AddApplicationServiceImpl(jobRepo, companyRepo);
   const configApp = new ConfigApplicationServiceImpl();
   const envApp = new EnvApplicationServiceImpl();
+  const profileApp = new ProfileApplicationServiceImpl();
 
   return {
     jobRepository: jobRepo,
@@ -150,6 +154,7 @@ function wireContext(
     addApp,
     configApp,
     envApp,
+    profileApp,
     defaultAiConfig,
   };
 }
