@@ -7,8 +7,9 @@
     "wolf": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsup",
-    "build:dev": "WOLF_BUILD_MODE=dev tsup",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && tsup",
+    "build:dev": "npm run typecheck && WOLF_BUILD_MODE=dev tsup",
     "dev": "tsup --watch",
     "wolf": "node dist/cli/index.js",
     "test": "vitest run"
