@@ -1,4 +1,4 @@
-import { createAppContext, type AppContext } from '../../cli/appContext.js';
+import { createAppContext, type AppContext } from '../../runtime/appContext.js';
 import type { StatusOptions } from '../../utils/types/commands.js';
 import type { StatusSummary } from '../../application/statusApplicationService.js';
 

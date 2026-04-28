@@ -1,4 +1,4 @@
-import { createAppContext, type AppContext } from '../../cli/appContext.js';
+import { createAppContext, type AppContext } from '../../runtime/appContext.js';
 import {
   DEFAULT_JOB_LIST_LIMIT,
   type JobListItem,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { jobList, formatJobList, runJobListCli } from '../list.js';
-import type { AppContext } from '../../../cli/appContext.js';
+import type { AppContext } from '../../../runtime/appContext.js';
 import type { Job, JobQuery } from '../../../utils/types/job.js';
 import type { Company } from '../../../utils/types/company.js';
 import type { JobListResult } from '../../../utils/types/commands.js';

@@ -1,6 +1,6 @@
 import type { TailorOptions, TailorResult } from '../../utils/types/index.js';
 import type { AnalyzeResult, WriteStepResult } from '../../application/tailorApplicationService.js';
-import { createAppContext, type AppContext } from '../../cli/appContext.js';
+import { createAppContext, type AppContext } from '../../runtime/appContext.js';
 
 /**
  * Full tailor pipeline: analyst brief -> (resume + cover letter in parallel).

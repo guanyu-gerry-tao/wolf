@@ -1,5 +1,5 @@
-import type { AppContext } from '../../cli/appContext.js';
-import { createAppContext } from '../../cli/appContext.js';
+import type { AppContext } from '../../runtime/appContext.js';
+import { createAppContext } from '../../runtime/appContext.js';
 import { stripComments } from '../../utils/stripComments.js';
 import { extractH2Content } from '../../utils/extractH2.js';
 

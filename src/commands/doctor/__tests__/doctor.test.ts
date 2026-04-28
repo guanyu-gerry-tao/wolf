@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { doctor, formatDoctor } from '../index.js';
 import type { ProfileRepository } from '../../../repository/profileRepository.js';
 import type { Profile } from '../../../utils/types/index.js';
-import type { AppContext } from '../../../cli/appContext.js';
+import type { AppContext } from '../../../runtime/appContext.js';
 
 // Minimal AppContext stub — doctor() only ever touches profileRepository.
 function makeCtx(opts: {

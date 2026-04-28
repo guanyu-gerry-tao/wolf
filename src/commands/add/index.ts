@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AddOptions, AddResult } from '../../utils/types/index.js';
-import { createAppContext, type AppContext } from '../../cli/appContext.js';
+import { createAppContext, type AppContext } from '../../runtime/appContext.js';
 
 /**
  * Stores a single job submitted by an AI orchestrator (MCP-only entry point).
