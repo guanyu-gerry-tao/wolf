@@ -17,7 +17,7 @@ vi.mock('@inquirer/prompts', () => ({
 }));
 
 import { input, confirm, select } from '@inquirer/prompts';
-import { init } from '../index.js';
+import { init } from '../init.js';
 
 // Helper: create a fresh temp directory path for each test run (not yet on disk).
 function makeTempDir(): string {

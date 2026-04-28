@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { confirm } from '@inquirer/prompts';
 import { backupConfig } from '../../utils/config.js';
-import { envSet } from '../env/index.js';
+import { envSet } from './env.js';
 import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir } from '../../utils/instance.js';
 import { InitApplicationServiceImpl } from '../../application/impl/initApplicationServiceImpl.js';
 

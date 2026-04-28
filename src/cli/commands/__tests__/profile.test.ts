@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { parse } from 'smol-toml';
-import { profileList, profileCreate, profileUse, profileDelete } from '../index.js';
+import { profileList, profileCreate, profileUse, profileDelete } from '../profile.js';
 import { saveConfig } from '../../../utils/config.js';
 import type { AppConfig } from '../../../utils/types/index.js';
 

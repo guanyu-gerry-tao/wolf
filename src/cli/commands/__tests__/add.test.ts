@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { add } from '../index.js';
+import { add } from '../add.js';
 import type { AppContext } from '../../../runtime/appContext.js';
 import type { Company } from '../../../utils/types/company.js';
 import { AddApplicationServiceImpl } from '../../../application/impl/addApplicationServiceImpl.js';

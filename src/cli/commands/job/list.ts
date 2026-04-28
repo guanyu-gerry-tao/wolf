@@ -1,5 +1,5 @@
-import { createAppContext, type AppContext } from '../../runtime/appContext.js';
-import type { JobListOptions, JobListResult } from '../../utils/types/commands.js';
+import { createAppContext, type AppContext } from '../../../runtime/appContext.js';
+import type { JobListOptions, JobListResult } from '../../../utils/types/commands.js';
 
 const ID_WIDTH = 8;
 

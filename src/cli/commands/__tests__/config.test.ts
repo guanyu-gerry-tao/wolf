@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { parse } from 'smol-toml';
-import { configGet, configSet } from '../index.js';
+import { configGet, configSet } from '../config.js';
 import { saveConfig } from '../../../utils/config.js';
 import type { AppConfig } from '../../../utils/types/index.js';
 

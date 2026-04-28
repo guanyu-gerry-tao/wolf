@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatStatus } from '../index.js';
+import { formatStatus } from '../status.js';
 import type { StatusSummary } from '../../../application/statusApplicationService.js';
 
 // The formatter is the contract between the StatusApplicationService and

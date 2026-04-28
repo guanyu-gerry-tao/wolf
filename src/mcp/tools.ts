@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { add } from '../commands/add/index.js';
-import { tailor } from '../commands/tailor/index.js';
+import { add } from '../cli/commands/add.js';
+import { tailor } from '../cli/commands/tailor.js';
 import { DEV_WARNING, getEnvValue, isDevBuild } from '../utils/instance.js';
 
 type ToolBaseName = 'hunt' | 'add' | 'score' | 'tailor' | 'fill' | 'reach' | 'status';

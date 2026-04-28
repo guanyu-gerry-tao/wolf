@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { hunt } from '../commands/hunt/index.js';
-import { score } from '../commands/score/index.js';
-import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from '../commands/tailor/index.js';
-import { fill } from '../commands/fill/index.js';
-import { reach } from '../commands/reach/index.js';
-import { status, formatStatus } from '../commands/status/index.js';
-import { doctor, formatDoctor } from '../commands/doctor/index.js';
-import { runJobListCli } from '../commands/job/index.js';
-import { init } from '../commands/init/index.js';
-import { add } from '../commands/add/index.js';
-import { envShow, envSet, envSetOne, envClear } from '../commands/env/index.js';
-import { configGet, configSet } from '../commands/config/index.js';
-import { profileList, profileCreate, profileUse, profileDelete } from '../commands/profile/index.js';
+import { hunt } from './commands/hunt.js';
+import { score } from './commands/score.js';
+import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from './commands/tailor.js';
+import { fill } from './commands/fill.js';
+import { reach } from './commands/reach.js';
+import { status, formatStatus } from './commands/status.js';
+import { doctor, formatDoctor } from './commands/doctor.js';
+import { runJobListCli } from './commands/job/index.js';
+import { init } from './commands/init.js';
+import { add } from './commands/add.js';
+import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
+import { configGet, configSet } from './commands/config.js';
+import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
 
