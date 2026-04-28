@@ -330,8 +330,12 @@ const REQUIRED_PROFILE_FIELDS = [
  * survives strip is either real content or the user's intentional placeholder.
  */
 function assertReadyForTailor(profile: Profile, resumePool: string): void {
+  // Strip alert callouts before extraction: an H2 whose body is only a
+  // `> [!IMPORTANT]` block (the un-edited template state) must count as
+  // empty, not "answered".
+  const strippedProfile = stripComments(profile.md);
   const missing = REQUIRED_PROFILE_FIELDS.filter(
-    (field) => extractH2Content(profile.md, field).length === 0,
+    (field) => extractH2Content(strippedProfile, field).length === 0,
   );
   if (missing.length > 0) {
     log.error('tailor.context.profile_incomplete', {

@@ -6,6 +6,7 @@ import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from '../command
 import { fill } from '../commands/fill/index.js';
 import { reach } from '../commands/reach/index.js';
 import { status, formatStatus } from '../commands/status/index.js';
+import { doctor, formatDoctor } from '../commands/doctor/index.js';
 import { runJobListCli } from '../commands/job/index.js';
 import { init } from '../commands/init/index.js';
 import { add } from '../commands/add/index.js';
@@ -179,6 +180,15 @@ program
   .action(async () => {
     const result = await status();
     console.log(formatStatus(result));
+  });
+
+program
+  .command('doctor')
+  .description('Check whether the default profile is filled enough for tailor / fill / reach to run')
+  .action(async () => {
+    const report = await doctor();
+    console.log(formatDoctor(report));
+    if (!report.ready) process.exitCode = 1;
   });
 
 // Commander's collector for repeatable flags. Each occurrence of --search

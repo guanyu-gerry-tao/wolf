@@ -354,6 +354,29 @@ describe('TailorApplicationService', () => {
     await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
   });
 
+  // Regression: an H2 whose body is only a `> [!IMPORTANT]` callout (the
+  // un-edited template state right after `wolf init`) must NOT be treated
+  // as filled. assertReadyForTailor strips alert blocks before extracting,
+  // matching what the AI actually sees.
+  it('refuses tailor when profile.md required field body is only a > [!IMPORTANT] callout (fresh init state)', async () => {
+    const calloutOnlyProfile: Profile = {
+      name: 'default',
+      md: [
+        '## Legal first name',
+        '> [!IMPORTANT]',
+        '> you must answer; AI cannot guess this.',
+        '## Legal last name',
+        'Rivera',
+        '## Email',
+        'r@x.test',
+        '## Phone',
+        '+1 555 0100',
+      ].join('\n'),
+    };
+    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: calloutOnlyProfile }) });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
+  });
+
   it('refuses tailor when profile.md required field is blank-bodied', async () => {
     const profileBlankEmail: Profile = {
       name: 'default',
