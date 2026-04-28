@@ -4,6 +4,9 @@ import type { AppContext } from '../../../runtime/appContext.js';
 import type { Job, JobQuery } from '../../../utils/types/job.js';
 import type { Company } from '../../../utils/types/company.js';
 import type { JobListResult } from '../../../utils/types/commands.js';
+import { JobApplicationServiceImpl } from '../../../application/impl/jobApplicationServiceImpl.js';
+import type { JobRepository } from '../../../repository/jobRepository.js';
+import type { CompanyRepository } from '../../../repository/companyRepository.js';
 
 // `wolf job list` is the single place where filters, limits, and company-name
 // resolution meet. Tests here cover both the happy path (SQL filters pass
@@ -63,15 +66,18 @@ function makeCtx(opts: {
 } = { jobs: [], companies: [] }): AppContext {
   const total = opts.totalMatching ?? opts.jobs.length;
   const companiesById = new Map(opts.companies.map((c) => [c.id, c]));
+  const jobRepository = {
+    query: vi.fn(async (_q: JobQuery) => opts.jobs),
+    countMatching: vi.fn(async () => total),
+  } as unknown as JobRepository;
+  const companyRepository = {
+    get: vi.fn(async (id: string) => companiesById.get(id) ?? null),
+    query: vi.fn(async () => opts.companies),
+  } as unknown as CompanyRepository;
   return {
-    jobRepository: {
-      query: vi.fn(async (_q: JobQuery) => opts.jobs),
-      countMatching: vi.fn(async () => total),
-    },
-    companyRepository: {
-      get: vi.fn(async (id: string) => companiesById.get(id) ?? null),
-      query: vi.fn(async () => opts.companies),
-    },
+    jobRepository,
+    companyRepository,
+    jobApp: new JobApplicationServiceImpl(jobRepository, companyRepository),
   } as unknown as AppContext;
 }
 
