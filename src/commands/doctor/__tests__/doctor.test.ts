@@ -3,8 +3,10 @@ import { doctor, formatDoctor } from '../index.js';
 import type { ProfileRepository } from '../../../repository/profileRepository.js';
 import type { Profile } from '../../../utils/types/index.js';
 import type { AppContext } from '../../../runtime/appContext.js';
+import { DoctorApplicationServiceImpl } from '../../../application/impl/doctorApplicationServiceImpl.js';
 
-// Minimal AppContext stub — doctor() only ever touches profileRepository.
+// Minimal AppContext stub — doctor() only ever touches profileRepository,
+// wired through a real DoctorApplicationServiceImpl.
 function makeCtx(opts: {
   profile: Profile;
   resumePool: string;
@@ -19,7 +21,10 @@ function makeCtx(opts: {
     getStandardQuestions: vi.fn().mockResolvedValue(opts.standardQuestions),
     getAttachmentsList: vi.fn().mockResolvedValue([]),
   } as unknown as ProfileRepository;
-  return { profileRepository: repo } as unknown as AppContext;
+  return {
+    profileRepository: repo,
+    doctorApp: new DoctorApplicationServiceImpl(repo),
+  } as unknown as AppContext;
 }
 
 // Convenience: profile with all REQUIRED H2 sections filled.

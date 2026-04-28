@@ -40,6 +40,7 @@ import { AddApplicationServiceImpl } from '../application/impl/addApplicationSer
 import { ConfigApplicationServiceImpl } from '../application/impl/configApplicationServiceImpl.js';
 import { EnvApplicationServiceImpl } from '../application/impl/envApplicationServiceImpl.js';
 import { ProfileApplicationServiceImpl } from '../application/impl/profileApplicationServiceImpl.js';
+import { DoctorApplicationServiceImpl } from '../application/impl/doctorApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
@@ -63,6 +64,7 @@ import type { AddApplicationService } from '../application/addApplicationService
 import type { ConfigApplicationService } from '../application/configApplicationService.js';
 import type { EnvApplicationService } from '../application/envApplicationService.js';
 import type { ProfileApplicationService } from '../application/profileApplicationService.js';
+import type { DoctorApplicationService } from '../application/doctorApplicationService.js';
 import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
@@ -84,6 +86,7 @@ export interface AppContext {
   configApp: ConfigApplicationService;
   envApp: EnvApplicationService;
   profileApp: ProfileApplicationService;
+  doctorApp: DoctorApplicationService;
   // config
   defaultAiConfig: AiConfig;
 }
@@ -138,6 +141,7 @@ function wireContext(
   const configApp = new ConfigApplicationServiceImpl();
   const envApp = new EnvApplicationServiceImpl();
   const profileApp = new ProfileApplicationServiceImpl();
+  const doctorApp = new DoctorApplicationServiceImpl(profileRepository);
 
   return {
     jobRepository: jobRepo,
@@ -155,6 +159,7 @@ function wireContext(
     configApp,
     envApp,
     profileApp,
+    doctorApp,
     defaultAiConfig,
   };
 }
