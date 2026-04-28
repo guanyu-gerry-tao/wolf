@@ -223,23 +223,15 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - `--cover-letter` → 定制完成后，为本批次的每个职位生成求职信（逻辑同 UC-07.1.1）。
 - 2 - wolf 从 SQLite 读取所有 `selected: true` 且（`status: scored` 或 `status: tailor_error`）的职位（若设置了 `--jobid` 则仅读取指定职位），提取 JD、公司、职位名等相关字段。
 - 3 - wolf 从 profile 文件夹下的 `profile.md` 读取用户 profile，从同一文件夹下的 `resume_pool.md` 读取简历要点。
-- 4 - wolf 将所有职位批量提交至 Claude Batch API，每个请求包含 JD 文本和简历池。CLI 在轮询时提供进度更新。
-   - 4.1 - 若设置了 `--jobid` → 跳过批次，改为单次同步调用。
-   - 4.2 - 若响应缺失或完全不可读（非有效 `.tex`）→ 标记 `status: tailor_error`，继续处理下一条。部分或可编译（但有瑕疵）的 `.tex` 进入步骤 5，由编译和审查循环（步骤 6–8）处理。
-
-以下步骤（5–8）在收到批次结果后逐职位执行，每个职位独立进行审查循环。
-
-- 5 - wolf 将定制后的 `.tex` 文件写入工作区。
-- 6 - wolf 通过 `xelatex` 将 `.tex` 编译为 PDF。
-   - 6.1 - 若未安装 `xelatex` → 跳过所有职位的步骤 6–8，打印警告，继续至步骤 9。
-   - 6.2 - 若编译失败 → 将 `.tex` 和错误日志发回 Claude 修复，然后重试编译。若仍失败 → 标记 `status: tailor_error`，跳至下一条职位。
-- 7 - wolf 对 PDF 截图：每页 1 张 JPG，最多截取 2 页。
-- 8 - wolf 将截图和 `.tex` 源码发送给 Claude，指令为："如果你发现了第二页或孤行，请以最小改动修复 `.tex` 并返回更新后的源码；否则返回 LGTM。"
-   - 8.1 - 若 Claude 返回更新后的 `.tex` → 返回步骤 6。在步骤 6–8 中最多重复 **3 次**。
-   - 8.2 - 若 Claude 返回 LGTM → 继续处理下一条职位。
-   - 8.3 - 3 次后仍未获得 LGTM → wolf 检查最终 PDF 页数：1 页则接受并继续；2 页则标记 `status: tailor_error`，继续处理下一条。
-- 9 - wolf 打印汇总：已定制职位数、错误数和输出文件路径。
-- 10 - 若设置了 `--cover-letter` → 为本批次所有定制成功的职位运行 UC-07.1.1。
+- 4 - wolf 按职位执行 **3-agent 检查点流水线**：先跑阶段 1（分析师），分析师产出后并行启动阶段 2a 和 2b（两个 writer）。
+   - 4.1 - **分析师** —— Claude 读取 `profile.md`、`resume_pool.md`、JD、可选的 `hint.md`，写出 `data/jobs/<dir>/src/tailoring-brief.md`（两个 writer 共用的 brief）。
+- 5 - **简历 writer**（并行分支 2a） —— Claude 消费 pool + JD + profile + brief，返回 HTML body，wolf 写入 `data/jobs/<dir>/src/resume.html`。
+- 6 - wolf 通过 Playwright Chromium 把 `resume.html` 渲染成 PDF，使用确定性的 **fit-loop**：对 CSS 变量（`--font-size`、`--line-height`、`--margin-in`）做二分搜索，把版面压缩（或扩张）到刚好填满一张 Letter，受配置好的下界/上界约束。PDF 写入 `data/jobs/<dir>/resume.pdf`。
+   - 6.1 - 若连 floor 参数都装不下 → 抛 `CannotFitError`，要求用户手动删减内容。整条流水线**不依赖任何系统级工具**（无 xelatex / pdfinfo 等）—— Playwright 自带 Chromium。
+- 7 - **求职信 writer**（并行分支 2b） —— Claude 消费 pool + JD + profile + brief + tone，返回 HTML body，wolf 写入 `data/jobs/<dir>/src/cover_letter.html`。
+- 8 - wolf 通过 Playwright Chromium 把 `cover_letter.html` 渲染成 PDF，**自然 CSS 布局**（不跑 fit-loop；多页输出可接受）。PDF 写入 `data/jobs/<dir>/cover_letter.pdf`。
+   - 8.1 - 若设置了 `--no-cover-letter` → 跳过步骤 7–8。
+- 9 - wolf 把 resume PDF 路径和 cover letter PDF 路径写回 Job 行，然后打印每条职位的产物路径汇总。Tailor 失败以抛错形式上抛，错误码为 `tailor_resume_error` / `tailor_cover_letter_error`，由调用方决定如何记录。（Tailor 自身**不修改** `Job.status` —— 那个字段由应用生命周期管理。）
 
 ## UC-06.1.2 · 定制简历（MCP）
 
@@ -248,7 +240,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 
 - 1 - 用户要求 AI 为某职位定制简历（例如"帮我为职位 42 定制简历"）。
 - 2 - AI 携带 `{ jobId }` 调用 `wolf_tailor` 定制指定职位，或无参数调用以定制所有已选职位。`profileId` 为未来多 profile 支持的占位参数（TBD）；目前省略。
-- 3 - wolf 按 UC-06.1.1 步骤 2–10 执行定制，并返回每条职位的结果：PDF 路径、页数、视觉审查迭代次数、求职信路径（若已生成），以及错误信息（`tailor_error` 职位附带原因）。
+- 3 - wolf 按 UC-06.1.1 步骤 2–9 执行定制，并返回每条职位的结果：简历 PDF 路径、求职信 PDF 路径（若已生成）、brief 路径、fit-loop 最终参数，以及错误信息（`tailor_resume_error` / `tailor_cover_letter_error` 附带原因）。
 - 4 - AI 向用户汇报摘要：哪些职位定制成功，哪些遇到 `tailor_error` 及原因，并提示下一步（例如运行 `wolf_cover_letter` 或 `wolf_fill`）。
 
 ## UC-07.1.1 · 生成求职信（`wolf cover-letter`）
@@ -261,9 +253,9 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 3 - wolf 检查 JD 或 `companies` 表中是否包含公司描述。
    - 3.1 - 若有公司描述 → 生成完整求职信，包含"为什么选择这家公司"章节。
    - 3.2 - 若无公司描述 → 求职信仅围绕用户自身和职位匹配度展开；省略"为什么选择这家公司"章节，不捏造内容。
-- 4 - wolf 调用 Claude API 起草求职信。
-- 5 - wolf 将草稿保存为 `.md` 文件（与定制简历放在同一位置），并在 `evaluations.coverLetterPath` 中记录路径。
-- 6 - wolf 通过 `md-to-pdf` 将 `.md` 转换为 PDF。若未安装 `md-to-pdf` → 跳过所有职位的 PDF 转换，打印警告并继续。
+- 4 - wolf 调用 Claude API 起草求职信，返回 HTML body。
+- 5 - wolf 将 HTML 写入 `data/jobs/<dir>/src/cover_letter.html`，并把路径记录到 Job 行。
+- 6 - wolf 通过 Playwright Chromium 把 HTML 渲染成 PDF（自然 CSS 布局，允许多页），写入 `data/jobs/<dir>/cover_letter.pdf`。**无系统级依赖**。
 - 7 - wolf 打印输出文件路径。
 
 ## UC-07.1.2 · 生成求职信（MCP）
@@ -273,7 +265,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 
 - 1 - 用户要求 AI 生成求职信（例如"为职位 42 写一封求职信"），或 AI 在 UC-08.1.2 检测到求职信字段时自动触发。
 - 2 - AI 携带 `{ jobId }` 调用 `wolf_cover_letter`。`profileId` 为未来多 profile 支持的占位参数（TBD）；目前省略。
-- 3 - wolf 按 UC-07.1.1 步骤 2–6 生成求职信，并返回求职信内容、`.md` 路径、PDF 路径（若转换成功）以及是否有公司上下文。
+- 3 - wolf 按 UC-07.1.1 步骤 2–6 生成求职信，并返回求职信 HTML 内容、HTML 路径、PDF 路径以及是否有公司上下文。
 - 4 - AI 向用户展示求职信内容供审阅。
    - 4.1 - 若用户请求修改 → AI 携带修改指令再次调用 `wolf_cover_letter`；从步骤 4 重复。
 

@@ -12,7 +12,7 @@ try {
 } catch (err) {
   if (err instanceof JobNotFoundError) { /* show "no such job" message */ }
   else if (err instanceof AiCallFailedError) { /* show API retry hint */ }
-  else if (err instanceof RenderFailedError) { /* show xelatex/playwright diagnostics */ }
+  else if (err instanceof RenderFailedError) { /* show Playwright/Chromium diagnostics */ }
   else { throw err; }
 }
 ```

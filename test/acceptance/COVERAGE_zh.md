@@ -23,9 +23,9 @@
 |---|---|---|
 | `UC-06.1.1` | Tailor Resume（CLI） | `tailor/TAILOR-01`, `tailor/TAILOR-02`, `tailor/TAILOR-03`, `tailor/TAILOR-04` |
 | `UC-07.1.1` | Generate Cover Letter（CLI） | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
-| `AC-04-1` | 写出 tailored `.tex` 和编译后的 PDF | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
+| `AC-04-1` | 写出 tailoring brief、`resume.html`、`resume.pdf`，并把 resume PDF 路径写回 Job 行 | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-04-2` | 保留事实准确性 — 不引入新公司/日期/指标/声称、不杜撰整段 section、section 顺序跟随 pool | `tailor/TAILOR-01`, `tailor/TAILOR-04` |
-| `AC-05-1` | 在 tailored resume 旁边写出 `.md` 和 PDF cover letter | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
+| `AC-05-1` | 在 tailored resume 旁边写出 `cover_letter.html` 和 `cover_letter.pdf`，并把 cover letter PDF 路径写回 Job 行 | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-05-2` | Cover letter 含正确的 role title 和 company name | `tailor/TAILOR-01` |
 | Analyst hint 流程（`--hint` 写 `src/hint.md`，引导 analyst brief） | `UC-06.1.1` 的子能力；没有专属 AC id | `tailor/TAILOR-03` |
 
@@ -56,8 +56,8 @@ case 覆盖。这是下一批要补的 case，按优先级排序。
 | Requirement | 行为 | 为什么还没覆盖 | 建议 case |
 |---|---|---|---|
 | `AC-04-3` | `wolf tailor full <jobId> --diff` 打印每个改动 bullet 的前后对比 | `--diff` 输出从未被断言 | 扩展 `tailor/TAILOR-02` 或新增 `TAILOR-04-diff` |
-| `AC-04-4` | Tailored resume page-count guard：超页时反复 reprompt Claude | refinement loop 断言缺失 | 新增 `tailor/TAILOR-04-page-count-guard`（需要长 resume fixture） |
-| `AC-05-3` | Cover letter 缺 `md-to-pdf` 时非阻塞 | 需要无 `md-to-pdf` 的环境 | 新增 `tailor/TAILOR-05-cover-letter-degraded`（环境受控） |
+| `AC-04-4` | Tailored resume 单页 fit-loop 二分搜索；floor 仍溢出时抛 `CannotFitError` | fit-loop 在长 resume fixture 上的断言缺失 | 新增 `tailor/TAILOR-04-fit-loop-overflow`（需要超长 resume fixture） |
+| `AC-05-3` | HTML+Playwright 流水线无系统级依赖 | 干净机器 smoke 隐式覆盖，但没有专属 case | 可选：新增 `tailor/TAILOR-05-no-system-deps`（CI-only：无 xelatex / md-to-pdf 环境） |
 | `AC-01-*` | `wolf init` 流程相关 AC | 当前由 smoke `bootstrap` 覆盖，不在 acceptance | 决定是否把 smoke `bootstrap` 提升为 acceptance `init` group |
 | `AC-09-*` | `wolf env show` mask；`wolf env clear` 移除 RC lines | 没有 acceptance group；`wolf env clear` 会修改用户 shell RC，自动化测试禁止 | 新增 `env` group：`clear` 走 `human-guided`，`show` 走 automated |
 | `UC-02.2.2` / `UC-06.1.2` / `UC-07.1.2` | add / tailor / cover-letter 的 MCP 变体 | 整个 `mcp-contract` group 是 `planned` | 在 `mcp-contract` planned group 下追踪 |

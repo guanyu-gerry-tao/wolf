@@ -29,7 +29,7 @@ wolf is open source and welcomes contributions. Whether you're fixing a bug, imp
 |---|---|---|---|
 | 1 | Scaffolding & Skeleton | CLI + MCP server runnable, all subcommands registered (stubs) | **In progress** |
 | 2 | Hunter | Job ingestion, AI scoring, dedup, local DB | Planned |
-| 3 | Resume Tailor | AI-powered resume rewriting + LaTeX → PDF | Planned |
+| 3 | Resume Tailor | AI-powered resume rewriting + HTML → PDF (Playwright) | Planned |
 | 4 | Form Prefill | Playwright-based application form auto-fill | Planned |
 | 5 | Outreach | Contact finder + cold email drafting via Gmail | Planned |
 
@@ -74,8 +74,7 @@ wolf/
 | MCP server | MCP SDK |
 | Job data | Pluggable provider system |
 | AI | Claude API (Anthropic SDK) |
-| Resume | LaTeX (xelatex) → PDF |
-| Cover letter | md-to-pdf (Markdown → PDF) |
+| Resume + cover letter | HTML → PDF via Playwright Chromium (resume fit-loop over font-size / line-height / margin) |
 | Browser automation | Playwright |
 | Local storage | SQLite |
 | Email | Gmail API (OAuth2) |

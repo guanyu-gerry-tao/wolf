@@ -23,9 +23,9 @@ UC ids reference [`docs/requirements/USE_CASES.md`](../../docs/requirements/USE_
 |---|---|---|
 | `UC-06.1.1` | Tailor Resume (CLI) | `tailor/TAILOR-01`, `tailor/TAILOR-02`, `tailor/TAILOR-03`, `tailor/TAILOR-04` |
 | `UC-07.1.1` | Generate Cover Letter (CLI) | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
-| `AC-04-1` | Tailored `.tex` file and compiled PDF written to workspace | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
+| `AC-04-1` | Tailoring brief, `resume.html`, and `resume.pdf` written to workspace; resume PDF path recorded on Job row | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-04-2` | Factual accuracy preserved — no fabricated companies/dates/metrics/claims, no invented sections, section order follows the pool | `tailor/TAILOR-01`, `tailor/TAILOR-04` |
-| `AC-05-1` | `.md` and PDF cover letter written alongside tailored resume | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
+| `AC-05-1` | `cover_letter.html` and `cover_letter.pdf` written alongside tailored resume; cover letter PDF path recorded on Job row | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-05-2` | Cover letter includes correct role title and company name from JD | `tailor/TAILOR-01` |
 | Analyst hint flow (`--hint` writes `src/hint.md`, steers analyst brief) | Sub-feature of `UC-06.1.1`; no canonical AC id assigned | `tailor/TAILOR-03` |
 
@@ -57,8 +57,8 @@ additions, in priority order.
 | Requirement | Behavior | Why uncovered | Suggested case |
 |---|---|---|---|
 | `AC-04-3` | `wolf tailor full <jobId> --diff` prints before/after of every changed bullet | `--diff` output never asserted | Extend `tailor/TAILOR-02` or add `TAILOR-04-diff` |
-| `AC-04-4` | Tailored resume page-count guard re-prompts Claude until page count matches | Refinement-loop assertion missing | Add `tailor/TAILOR-04-page-count-guard` (needs a long-resume fixture) |
-| `AC-05-3` | Cover letter PDF compilation failure (no `md-to-pdf`) is non-blocking | Requires environment without `md-to-pdf` installed | Add `tailor/TAILOR-05-cover-letter-degraded` (env-controlled) |
+| `AC-04-4` | Tailored resume single-page guard via fit-loop binary search; floor-overflow throws `CannotFitError` | Fit-loop assertion missing on long-resume fixture | Add `tailor/TAILOR-04-fit-loop-overflow` (needs an oversized resume fixture) |
+| `AC-05-3` | No system-level dependencies required for HTML+Playwright pipeline | Implicitly covered by clean-machine smoke runs but not asserted as its own case | Optional: add `tailor/TAILOR-05-no-system-deps` (CI-only env without xelatex/md-to-pdf) |
 | `AC-01-*` | `wolf init` happy path, workspace confirmation, key summary, etc. | Currently exercised by smoke `bootstrap`, not acceptance | Decide whether to promote smoke `bootstrap` cases into an acceptance `init` group |
 | `AC-09-*` | `wolf env show` masks values; `wolf env clear` removes RC lines | No acceptance group exists; `wolf env clear` modifies user shell RC and is forbidden in automated tests | Add `env` group as `human-guided` for `clear`, automated for `show` |
 | `UC-02.2.2` / `UC-06.1.2` / `UC-07.1.2` | MCP variants of add / tailor / cover-letter | Whole `mcp-contract` group is `planned` | Track under `mcp-contract` planned group |

@@ -29,7 +29,7 @@
 | `debug` | 仅开发用，`WOLF_LOG=debug` 才显示 | 完整 AI 请求 / 响应体、SQL 查询文本、正在读的文件路径 |
 | `info` | 操作者应当看到的正常进度 | "Tailoring resume for job abc123"、"42 jobs hunted"、"Batch submitted (id=bat_xyz, jobs=50)" |
 | `warn` | 可恢复的异常，值得标记 | "Anthropic 429, retrying (2/3)"、"hint.md missing, proceeding without"、"Fit loop hit margin cap, falling back to linespread" |
-| `error` | 操作失败 | "xelatex exit 1"、"jobId not found in DB"、"Invalid profile config" —— 除非调用方重抛，否则流程继续 |
+| `error` | 操作失败 | "Playwright PDF render failed"、"jobId not found in DB"、"Invalid profile config" —— 除非调用方重抛，否则流程继续 |
 
 级别代表**声音大小**，不代表**发生了什么**。"什么"由结构化字段携带。
 
@@ -48,7 +48,7 @@ logger.info('message', { field1, field2 });
 ```ts
 logger.info('Tailor analyze complete', { jobId, durationMs, tokensOut });
 logger.warn('Anthropic rate-limited, retrying', { attempt, delayMs });
-logger.error('xelatex exit non-zero', { exit, jobId, logPath });
+logger.error('Playwright PDF render failed', { jobId, attempt, errorName });
 ```
 
 **反例：**
@@ -115,7 +115,7 @@ export class MyServiceImpl implements MyService {
 
 - `src/service/impl/resumeCoverLetterServiceImpl.ts` —— 给 AI 调用包上 `durationMs`、`tokensIn`、`tokensOut`、重试次数
 - `src/service/impl/tailoringBriefServiceImpl.ts` —— 同上
-- `src/service/impl/renderServiceImpl.ts` —— 给 xelatex / playwright 子进程包上 `exit`、`durationMs`、fit-loop 状态跃迁
+- `src/service/impl/renderServiceImpl.ts` —— 给 Playwright Chromium 调用包上 `durationMs`、fit-loop 状态跃迁（`shrink`/`expand`/`refine` 阶段、最终的 font-size / line-height / margin）
 - `src/service/impl/batchServiceImpl.ts` —— batch 生命周期日志（提交、轮询、返回、失败）
 - 任何当前只是裸 `throw`、没有上下文的地方
 

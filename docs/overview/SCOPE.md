@@ -38,10 +38,10 @@ AI-powered relevance scoring using Claude API.
 
 Rewrite resume bullet points to better match a specific JD.
 
-- Parse resume from LaTeX (`.tex`) source
-- AI rewrite via Claude API, preserving structure and truthfulness
-- Output a new tailored `.tex` file + compile to PDF via `xelatex`
-- Show diff and match score
+- Read resume bullets from `resume_pool.md` and personal data from `profile.md`
+- AI rewrite via Claude API, preserving structure and truthfulness, through a 3-agent pipeline (analyst → resume + cover letter writers in parallel)
+- Output `resume.html` + render to PDF via Playwright Chromium with a deterministic fit-loop (binary search over font-size / line-height / margin to fit one page)
+- Show diff and final fit parameters
 
 ### Cover Letter Generation (`wolf cover-letter`)
 
@@ -50,7 +50,7 @@ Generate a targeted cover letter for a specific job.
 - Standalone command; also triggered by `wolf tailor --cover-letter` or automatically during form filling
 - AI-drafted via Claude API, based on JD + user profile + tailored resume
 - Adapts content based on available company description; omits "why this company" section rather than hallucinating if no description is found
-- Output as `.md` file + convert to PDF via `md-to-pdf`
+- Output as `cover_letter.html` + render to PDF via Playwright Chromium (natural CSS layout, multi-page allowed). No system dependencies.
 
 ### User Profile (`wolf init`)
 

@@ -59,13 +59,20 @@
 > wolf 可以针对特定 JD 定制你的简历
 
 ### `wolf tailor` / `wolf_tailor`
-- [ ] 从 `.tex` 源文件解析简历
-- [ ] Claude API prompt — 根据 JD 关键词改写要点
-- [ ] 输出定制简历为新的 `.tex` 文件 + 通过 `xelatex` 编译为 PDF
-- [ ] 生成求职信为 `.md` 文件 + 通过 `md-to-pdf` 转换为 PDF
-- [ ] 打印匹配分数和关键改动摘要
-- [ ] `--diff` flag — 显示修改前后对比
-- [ ] 接入 MCP tool（替换 stub）
+- [x] 从 `resume_pool.md` 读取简历要点，从 `profile.md` 读取个人信息
+- [x] 3-agent 检查点流水线：分析师产出 `tailoring-brief.md`；简历 + 求职信 writer 并行执行
+- [x] Claude API prompt — 根据 JD 改写简历要点和求职信 HTML
+- [x] 输出 `resume.html` + 通过 Playwright Chromium 渲染 PDF，使用确定性 fit-loop（对 `--font-size` / `--line-height` / `--margin-in` 做二分搜索）
+- [x] `--no-cover-letter` 跳过求职信 writer；`--hint` 通过 `hint.md` 给分析师传递引导
+- [x] 打印最终 fit 参数和产物路径
+- [x] `--diff` flag — 显示修改前后对比
+- [x] 接入 MCP tool（替换 stub）
+
+### `wolf cover-letter` / `wolf_cover_letter`
+- [x] 在 tailor 流水线中并行生成求职信（分支 2b）
+- [x] 检查 JD / `companies` 表是否有公司描述；若无则省略"为什么这家公司"段落
+- [x] 输出 `cover_letter.html` + 通过 Playwright Chromium 渲染 PDF（自然 CSS 布局，允许多页）；路径写回 Job 行
+- [x] 接入 MCP tool（替换 stub）
 
 ---
 

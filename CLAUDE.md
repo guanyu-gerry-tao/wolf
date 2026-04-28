@@ -59,8 +59,7 @@ wolf/
 | MCP server | MCP SDK |
 | Job data | Pluggable provider system |
 | AI | Claude API (anthropic SDK) |
-| Resume rendering | LaTeX (xelatex) → PDF |
-| Cover letter rendering | md-to-pdf (Markdown → PDF) |
+| Resume + cover letter rendering | HTML → PDF via Playwright Chromium (resume runs a fit-loop binary search over font-size / line-height / margin to fit one page) |
 | Browser automation | Playwright |
 | Local storage | SQLite |
 | Email | Gmail API (OAuth2) |

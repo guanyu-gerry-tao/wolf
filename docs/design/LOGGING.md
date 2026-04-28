@@ -29,7 +29,7 @@ Four levels, used as follows:
 | `debug` | Dev-only. Hidden unless `WOLF_LOG=debug` | Full AI request/response bodies, SQL query text, file paths being read |
 | `info` | Normal progress the operator should see | "Tailoring resume for job abc123", "42 jobs hunted", "Batch submitted (id=bat_xyz, jobs=50)" |
 | `warn` | Recoverable anomaly, worth flagging | "Anthropic 429, retrying (2/3)", "hint.md missing, proceeding without", "Fit loop hit margin cap, falling back to linespread" |
-| `error` | Operation failed | "xelatex exit 1", "jobId not found in DB", "Invalid profile config" — continues unless caller rethrows |
+| `error` | Operation failed | "Playwright PDF render failed", "jobId not found in DB", "Invalid profile config" — continues unless caller rethrows |
 
 Level = how loud, not what happened. The *what* goes in the structured fields.
 
@@ -48,7 +48,7 @@ logger.info('message', { field1, field2 });
 ```ts
 logger.info('Tailor analyze complete', { jobId, durationMs, tokensOut });
 logger.warn('Anthropic rate-limited, retrying', { attempt, delayMs });
-logger.error('xelatex exit non-zero', { exit, jobId, logPath });
+logger.error('Playwright PDF render failed', { jobId, attempt, errorName });
 ```
 
 **Bad:**
@@ -115,7 +115,7 @@ Priority retrofit targets (each is a good first issue):
 
 - `src/service/impl/resumeCoverLetterServiceImpl.ts` — wrap AI calls with `durationMs`, `tokensIn`, `tokensOut`, retry counts
 - `src/service/impl/tailoringBriefServiceImpl.ts` — same
-- `src/service/impl/renderServiceImpl.ts` — wrap xelatex/playwright subprocess calls with `exit`, `durationMs`, fit-loop state transitions
+- `src/service/impl/renderServiceImpl.ts` — wrap Playwright Chromium calls with `durationMs`, fit-loop state transitions (`shrink`/`expand`/`refine` phases, final font-size / line-height / margin)
 - `src/service/impl/batchServiceImpl.ts` — log batch lifecycle (submitted, polling, resolved, failed)
 - Anywhere we currently `throw` without context
 

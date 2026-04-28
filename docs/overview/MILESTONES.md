@@ -64,19 +64,20 @@
 > wolf can tailor your resume to a specific JD
 
 ### `wolf tailor` / `wolf_tailor`
-- [ ] Parse resume from `.tex` source file
-- [ ] Claude API prompt — rewrite bullet points to match JD keywords
-- [ ] Output tailored resume as new `.tex` file + compile to PDF via `xelatex`
-- [ ] `--cover-letter` flag — trigger cover letter generation after tailoring completes
-- [ ] Print match score and key changes summary
-- [ ] `--diff` flag — show before/after comparison
-- [ ] Wire up MCP tool (replace stub)
+- [x] Read resume bullets from `resume_pool.md` and personal data from `profile.md`
+- [x] 3-agent checkpoint pipeline: analyst writes `tailoring-brief.md`; resume + cover letter writers run in parallel
+- [x] Claude API prompts — rewrite bullet points and cover letter HTML to match JD
+- [x] Output tailored resume as `resume.html` + render to PDF via Playwright Chromium with deterministic fit-loop (binary search over `--font-size` / `--line-height` / `--margin-in`)
+- [x] `--no-cover-letter` flag — skip cover letter writer; `--hint` flag — pass guidance into the analyst via `hint.md`
+- [x] Print final fit parameters and artifact paths
+- [x] `--diff` flag — show before/after comparison
+- [x] Wire up MCP tool (replace stub)
 
 ### `wolf cover-letter` / `wolf_cover_letter`
-- [ ] Generate cover letter for selected jobs with no existing CL
-- [ ] Check JD / companies table for company description; omit "why this company" section if not found
-- [ ] Save as `.md` + convert to PDF via `md-to-pdf`; record path in `evaluations.coverLetterPath`
-- [ ] Wire up MCP tool (replace stub)
+- [x] Generate cover letter as part of the tailor pipeline (parallel branch 2b)
+- [x] Check JD / companies table for company description; omit "why this company" section if not found
+- [x] Save as `cover_letter.html` + render to PDF via Playwright Chromium (natural CSS layout, multi-page allowed); record path on the Job row
+- [x] Wire up MCP tool (replace stub)
 
 ---
 

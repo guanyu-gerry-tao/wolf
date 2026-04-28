@@ -37,10 +37,10 @@ wolf is a dual-interface application: it runs as both a **CLI tool** (for human 
                └────────────┬───────────┘
                             │
                             v
-        ┌──────────┬─────────────┬──────────┬─────────┐
-        │  Claude  │   SQLite    │ xelatex  │  Gmail  │   Utils + External
-        │   API    │             │ pdfinfo  │   API   │
-        └──────────┴─────────────┴──────────┴─────────┘
+        ┌──────────┬─────────────┬────────────┬─────────┐
+        │  Claude  │   SQLite    │ Playwright │  Gmail  │   Utils + External
+        │   API    │             │ (Chromium) │   API   │
+        └──────────┴─────────────┴────────────┴─────────┘
 ```
 
 ## Layered Architecture

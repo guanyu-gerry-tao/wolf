@@ -103,9 +103,9 @@
 **故事：** US-04 · **用例：** UC-04
 
 **AC-04-1 — 输出文件已生成**
-- Given 提供有效的 jobId 和 `.tex` 简历源文件
+- Given 提供有效的 jobId 和已填好的 `resume_pool.md`
 - When `wolf tailor <jobId>` 成功完成
-- Then 工作区中生成了定制的 `.tex` 文件和编译后的 PDF
+- Then 工作区中生成了 `data/jobs/<dir>/src/tailoring-brief.md`、`src/resume.html`、`resume.pdf`，并把 resume PDF 路径写回 Job 行
 
 **AC-04-2 — 事实准确性保留**
 - Given Claude 改写了简历要点
@@ -119,10 +119,10 @@
 - When 定制完成
 - Then 终端打印每个改动要点的前后对比
 
-**AC-04-4 — 页数保护**
-- Given 定制后的简历超过原始页数
-- When 优化循环执行
-- Then wolf 重新提示 Claude 缩短内容，直到页数与原始匹配
+**AC-04-4 — 单页保护**
+- Given 定制后的简历在默认渲染参数下会溢出一页
+- When fit-loop 运行（对 font-size / line-height / margin 做确定性二分搜索）
+- Then wolf 在配置好的下界范围内压缩版面直到 PDF 容下一页；若连下界参数都装不下，wolf 抛 `CannotFitError`，要求用户手动删减内容
 
 ---
 
@@ -132,18 +132,18 @@
 
 **AC-05-1 — 输出文件已生成**
 - Given 提供有效的 jobId
-- When `wolf tailor <jobId> --cover-letter` 完成
-- Then 工作区中生成了 `.md` 求职信和 PDF，与定制简历并排存放
+- When `wolf tailor <jobId>` 完成（求职信默认开启；`--no-cover-letter` 跳过）
+- Then 工作区中生成了 `data/jobs/<dir>/src/cover_letter.html` 和 `cover_letter.pdf`，与定制简历并排存放，并把 cover letter PDF 路径写回 Job 行
 
 **AC-05-2 — 求职信引用职位描述**
 - Given 职位描述中包含特定职位名称和公司名称
 - When 求职信生成完毕
 - Then 求职信中包含正确的职位名称和公司名称
 
-**AC-05-3 — PDF 编译失败不阻断流程**
-- Given `md-to-pdf` 未安装
+**AC-05-3 — 无系统级依赖**
+- Given 一台只跑过 `npm install` 的全新机器
 - When 求职信生成运行
-- Then wolf 保存 `.md` 文件，打印关于 PDF 编译的警告，并正常退出
+- Then 整个流程在不安装任何系统级工具的情况下成功完成（无 xelatex、无 md-to-pdf、无 ImageMagick）；Playwright 自带 Chromium
 
 ---
 
