@@ -49,14 +49,21 @@ const RC_FILES = [
 
 const WOLF_EXPORT_LINE_RE = /^export\s+WOLF_/;
 
+/**
+ * Shell-rc-backed `EnvApplicationService`. Holds the canonical `WOLF_*` key
+ * list and the rc file mutation primitives. Stateless apart from the const
+ * key registry; safe to instantiate as a module singleton.
+ */
 export class EnvApplicationServiceImpl implements EnvApplicationService {
   readonly keys = WOLF_KEYS;
   readonly keyInfo = KEY_INFO;
 
+  /** @inheritdoc */
   list(): EnvKeyStatus[] {
     return WOLF_KEYS.map((key) => ({ key, value: process.env[key] ?? null }));
   }
 
+  /** @inheritdoc */
   detectRcFile(): string {
     const shell = process.env.SHELL ?? '';
     if (shell.includes('bash')) {
@@ -67,6 +74,7 @@ export class EnvApplicationServiceImpl implements EnvApplicationService {
     return path.join(os.homedir(), '.zshrc');
   }
 
+  /** @inheritdoc */
   async writeBlock(rcFile: string, entries: { key: string; value: string }[]): Promise<void> {
     let content = '';
     try {
@@ -98,6 +106,7 @@ export class EnvApplicationServiceImpl implements EnvApplicationService {
     await fs.writeFile(rcFile, updated, 'utf-8');
   }
 
+  /** @inheritdoc */
   async setOne(key: string, value: string, rcFile?: string): Promise<EnvSetOneResult> {
     if (!(WOLF_KEYS as readonly string[]).includes(key)) {
       return { ok: false, error: `unknown key "${key}". Valid: ${WOLF_KEYS.join(', ')}` };
@@ -111,6 +120,7 @@ export class EnvApplicationServiceImpl implements EnvApplicationService {
     return { ok: true, target };
   }
 
+  /** @inheritdoc */
   async findExports(): Promise<EnvCleanupTarget[]> {
     const matches: EnvCleanupTarget[] = [];
     for (const rc of RC_FILES) {
@@ -128,6 +138,7 @@ export class EnvApplicationServiceImpl implements EnvApplicationService {
     return matches;
   }
 
+  /** @inheritdoc */
   async removeExports(files: string[]): Promise<void> {
     for (const file of files) {
       const content = await fs.readFile(file, 'utf-8');

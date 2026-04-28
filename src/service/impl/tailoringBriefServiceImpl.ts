@@ -5,7 +5,15 @@ import ANALYST_SYSTEM_PROMPT from './prompts/analyst-system.md';
 import type { TailoringBriefService } from '../tailoringBriefService.js';
 import type { AiConfig, Profile } from '../../utils/types/index.js';
 
+/**
+ * Anthropic-backed `TailoringBriefService`. Loads the analyst system prompt
+ * from `service/impl/prompts/analyst-system.md`, calls `aiClient`, and
+ * returns the brief markdown. Strips template callouts from the profile
+ * before feeding it to the model and treats user `hint` text as an
+ * authoritative override injected under `## User Guidance`.
+ */
 export class TailoringBriefServiceImpl implements TailoringBriefService {
+  /** @inheritdoc */
   async analyze(
     resumePool: string,
     jdText: string,

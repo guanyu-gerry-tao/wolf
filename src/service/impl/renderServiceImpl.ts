@@ -9,7 +9,14 @@ import type { RenderService } from '../renderService.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHELL_PATH = path.join(__dirname, 'render', 'shell.html');
 
+/**
+ * Playwright-backed `RenderService`. Routes to two distinct pipelines —
+ * `fit()`-driven resume rendering with binary-search CSS sizing, and
+ * natural-layout cover-letter rendering. Both inject the body into
+ * `shell.html`'s `#resume-root` so styling is centralized.
+ */
 export class RenderServiceImpl implements RenderService {
+  /** @inheritdoc */
   async renderPdf(htmlBody: string): Promise<Buffer> {
     // Resume rendering is a one-page fit job: shrink-to-fit when content
     // overflows, expand-to-fill when it underflows, throwing CannotFitError
@@ -17,6 +24,7 @@ export class RenderServiceImpl implements RenderService {
     return renderResumePdfFit(htmlBody);
   }
 
+  /** @inheritdoc */
   async renderCoverLetterPdf(htmlBody: string): Promise<Buffer> {
     // Cover letters render at natural CSS-driven layout. No fit loop —
     // short content keeps its bottom whitespace, long content paginates

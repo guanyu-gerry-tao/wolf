@@ -57,6 +57,13 @@ interface JobContext {
   coverLetterPdfPath: string;
 }
 
+/**
+ * Default `TailorApplicationService` impl. Composes the analyst brief
+ * service, the resume + cover-letter writers, and the PDF render service
+ * around `JobRepository` + `ProfileRepository`. Calls `assertReadyForTailor`
+ * before any AI invocation so a placeholder profile or empty pool surfaces
+ * a typed error instead of a hallucinated resume.
+ */
 export class TailorApplicationServiceImpl implements TailorApplicationService {
   constructor(
     private readonly jobRepository: JobRepository,
@@ -68,6 +75,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly defaultCoverLetterTone: string,
   ) {}
 
+  /** @inheritdoc */
   async tailor(options: TailorOptions): Promise<TailorResult> {
     // Resolve job/profile/paths once; every step below works against this context.
     const ctx = await this.prepareContext(options);
@@ -132,6 +140,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     };
   }
 
+  /** @inheritdoc */
   async analyze(options: TailorOptions): Promise<AnalyzeResult> {
     const ctx = await this.prepareContext(options);
     await this.ensureHintFile(ctx.hintPath, options.hint);
@@ -139,6 +148,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     return { briefPath: ctx.briefPath };
   }
 
+  /** @inheritdoc */
   async writeResume(options: TailorOptions): Promise<WriteStepResult> {
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
@@ -147,6 +157,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     return step;
   }
 
+  /** @inheritdoc */
   async writeCoverLetter(options: TailorOptions): Promise<WriteStepResult> {
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);

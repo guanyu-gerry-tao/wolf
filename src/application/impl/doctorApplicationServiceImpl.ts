@@ -20,9 +20,17 @@ const PROFILE_REQUIRED_H2 = [
 // Minimum non-blank, non-heading lines in resume_pool.md (post-strip).
 const POOL_MIN_LINES = 5;
 
+/**
+ * `DoctorApplicationService` impl. Reads the default profile through
+ * `ProfileRepository`, runs three pure check functions (`profile.md`,
+ * `resume_pool.md`, `standard_questions.md`), and aggregates them into a
+ * `DoctorReport`. Each check strips runtime-only callouts before measuring,
+ * so unfilled templates correctly report empty.
+ */
 export class DoctorApplicationServiceImpl implements DoctorApplicationService {
   constructor(private readonly profileRepository: ProfileRepository) {}
 
+  /** @inheritdoc */
   async run(): Promise<DoctorReport> {
     const profile = await this.profileRepository.getDefault();
 

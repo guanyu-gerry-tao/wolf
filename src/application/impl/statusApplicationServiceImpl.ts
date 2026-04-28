@@ -18,6 +18,7 @@ export class StatusApplicationServiceImpl implements StatusApplicationService {
     private readonly counters: StatusCounter[],
   ) {}
 
+  /** @inheritdoc */
   async getSummary(): Promise<StatusSummary> {
     const counters = await Promise.all(
       this.counters.map(async ({ label, count }): Promise<StatusCount> => {
