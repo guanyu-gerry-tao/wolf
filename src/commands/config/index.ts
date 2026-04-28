@@ -1,6 +1,4 @@
-import { loadConfig, saveConfig, backupConfig } from '../../utils/config.js';
-import { getByPath, setByPath, coerceToShape } from '../../utils/dotPath.js';
-import { AppConfigSchema } from '../../utils/schemas.js';
+import { createAppContext, type AppContext } from '../../runtime/appContext.js';
 
 /**
  * Prints the value at a dot-path key in wolf.toml.
@@ -8,30 +6,25 @@ import { AppConfigSchema } from '../../utils/schemas.js';
  *
  * @throws If the key does not exist in the loaded config.
  */
-export async function configGet(key: string): Promise<void> {
-  const config = await loadConfig();
-  const value = getByPath(config, key);
-  if (value === undefined) {
-    throw new Error(`Key not found in wolf.toml: ${key}`);
-  }
+export async function configGet(
+  key: string,
+  ctx: AppContext = createAppContext(),
+): Promise<void> {
+  const value = await ctx.configApp.get(key);
   printValue(value);
 }
 
 /**
- * Writes `valueStr` at `key` in wolf.toml. Coerces to the field's current
- * runtime type (number/boolean/array/string), re-validates through the Zod
- * schema, backs up the original, then saves.
+ * Writes `valueStr` at `key` in wolf.toml.
  *
  * @throws If coercion fails or the resulting config violates the schema.
  */
-export async function configSet(key: string, valueStr: string): Promise<void> {
-  const config = await loadConfig();
-  const coerced = coerceToShape(valueStr, getByPath(config, key));
-  const updated = setByPath(config, key, coerced);
-  // Zod re-validation catches type mismatches and constraint violations.
-  const validated = AppConfigSchema.parse(updated);
-  await backupConfig();
-  await saveConfig(validated);
+export async function configSet(
+  key: string,
+  valueStr: string,
+  ctx: AppContext = createAppContext(),
+): Promise<void> {
+  const { coerced } = await ctx.configApp.set(key, valueStr);
   console.log(`Set ${key} = ${formatValue(coerced)}`);
 }
 
