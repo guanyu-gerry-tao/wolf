@@ -3,15 +3,15 @@ import pino from 'pino';
 import { sink } from 'pino-test';
 import { ResumeCoverLetterServiceImpl } from '../impl/resumeCoverLetterServiceImpl.js';
 import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
-import type { Profile } from '../../types/index.js';
-import type { AiConfig } from '../../types/index.js';
+import type { Profile } from '../../utils/types/index.js';
+import type { AiConfig } from '../../utils/types/index.js';
 
 // Mock aiClient so tests never make real API calls.
-vi.mock('../../utils/ai/index.js', () => ({
+vi.mock('../../service/ai/index.js', () => ({
   aiClient: vi.fn(),
 }));
 
-import { aiClient } from '../../utils/ai/index.js';
+import { aiClient } from '../../service/ai/index.js';
 
 // Profile is now `{ name, md }`. The service includes profile.md verbatim
 // in the prompt; the assertions below check that the candidate's name

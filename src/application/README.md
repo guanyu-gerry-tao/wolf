@@ -42,8 +42,8 @@ application/
 1. Define interface in `src/application/<name>.ts`
 2. Implement in `src/application/impl/<name>ApplicationService.ts`
 3. Inject domain services + repositories via constructor
-4. Register in `src/cli/appContext.ts`
-5. CLI command (`src/commands/<name>/index.ts`) calls through to it
+4. Register in `src/runtime/appContext.ts`
+5. CLI wrapper (`src/cli/commands/<name>.ts`) calls through to it
 
 ## Example
 

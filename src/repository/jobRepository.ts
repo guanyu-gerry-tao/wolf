@@ -1,4 +1,4 @@
-import type { Job, JobQuery, JobStatus, JobUpdate } from "../types/job.js";
+import type { Job, JobQuery, JobStatus, JobUpdate } from "../utils/types/job.js";
 
 export interface JobRepository {
   get(id: string): Promise<Job | null>;

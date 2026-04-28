@@ -22,41 +22,33 @@ See [docs/overview/MILESTONES.md](docs/overview/MILESTONES.md) for full mileston
 ```
 wolf/
 ├── src/
-│   ├── cli/              # CLI entry + AppContext (DI container)
-│   │   ├── index.ts          # commander.js setup, parses args, calls AppContext
-│   │   └── appContext.ts     # manual DI — wires repo + service + application
-│   ├── mcp/              # MCP entry — paused for this milestone
-│   ├── commands/         # Thin wrappers between CLI and application layer
-│   │   ├── hunt/
-│   │   ├── tailor/
-│   │   ├── fill/
-│   │   ├── reach/
-│   │   ├── score/
-│   │   └── status/
-│   ├── application/      # Application services — use-case orchestration
-│   │   ├── <name>.ts         # interface
-│   │   ├── impl/             # real + mock implementations
-│   │   └── model/            # DTOs returned by application services
-│   ├── service/          # Domain services — single-responsibility business ops
-│   │   ├── <name>.ts         # interface
-│   │   ├── impl/             # real + mock implementations
-│   │   └── model/            # DTOs returned by domain services
-│   ├── repository/       # Data access — SQLite + workspace file I/O
-│   │   ├── <name>.ts         # interface
-│   │   └── impl/             # concrete backends
-│   ├── errors/           # Typed custom error classes
-│   ├── types/            # Shared domain types (Job, Company, Profile, ...)
-│   └── utils/            # Cross-cutting helpers (logger, config, env) — not a layer
-├── data/                 # Local DB and runtime data (gitignored)
+│   ├── cli/                  # CLI entry + thin command wrappers
+│   │   ├── index.ts              # commander.js setup
+│   │   └── commands/             # one file per verb; each wrapper is ~1 line + formatter
+│   ├── mcp/                  # MCP entry (calls into the same application layer)
+│   ├── runtime/              # Shared DI container
+│   │   └── appContext.ts         # wires every repo + service + application service
+│   ├── application/          # Application services — use-case orchestration
+│   │   ├── <name>ApplicationService.ts   # interface
+│   │   └── impl/                          # implementations + init templates/
+│   ├── service/              # Domain services — single-responsibility business ops
+│   │   ├── ai/                            # AI provider registry (was utils/ai/)
+│   │   ├── <name>Service.ts               # interface
+│   │   └── impl/                          # implementations + prompts/, render/
+│   ├── repository/           # Data access — SQLite + workspace file I/O
+│   │   ├── <name>Repository.ts            # interface
+│   │   └── impl/                          # concrete backends
+│   └── utils/                # Cross-cutting helpers (logger, config, env)
+│       ├── types/                         # Shared domain types
+│       └── errors/                        # Typed custom error classes
+├── data/                     # Local DB and runtime data (gitignored)
 ├── docs/
 └── package.json
 ```
 
-**Layer dependency direction:** `CLI/Commands → Application → Service → Repository → Types`. Each layer may only depend on the layers below it.
+**Layer dependency direction:** `cli → application → service → repository → utils`. Each layer may only depend on the layers below it. Every CLI command — even three-line ones — routes through an application service; nothing is inlined in the wrapper.
 
-**DI entry point:** `src/cli/appContext.ts` constructs all implementations and provides them to commands. Swap real for mock by changing that one file — nothing else.
-
-**MCP is paused.** When reactivated, it will sit next to `src/cli/`, also call `createAppContext()`, and delegate to the same application layer.
+**DI entry point:** `src/runtime/appContext.ts` constructs every implementation and exposes them on `AppContext`. Both `cli/` and `mcp/` consume the same context. Swap real for mock by changing that one file — nothing else.
 
 ## Tech stack
 
@@ -137,7 +129,7 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 
 - Unit test files go in a `__tests__/` folder adjacent to the source they test
   - e.g. `src/utils/__tests__/config.test.ts` tests `src/utils/config.ts`
-  - e.g. `src/commands/env/__tests__/env.test.ts` tests `src/commands/env/index.ts`
+  - e.g. `src/cli/commands/__tests__/env.test.ts` tests `src/cli/commands/env.ts`
 - Test files are named `<subject>.test.ts`
 - Use Vitest; run with `npm test`
 - Smoke and acceptance test definitions live under `test/`; start with `test/README.md`.

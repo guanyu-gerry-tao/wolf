@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import { parse, stringify } from 'smol-toml';
-import type { AppConfig } from '../types/index.js';
+import type { AppConfig } from './types/index.js';
 import { AppConfigSchema } from './schemas.js';
 import { resolveWorkspaceDir } from './instance.js';
 

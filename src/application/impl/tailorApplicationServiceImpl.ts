@@ -14,7 +14,7 @@ import type {
   AiConfig,
   Profile,
   Job,
-} from '../../types/index.js';
+} from '../../utils/types/index.js';
 import { log } from '../../utils/logger.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'smol-toml';
 import type { ProfileRepository } from '../profileRepository.js';
-import type { Profile } from '../../types/index.js';
+import type { Profile } from '../../utils/types/index.js';
 import { AppConfigSchema } from '../../utils/schemas.js';
 
 /**

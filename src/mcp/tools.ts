@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { add } from '../commands/add/index.js';
-import { tailor } from '../commands/tailor/index.js';
+import { add } from '../cli/commands/add.js';
+import { tailor } from '../cli/commands/tailor.js';
 import { DEV_WARNING, getEnvValue, isDevBuild } from '../utils/instance.js';
 
 type ToolBaseName = 'hunt' | 'add' | 'score' | 'tailor' | 'fill' | 'reach' | 'status';
@@ -196,7 +196,7 @@ Returns what's missing and what the next step should be.`,
     async () => {
       try {
         const { loadConfig } = await import('../utils/config.js');
-        const { createAppContext } = await import('../cli/appContext.js');
+        const { createAppContext } = await import('../runtime/appContext.js');
         // loadConfig validates wolf.toml exists; createAppContext opens SQLite + loads profile.
         await loadConfig();
         const ctx = createAppContext();

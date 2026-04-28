@@ -1,4 +1,4 @@
-import type { Profile } from '../types/index.js';
+import type { Profile } from '../utils/types/index.js';
 
 /**
  * Reads profile data from `profiles/<name>/`. A profile is a directory holding:

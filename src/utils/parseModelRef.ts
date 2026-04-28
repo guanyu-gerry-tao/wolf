@@ -1,5 +1,5 @@
-import { isProviderId, PROVIDER_IDS } from './ai/registry.js';
-import type { AiConfig } from '../types/index.js';
+import { isProviderId, PROVIDER_IDS } from '../service/ai/registry.js';
+import type { AiConfig } from './types/index.js';
 
 /**
  * Parses a "<provider>/<model>" reference into the AiConfig shape services expect.

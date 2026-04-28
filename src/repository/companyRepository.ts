@@ -1,4 +1,4 @@
-import type { Company, CompanyQuery, CompanyUpdate } from "../types/company.js";
+import type { Company, CompanyQuery, CompanyUpdate } from "../utils/types/company.js";
 
 export interface CompanyRepository {
   get(id: string): Promise<Company | null>;

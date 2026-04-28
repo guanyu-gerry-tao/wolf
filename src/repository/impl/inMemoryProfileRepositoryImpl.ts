@@ -1,5 +1,5 @@
 import type { ProfileRepository } from '../profileRepository.js';
-import type { Profile } from '../../types/index.js';
+import type { Profile } from '../../utils/types/index.js';
 
 // Minimal stub MD that satisfies the "non-empty profile.md" contract. Tests
 // that need richer profile content should instantiate their own repo subclass

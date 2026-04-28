@@ -1,4 +1,4 @@
-import type { TailorOptions, TailorResult } from '../types/index.js';
+import type { TailorOptions, TailorResult } from '../utils/types/index.js';
 
 export interface AnalyzeResult {
   briefPath: string;
