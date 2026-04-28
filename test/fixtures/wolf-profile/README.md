@@ -14,7 +14,7 @@ NOT used by `wolf init` or shown to end users.
 
 Inlining 50+ lines of profile + resume content via heredocs in every TAILOR-XX
 case duplicates text and drifts as templates evolve. Centralising fixtures
-here lets AC docs stay short (`cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"`)
+here lets AC docs stay short (`cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"`)
 and lets us add coverage by adding a new fixture rather than another inlined
 heredoc.
 
@@ -45,7 +45,7 @@ profile dir:
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/<test-id>
 WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
-cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
+cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
 ```
 
 (`cp -r` here is from the repo root, since the test runner cwd is the wolf repo.)
@@ -55,10 +55,12 @@ profile + resume pool and produce realistic output.
 
 ## Picking a fixture
 
-| Fixture | Use it when |
-|---|---|
-| `swe-mid` | Tailor / cover-letter tests where a multi-role experienced backend candidate is the right shape (Spark / Kafka / Java) |
-| `ng-swe` | NG mass-apply scenarios; F-1 + H-1B sponsorship preference is set; intern-level roles, lighter pool |
+| Fixture | Use it when | Currently exercised by |
+|---|---|---|
+| `ng-swe` | Wolf's primary user persona — NG mass-apply scenarios; F-1 + H-1B sponsorship preference is set; intern-level roles, lighter pool. Default fixture for new AC cases. | `TAILOR-01` (full pipeline) |
+| `swe-mid` | Mid-career multi-role experienced backend candidate (Spark / Kafka / Java). Useful when the case under test specifically needs a senior-shaped pool, e.g. structural / section-honesty cases that test pool ordering on top of a meaty multi-role layout. | `TAILOR-04` (section honesty — uses the profile.md only; sub-cases override the pool inline) |
+
+> Fixture coverage is intentionally narrow right now: one canonical fixture-driven AC case per persona. The same principle applies elsewhere — additional persona × scenario combinations stay deferred until the prompt-debugging phase, when a known-good prompt lets us measure persona-specific quality regressions instead of soaking time on AC-inline persona variation.
 
 Add a new persona by creating a sibling dir with `profile.md` + `resume_pool.md`
 and updating this table.

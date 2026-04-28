@@ -41,14 +41,16 @@ npm run build:dev
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-把共享的中级 SWE fixture 拷进去(见
-`test/fixtures/wolf-profile/swe-mid/`)。该 fixture 提供了完整 `profile.md`
-(REQUIRED 的 Identity / Contact / Job Preferences 字段已填)和密度足够的
-`resume_pool.md` —— 渲染器的 underflow 守卫会接受得到的单页 resume:
+把共享的 NG SWE fixture 拷进去(见 `test/fixtures/wolf-profile/ng-swe/`)。
+这是 wolf 的主用户画像 —— F-1 OPT 上的 NG SWE,投后端方向。fixture 提供
+完整 `profile.md`(REQUIRED 的 Identity / Contact / Job Preferences 字段已
+填,含 F-1 + H-1B sponsor 偏好),`resume_pool.md` 密度足够让渲染器的
+underflow 守卫接受单页 resume(2 段实习 + 2 个 project + Education + Skills
++ Awards):
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
-cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
+cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
 ```
 
 添加 fixture job 并捕获 `jobId`：
@@ -90,10 +92,15 @@ format 执行。下面只列本 case 独有的检查项，不要重复共享 rub
 
 ### 本 case 独有检查
 
-- Resume 强调 backend systems、data infrastructure、Java/Scala、Spark 或
-  Hadoop-style pipeline work、API design 和 distributed processing。
+- Resume 把 NG 候选人的偏后端材料按 JD 做剪裁:TypeScript / Go / Python
+  服务、real-time data 工作、API 集成、Postgres / Redis / Airflow /
+  WebSocket / gRPC 栈(按 JD 取舍)。剪裁应把 intern 体量的工作组织成连贯
+  的后端故事,不能编造候选人没有的资深级别 ownership。
+- Resume **不得**杜撰 pool 里没有的经验(没有 Java / Scala / Spark / Kafka,
+  除非 JD 强行要求 —— 即便如此,也不得宣称 pool 没背书的实操)。
 - Cover letter 中原样出现 `Fixture Company` 和
-  `Member of Technical Staff, Backend`。
+  `Member of Technical Staff, Backend`,并诚实地把候选人定位成 NG / 早期
+  / 成长导向,而不是夸成资深。
 
 ## 通过标准
 

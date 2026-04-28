@@ -1,7 +1,8 @@
 /**
- * Shared helpers for CLI dot-path access into wolf.toml and profile.toml.
- * `wolf config get tailor.model` and `wolf profile set name "Jane"` both
- * route through these primitives.
+ * Shared helpers for CLI dot-path access into wolf.toml.
+ * `wolf config get tailor.model` and similar typed-config getters/setters
+ * route through these primitives. (Profile content is now Markdown — see
+ * `ProfileRepository` — so dot-path access does not apply to it.)
  */
 
 /**

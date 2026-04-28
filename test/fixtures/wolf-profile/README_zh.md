@@ -14,7 +14,7 @@
 每个 TAILOR-XX 用例 inline 50+ 行的 profile + resume 重复严重,模板演化时
 还会漂移。集中放在这里之后:
 
-- AC 文档保持精简(`cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"`)
+- AC 文档保持精简(`cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"`)
 - 增加覆盖只要加一个 fixture,不必再写一份 inline heredoc
 
 ## 目录结构
@@ -42,7 +42,7 @@ Acceptance 测试 setup 把 fixture 拷进 workspace 的默认 profile 目录:
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/<test-id>
 WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
-cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
+cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
 ```
 
 (`cp -r` 从 repo 根执行,因为 test runner 的 cwd 就是 wolf 根目录。)
@@ -52,10 +52,12 @@ cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
 
 ## 选哪个 fixture
 
-| Fixture | 何时用 |
-|---|---|
-| `swe-mid` | tailor / cover-letter 测试,需要多年经验的后端候选人(Spark / Kafka / Java)|
-| `ng-swe` | NG 海投场景;F-1 + H-1B sponsor 偏好已配置;intern 级别经历,pool 偏轻 |
+| Fixture | 何时用 | 当前被谁用 |
+|---|---|---|
+| `ng-swe` | wolf 的主用户画像 —— NG 海投场景;F-1 + H-1B sponsor 偏好已配置;intern 级别经历,pool 偏轻。新建 AC case 默认选这个。 | `TAILOR-01`(full pipeline)|
+| `swe-mid` | 中级多 role 后端候选人(Spark / Kafka / Java)。case 本身需要资深 pool 体量时用,例如 section-honesty 之类需要在密集多 role pool 上验证排序的结构性 case。 | `TAILOR-04`(section honesty —— 仅用 profile.md;sub-case 自带 inline pool 覆盖)|
+
+> Fixture 覆盖现在故意保持窄:每个 persona 只一条标准 fixture 驱动的 AC case。其他地方同理 —— 更多 persona × 场景组合留到 prompt 调试阶段(prompt 真正可靠之后)再说,那时候 persona 特异的质量回归才有意义,不必现在在 AC inline 里扩 persona 矩阵。
 
 新增 persona:创建同级目录 + `profile.md` + `resume_pool.md`,更新这张表。
 

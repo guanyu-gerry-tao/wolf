@@ -5,7 +5,7 @@ Data access layer. The only layer that knows about the workspace file structure 
 ## Responsibilities
 
 - Read and write job / company / profile data in SQLite
-- Read and write files in the workspace (resume_pool.md, profile.toml, etc.)
+- Read and write files in the workspace (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`, etc.)
 - Convert between stored representation and domain types
 - Hide storage details from service, application, and CLI layers
 
@@ -27,7 +27,7 @@ repository/
 └── impl/
     ├── sqliteJobRepository.ts     # SQLite backing
     ├── sqliteCompanyRepository.ts
-    └── fileProfileRepository.ts   # TOML + markdown files on disk
+    └── fileProfileRepository.ts   # Markdown files + attachments/ on disk
 ```
 
 Callers import the interface, AppContext constructs the implementation. Swap storage backends without touching anything but `impl/` + `appContext.ts`.

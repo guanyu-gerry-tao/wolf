@@ -81,7 +81,7 @@ AppContext（src/cli/appContext.ts）— 手动 DI 容器。
 
 | 层 | 目录 | 负责 | 不负责 |
 |---|---|---|---|
-| **类型层** | `src/types/` | 定义领域类型（`Job`、`Company`、`UserProfile`、`AppConfig`） | 任何逻辑 |
+| **类型层** | `src/types/` | 定义领域类型（`Job`、`Company`、`Profile`、`AppConfig`） | 任何逻辑 |
 | **仓储层** | `src/repository/` | 读写 SQLite（通过 Drizzle）和工作区文件（`profile.md`、`resume_pool.md`、`standard_questions.md`、`attachments/`） | 业务逻辑或调用其他层 |
 | **服务层** | `src/service/` | 单一职责操作（AI 调用、外部 API 抓取、批次提交） | 编排多步骤流程或直接访问 DB |
 | **应用层** | `src/application/` | 编排用例（hunt 流水线、score 流水线、tailor 流水线） | 感知 CLI 参数、MCP schema 或文件格式 |

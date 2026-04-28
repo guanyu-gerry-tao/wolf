@@ -42,15 +42,17 @@ Initialize the workspace:
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-Drop in the shared mid-career SWE fixture (see
-`test/fixtures/wolf-profile/swe-mid/`). The fixture has a populated
-`profile.md` (REQUIRED Identity / Contact / Job Preferences fields filled)
-and a realistic mid-career `resume_pool.md` dense enough that the renderer's
-underflow guard accepts the resulting single-page resume:
+Drop in the shared NG SWE fixture (see `test/fixtures/wolf-profile/ng-swe/`).
+This is wolf's primary user persona — a new-grad SWE on F-1 OPT applying
+to backend-flavored roles. The fixture has a populated `profile.md`
+(REQUIRED Identity / Contact / Job Preferences fields filled, including
+F-1 + H-1B sponsorship preference) and a `resume_pool.md` dense enough
+that the renderer's underflow guard accepts the resulting single-page
+resume (2 internships + 2 projects + Education + Skills + Awards):
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
-cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
+cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
 ```
 
 Add the fixture job and capture `jobId`:
@@ -93,10 +95,17 @@ shared rubric — do not duplicate the shared checks here.
 
 ### Case-specific checks
 
-- Resume emphasizes backend systems, data infrastructure, Java/Scala, Spark or
-  Hadoop-style pipeline work, API design, and distributed processing.
+- Resume tailors the NG candidate's backend-leaning material to the JD:
+  TypeScript / Go / Python services, real-time data work, API integration,
+  Postgres / Redis / Airflow / WebSocket / gRPC stack as applicable. The
+  tailoring should pull internship-scale work into a coherent backend-aimed
+  story without inventing senior-scale ownership the candidate doesn't have.
+- Resume must NOT fabricate experience the pool doesn't contain (no Java,
+  Scala, Spark, or Kafka unless the JD specifically requires them — and even
+  then the resume must not claim hands-on use the pool doesn't back).
 - Cover letter names `Fixture Company` and `Member of Technical Staff, Backend`
-  exactly as written.
+  exactly as written, and frames the candidate's NG background honestly
+  (early-career, growth-oriented) rather than overclaiming seniority.
 
 ## Pass Criteria
 

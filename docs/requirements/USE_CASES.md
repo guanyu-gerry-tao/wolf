@@ -214,7 +214,7 @@ NEXT: On success, AI may immediately chain into `wolf_score` with `{ jobId, sing
 ## UC-06.1.1 · Tailor Resume (`wolf tailor`)
 
 **Actor:** User
-**Precondition:** `profile.toml` exists; `resume_pool.md` exists; target job is in the DB.
+**Precondition:** `profile.md` exists; `resume_pool.md` exists; target job is in the DB. (REQUIRED H2 fields filled and resume_pool has ≥5 substantive lines — verifiable via `wolf doctor`.)
 
 - 1 - User runs `wolf tailor` with optional flags:
    - `--profile <profileId>` → use the specified profile. (TBD: multi-profile support — currently a placeholder; defaults to `default_profile` in `wolf.toml`.)
@@ -222,7 +222,7 @@ NEXT: On success, AI may immediately chain into `wolf_score` with `{ jobId, sing
    - `--diff` → print a before/after comparison of every changed bullet per job.
    - `--cover-letter` → after tailoring completes, generate a cover letter for each job in the batch (same logic as UC-07.1.1).
 - 2 - wolf reads all jobs with `selected: true` AND (`status: scored` OR `status: tailor_error`) from SQLite (or just the specified job if `--jobid` is set), extracting JD, company, title, and other relevant fields.
-- 3 - wolf reads the user's profile from `profile.toml` at profile's folder and resume bullet points from `resume_pool.md` under that folder.
+- 3 - wolf reads the user's profile from `profile.md` at profile's folder and resume bullet points from `resume_pool.md` under that folder.
 - 4 - wolf submits all jobs to Claude Batch API in a single batch, each request including the JD text and resume pool. CLI provides progress updates while polling.
    - 4.1 - If `--jobid` is set → skip batch, make a single synchronous call instead.
    - 4.2 - If a response is missing or completely unreadable (not valid `.tex`) → mark `status: tailor_error`, continue to the next job. Partial or compilable-but-flawed `.tex` proceeds to step 5 and is handled by the compile-and-review loop (steps 6–8).
@@ -242,7 +242,7 @@ The following steps (5–8) run per-job after the batch results are received. Ea
 ## UC-06.1.2 · Tailor Resume (MCP)
 
 **Actor:** AI Agent
-**Precondition:** `wolf.toml` exists; active `profile.toml` exists; `resume_pool.md` exists; target job is in the DB.
+**Precondition:** `wolf.toml` exists; active `profile.md` exists; `resume_pool.md` exists; target job is in the DB. (REQUIRED H2 fields filled and resume_pool has ≥5 substantive lines — verifiable via `wolf doctor`.)
 
 - 1 - User asks the AI to tailor their resume for a job (e.g. "Tailor my resume for job 42").
 - 2 - AI calls `wolf_tailor` with `{ jobId }` to tailor a specific job, or with no arguments to tailor all selected jobs. `profileId` is a placeholder arg for future multi-profile support (TBD); omit for now.

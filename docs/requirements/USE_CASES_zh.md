@@ -214,7 +214,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 ## UC-06.1.1 · 定制简历（`wolf tailor`）
 
 **Actor：** User
-**前置条件：** `profile.toml` 存在；`resume_pool.md` 存在；目标职位在 DB 中。
+**前置条件：** `profile.md` 存在；`resume_pool.md` 存在；目标职位在 DB 中。（REQUIRED H2 字段已填、resume_pool 至少 5 行实质内容——可用 `wolf doctor` 校验。）
 
 - 1 - 用户运行 `wolf tailor`，可选参数：
    - `--profile <profileId>` → 使用指定 profile。（TBD：多 profile 支持——当前为占位参数；默认使用 `wolf.toml` 中的 `default_profile`。）
@@ -222,7 +222,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
    - `--diff` → 打印每个职位中每条改动前后的对比。
    - `--cover-letter` → 定制完成后，为本批次的每个职位生成求职信（逻辑同 UC-07.1.1）。
 - 2 - wolf 从 SQLite 读取所有 `selected: true` 且（`status: scored` 或 `status: tailor_error`）的职位（若设置了 `--jobid` 则仅读取指定职位），提取 JD、公司、职位名等相关字段。
-- 3 - wolf 从 profile 文件夹下的 `profile.toml` 读取用户 profile，从同一文件夹下的 `resume_pool.md` 读取简历要点。
+- 3 - wolf 从 profile 文件夹下的 `profile.md` 读取用户 profile，从同一文件夹下的 `resume_pool.md` 读取简历要点。
 - 4 - wolf 将所有职位批量提交至 Claude Batch API，每个请求包含 JD 文本和简历池。CLI 在轮询时提供进度更新。
    - 4.1 - 若设置了 `--jobid` → 跳过批次，改为单次同步调用。
    - 4.2 - 若响应缺失或完全不可读（非有效 `.tex`）→ 标记 `status: tailor_error`，继续处理下一条。部分或可编译（但有瑕疵）的 `.tex` 进入步骤 5，由编译和审查循环（步骤 6–8）处理。
@@ -244,7 +244,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 ## UC-06.1.2 · 定制简历（MCP）
 
 **Actor：** AI Agent
-**前置条件：** `wolf.toml` 存在；active `profile.toml` 存在；`resume_pool.md` 存在；目标职位在 DB 中。
+**前置条件：** `wolf.toml` 存在；active `profile.md` 存在；`resume_pool.md` 存在；目标职位在 DB 中。（REQUIRED H2 字段已填、resume_pool 至少 5 行实质内容——可用 `wolf doctor` 校验。）
 
 - 1 - 用户要求 AI 为某职位定制简历（例如"帮我为职位 42 定制简历"）。
 - 2 - AI 携带 `{ jobId }` 调用 `wolf_tailor` 定制指定职位，或无参数调用以定制所有已选职位。`profileId` 为未来多 profile 支持的占位参数（TBD）；目前省略。

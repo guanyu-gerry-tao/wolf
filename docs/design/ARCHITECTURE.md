@@ -82,7 +82,7 @@ AppContext (src/cli/appContext.ts) — manual DI container.
 
 | Layer | Directory | Does | Does NOT |
 |---|---|---|---|
-| **Types** | `src/types/` | Define domain types (`Job`, `Company`, `UserProfile`, `AppConfig`) | Contain any logic |
+| **Types** | `src/types/` | Define domain types (`Job`, `Company`, `Profile`, `AppConfig`) | Contain any logic |
 | **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | Contain business logic or call other layers |
 | **Service** | `src/service/` | Single-responsibility operations (AI calls, external API fetch, batch submit) | Orchestrate multi-step flows or access DB directly |
 | **Application** | `src/application/` | Orchestrate use-cases (hunt pipeline, score pipeline, tailor pipeline) | Know about CLI options, MCP schemas, or file formats |
