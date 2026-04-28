@@ -279,3 +279,38 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** Acceptance 第 3 次跑（B2 + B3 修复后）爆出新的 `CannotFillError`，这次是 **resume** 渲染。第一眼像 B2 从 cover letter 蔓延到 resume，仔细看不是：B3 修复（不再杜撰 section）让 fixture resume 客观变短 —— 5 个 bullet / 2 个 role，没 Education / Projects / Skills。fit 算法在 max section-gap + max font 下还是达不到 95% 填充阈值，正确拒绝。问题：默认拒绝是对的吗？**对。** 一份只填了 ~60% 页面的"单页"简历不是 wolf 的 bug，是糟糕的简历。HR 扫读 —— 半空的页面意味着"经验不够"。如果用户真的就只有这么点料，wolf 应该明确告诉他，不该静默生成一份稀薄 PDF 假装没事。正确修法两步：(a) 让 error message 带用户视角的诊断，告诉用户该补什么；(b) 修测试 fixture，用一份真实中级工程师的 pool 体量，让渲染器的 underflow 守卫是在测真实素材，而不是在测一个"靠 B3 时代杜撰才能跑过"的人造稀薄 pool。
 **AI：** 重写 `CannotFillError` 和 `CannotFitError` 构造函数的 message：(1) 用日常英语说出失败模式（"too short" / "too long"），(2) 把上一次 fit 尝试的具体数字加进来（渲染了 Npx，目标 Mpx，填充 / 溢出 X%），(3) 明确告诉用户去 `resume_pool.md` 里改什么 —— underflow case 还专门加一句 "wolf will not fabricate content for you"，避免用户把它读成"让 Claude 加点 filler 凑字数"那种软建议。`renderService.test.ts` 加两个 unit test 钉住 message 契约：必须含 `resume_pool.md`、必须含诊断数字、**禁止**出现 "fabricate" / "invent" 字样。然后把 TAILOR-01 fixture pool 从 5 bullet / 2 role 改成 3 role + 2 project + Education + Skills（一份真实中级 data / backend 工程师 resume 的体量）。TAILOR-04 的 sub-case 同样加密度，但保留各自的结构变化：4a 仍然没 Education；4b 仍然 Skills 在最前面的乱序。两者改完后内容密度都足以让定制 resume 仅靠剩余 section 就能填满一页。触发本决策的 acceptance 跑：`test/runs/acceptance-20260425-190008/`。
 **结果：** 采用。`src/service/impl/render/fit.ts` 的 `CannotFillError` / `CannotFitError` message 现在带诊断 + 行动建议。两个新 unit test 钉死 message 形态。TAILOR-01 / `_zh` fixture pool 替换成真实密集 pool（Northwind + Vega Logistics + Atlas Tools 三 role、两 project、Education、Skills line）；TAILOR-02 / TAILOR-03 通过 "use the same setup as TAILOR-01" 引用自动跟着升级。TAILOR-04 4a / 4b 的 pool 同步加密度，结构变化保留。渲染器的 underflow 守卫保留为有意行为 —— 被拒绝的两个替代方案是"resume 也丢 fit"（丢失"压成一页"这个核心承诺）和"graceful degrade，CannotFillError 时返回 best-effort PDF"（静默给出用户没批准的稀薄 resume，掩盖诊断信息，并训练用户接受过稀的 pool）。
+
+---
+
+**2026-04-26 — Profile 迁移：typed TOML → 三 MD 布局（E8）**
+**我：** 原来的 `profile.toml` + `UserProfileSchema`（zod）模型一直在和真实使用场景对着干。Profile 内容大多是给 AI 读的自由文本：地址、"why this role" 模板、五年规划段落。强行套类型化 schema 的结果是：(a) 每加一个字段都要 schema bump + 迁移 + form 提示；或者 (b) schema 退化成一堆 `string | null` 槽位，AI 还是要重新解析一遍。同时有 senior / 国际背景的用户经常撞"字段不够用"—— 中间名、多重国籍、比"是 / 否"更细的 relocation preference。schema 还是一个不友好的编辑表面：TOML 引号规则 + zod 严格解析意味着多一个逗号或写错 key 就会让 `wolf init` 直接抛栈。
+**AI：** 把 `profile.toml` 替换成 `profiles/<id>/` 下三个同级 MD 文件：`profile.md`（identity / contact / address / links / job preferences / demographics / clearance —— H1 = 大类，H2 = 字段，body = 答案）、`resume_pool.md`（已经是 MD）、`standard_questions.md`（给 `wolf fill` 用的问答库 —— H1 = 大类，H2 = 问题，body = 答案或思路）。再加 `attachments/` 子目录放可上传文件。Repository 退化成一个薄薄的文件读取器；`Profile` 类型缩成 `{ name, md }`。校验从 "schema 形态" 移到 "内容形态"：唯一契约就是某些 H1 大类下的 REQUIRED H2 在 strip 掉指引标记后 body 非空，外加 `resume_pool.md` 至少 5 行实质内容。校验在该校验的地方做 —— 命令调用时由 `assertReadyForTailor`（每个文件由 `wolf doctor`）执行，而不是解析时。代价：丢了 profile 字段的类型化补全，换来 (1) 普通用户可以真正编辑的表面；(2) 加字段零迁移；(3) AI 直接逐字读 prose，零格式转换；(4) git diff 可读。
+**结果：** 采用。提交 4511499 落地，配套若干跟进（姓名拆 first/middle/last、预填默认值、清掉 EAD、扩 Job Preferences）。`UserProfile` 和 `UserProfileSchema` 删除；`Profile` 与 `ProfileRepository.getProfileMd / getResumePool / getStandardQuestions / getAttachmentsList` 是新接口。`wolf init` / `wolf init --empty` 写三份模板而不是一份 TOML。Acceptance / smoke spec + AC fixture 在同一提交链路里全部跟着改。
+
+---
+
+**2026-04-26 — Marker 约定：用 GitHub Alert 引用块承载运行期被剥离的指引**
+**我：** 转向自由文本之后，需要一种方式把模板指引（"这一项必须答"、"用不上就留空"、"写一个灵活模板，AI 按公司适配"）放到模板里：(a) 运行时对 AI 不可见，避免它被混淆；(b) 用户编辑时能看见；(c) 最好在任何 Markdown 预览器里（GitHub / VS Code / Obsidian）都能渲染好看，让文件读起来像友好表单而不是裸骨架。第一版试过 HTML 注释 `<!-- -->`—— strip 时反而对 AI 可见（构建管道留着），用户在预览里看不到。完全反了。第二版用 `//` 前缀行 —— 没人渲染的私有约定。第三版用纯 `>` 引用块 —— 风险是用户合理内容也可能用引用（引 JD 的一句、引邮件、引论文段落）。
+**AI：** 改用 **GitHub Alert 引用块**（`> [!IMPORTANT]`、`> [!TIP]`、`> [!NOTE]`、`> [!WARNING]`、`> [!CAUTION]`）作为模板指引约定。两层 strip：(1) 构建期通过 tsup 自定义 esbuild 插件剥掉 `.md` 文件中的 `<!-- ... -->` HTML 注释 —— 这层是 wolf 源码私有上下文，永远不进用户工作区；(2) 运行期由 `stripComments` 剥掉 `> [!XYZ]` 整段 alert 块（首行 + 后续连续 `>` 行），在任何 AI 读取或就绪检查之前。普通 `>` 引用块不剥 —— 那是用户合理内容。`> [!IMPORTANT]` 用于 REQUIRED 字段（用户必须答），`> [!TIP]` 用于建议 / 合理默认 / 可选提示。用户在现代预览器里看到的是一个样式化提示框，AI 在用户没答时看到的是一个干净的 H2 加空 body（这样 `assertReadyForTailor` 才能正确标"缺失"）。
+**结果：** 采用。`src/utils/stripComments.ts` 终态只剥 `> [!XYZ]` 块 —— 不剥任意 `>` 引用。`tsup.config.ts` 带一个自定义 esbuild 插件，bundle 时剥掉 `.md` 里的 `<!-- ... -->`（保证发布产物里不留 wolf 内部 HTML 注释）。模板按约定整体重写。`wolf doctor` 和 `assertReadyForTailor` 都先 `stripComments(md)` 再 `extractH2Content`（曾出过一个 regression：`> [!IMPORTANT]` 的 body 被算成"已填"，导致刚 init 的 profile 错误地报 ready=true；两个调用点一并修，加了回归测试）。
+
+---
+
+**2026-04-26 — Tailor 鲁棒性：占位 profile / 空 pool 拒绝运行**
+**我：** 三 MD 迁移解决了编辑 UX 问题，但带来一个新失败模式：用户跑 `wolf init` 后立刻跑 `wolf tailor`，AI 拿到一份 REQUIRED H2 全是 `> [!IMPORTANT]` 提示框 body 的 `profile.md` 加一份近乎空的 `resume_pool.md`，自信地杜撰一份简历 —— 错的姓名、编造的经历、发明的技能。用户快速扫一眼可能根本没察觉。更糟的是这一切静默发生 —— AI 不会拒绝，它只是开始幻觉。
+**AI：** 双层防御。**第一层：让 AI 没东西可抄。** 把 `resume_pool.md` 里的占位示例（如 `### SWE — Acme \n*2024*\n - Built things.`）整段包进 `> [!TIP]` 块，运行时被剥掉，留给 AI 的只剩 section 标题 + 空 body，没东西可模仿。**第二层：运行期门禁。** 在 `tailorApplicationServiceImpl` 头部加 `assertReadyForTailor`，每次 tailor 调用都跑一遍。检查 (1) `profile.md` 中所有 REQUIRED H2 在 `stripComments` 后 body 非空；(2) `resume_pool.md` 至少 5 行实质内容（非空、非 markdown 标题、strip 后非 alert 块）。任意一项不满足就抛类型化 error 列出究竟缺什么 —— 绝不进入 AI 调用。代价：真实 profile 上零误报；5 行的下限远低于"任何有话可说的人都能写多少"。配套主动暴露面：`wolf doctor` 对三份文件跑同一组检查，按文件输出 READY / NOT READY 报告，用户不用真跑 tailor 也能查状态。
+**结果：** 采用。`assertReadyForTailor` 在 `src/application/impl/tailorApplicationServiceImpl.ts`；`wolf doctor` 在 `src/commands/doctor/index.ts`。两者共用 `extractH2Content` + `stripComments`。Unit test 覆盖：REQUIRED 缺失、callout-only body 回归、5 行下限。CLI 注册 `wolf doctor` 并在未就绪时退出 1。
+
+---
+
+**2026-04-26 — 共享 AC fixture + 入 git 的 orchestrator 预设带模型分级**
+**我：** Acceptance spec 一直把 fixture profile / pool 内容当 inline heredoc 抄进每个 case —— 一处改了别处不改，悄悄漂移。同时 `.claude/` 下的 agent 预设被当个人配置 gitignore 掉，每个 session 都得重新解释 smoke / AC orchestrator 的派发逻辑，也没办法在快速 smoke 跑（用 Haiku 足够）和判断密集 AC 跑（用 Sonnet 才值）之间强制分级。
+**AI：** 一个 PR 两件事。(1) 把共享 profile + resume-pool fixture 移到 `test/fixtures/wolf-profile/<persona>/{profile,resume_pool}.md`。先两个 persona：`swe-mid`（中级后端）和 `ng-swe`（F-1 OPT 应届）。Acceptance case 通过路径引用，永不内联。(2) 把 `.gitignore` 从 `.claude/` 收窄到 `.claude/*` + `!.claude/agents/`，让 agent 预设可入 git，个人配置仍 gitignore。加两个 orchestrator 预设：`wolf-smoke-orchestrator.md`（用 `model: "haiku"` 派发 runner）和 `wolf-acceptance-orchestrator.md`（需要真实判断的 case 用 `model: "sonnet"` 派发）。两个 orchestrator 自身都跑 `model: sonnet`，因为路由本身就是判断密集环节。路径用 `REPO=$(git rev-parse --show-toplevel)`，预设跨机器可移植。
+**结果：** 采用，提交 790d4ee 落地。AC 和 smoke spec 改成引 fixture 路径。`.claude/agents/wolf-{smoke,acceptance}-orchestrator.md` 入 git。`test/runs/` 下的运行报告仍 gitignore（运行产物，非源代码）。这样后续贡献者不用每个 session 复制粘贴 orchestrator 指令也能拿到一致的派发行为。
+
+---
+
+**2026-04-26 — 新增 `wolf doctor` 主动检查 profile 就绪**
+**我：** 有了 `assertReadyForTailor` 之后，失败面从"AI 幻觉"变成了"用户跑 tailor，看到一个类型化 error，得仔细读才知道该改哪"。比之前好但还不够 —— 尤其是第一次用的人根本不知道 profile 里有哪些字段。想要一条一次性"我 profile 准备好了吗？"的命令，让用户在跑真正流水线之前能问一下。
+**AI：** 加 `wolf doctor`（无 flag），加载默认 profile，按文件报告就绪状态：`profile.md`（REQUIRED H2 已填）、`resume_pool.md`（≥5 行实质内容）、`standard_questions.md`（strip 后 ≥3 个 H2 有答案）。每个文件给一行状态、一组缺失项、一行修复提示。最终输出整体 ready / not-ready。未就绪时退出 1，方便接 shell 脚本。纯函数（`doctor` 返回 `DoctorReport`，`formatDoctor` 渲染文本）便于测试。一个关键实现细节：必须先 strip 再 extract H2 —— 没这步的话，`> [!IMPORTANT]` 模板 body 会被算成"已填"，刚 init 的 profile 错误地报 READY。
+**结果：** 采用，提交 90a0621 落地。`src/commands/doctor/index.ts` 导出 `doctor()` + `formatDoctor()`。在 `src/cli/index.ts` 注册。8 个 unit test 覆盖正常路径、每个文件的失败路径、callout-only 回归、formatter 输出。Help 字符串里把 `doctor` 列在 `init` 和 `hunt` 之间。Smoke 验过：刚初始化的空工作区会输出 NOT READY 列出每个 REQUIRED 字段；手动填好的 fixture 输出 READY。
