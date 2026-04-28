@@ -39,7 +39,13 @@ async function dirExists(dir: string): Promise<boolean> {
   }
 }
 
+/**
+ * Filesystem-backed `ProfileApplicationService`. Operates directly on
+ * `profiles/<name>/` directories under the resolved workspace and on
+ * `wolf.toml.default`. No DB / repo deps; all I/O is through node's `fs`.
+ */
 export class ProfileApplicationServiceImpl implements ProfileApplicationService {
+  /** @inheritdoc */
   async list(): Promise<ProfileListResult> {
     const profilesDir = path.join(resolveWorkspaceDir(), 'profiles');
     let entries: string[] = [];
@@ -68,6 +74,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     return { kind: 'ok', profiles };
   }
 
+  /** @inheritdoc */
   async create(name: string, opts: { from?: string } = {}): Promise<ProfileCreateResult> {
     assertValidProfileName(name);
 
@@ -106,6 +113,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     return { name, from: srcName, targetDir };
   }
 
+  /** @inheritdoc */
   async use(name: string): Promise<void> {
     const targetDir = profileDir(name);
     if (!(await dirExists(targetDir))) {
@@ -118,6 +126,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     await saveConfig(updated);
   }
 
+  /** @inheritdoc */
   async delete(name: string, opts: { yes?: boolean } = {}): Promise<string> {
     const config = await loadConfig();
     if (name === config.default) {

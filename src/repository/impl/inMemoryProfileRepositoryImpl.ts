@@ -14,6 +14,12 @@ const MOCK_PROFILE: Profile = {
   md: MOCK_PROFILE_MD,
 };
 
+/**
+ * Test-only `ProfileRepository`. Returns a single mock profile named
+ * `default` with just enough content to pass the "non-empty profile.md"
+ * contract. Tests that need richer fixtures should construct their own
+ * repo or `Profile` rather than extending this.
+ */
 export class InMemoryProfileRepositoryImpl implements ProfileRepository {
   async get(name: string): Promise<Profile | null> {
     return name === MOCK_NAME ? MOCK_PROFILE : null;

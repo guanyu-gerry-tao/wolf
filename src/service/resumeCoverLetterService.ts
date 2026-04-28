@@ -1,5 +1,11 @@
 import type { AiConfig, Profile } from '../utils/types/index.js';
 
+/**
+ * Domain service for the two writer agents in the tailor pipeline. Both
+ * agents receive the analyst's tailoring brief and produce HTML bodies
+ * (`#resume-root` payload) — the resume writer is fit-constrained, the
+ * cover-letter writer is free-form.
+ */
 export interface ResumeCoverLetterService {
   /**
    * Select and rewrite resume content to match a job description, guided by the analyst's brief.

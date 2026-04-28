@@ -9,12 +9,19 @@ import type { JobRepository } from '../../repository/jobRepository.js';
 import type { CompanyRepository } from '../../repository/companyRepository.js';
 import type { JobApplicationService } from '../jobApplicationService.js';
 
+/**
+ * SQLite-backed `JobApplicationService`. Runs `query` and `countMatching`
+ * in parallel through `JobRepository` so the overflow footer stays accurate
+ * without adding user-visible latency. Caches company-name lookups per call
+ * to guard against N+1 against `CompanyRepository`.
+ */
 export class JobApplicationServiceImpl implements JobApplicationService {
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly companyRepository: CompanyRepository,
   ) {}
 
+  /** @inheritdoc */
   async list(options: JobListOptions): Promise<JobListResult> {
     const opts = validateAndNormalize(options);
 

@@ -6,7 +6,13 @@ import type {
   ConfigSetResult,
 } from '../configApplicationService.js';
 
+/**
+ * File-backed `ConfigApplicationService`. Stateless — every call re-reads
+ * `wolf.toml` from the resolved workspace; writes go through `backupConfig`
+ * + `saveConfig` so the previous file is preserved as `wolf.toml.backup1`.
+ */
 export class ConfigApplicationServiceImpl implements ConfigApplicationService {
+  /** @inheritdoc */
   async get(key: string): Promise<unknown> {
     const config = await loadConfig();
     const value = getByPath(config, key);
@@ -16,6 +22,7 @@ export class ConfigApplicationServiceImpl implements ConfigApplicationService {
     return value;
   }
 
+  /** @inheritdoc */
   async set(key: string, valueStr: string): Promise<ConfigSetResult> {
     const config = await loadConfig();
     const coerced = coerceToShape(valueStr, getByPath(config, key));

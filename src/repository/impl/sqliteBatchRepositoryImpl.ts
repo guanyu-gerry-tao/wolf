@@ -3,13 +3,20 @@ import type { BatchRepository, Batch } from '../batchRepository.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { batches } from './schema.js';
 
+/**
+ * Drizzle/SQLite-backed `BatchRepository`. Stores AI batch metadata in the
+ * `batches` table; pending rows survive process restarts so polling can
+ * resume after a crash.
+ */
 export class SqliteBatchRepositoryImpl implements BatchRepository {
   constructor(private readonly db: DrizzleDb) {}
 
+  /** @inheritdoc */
   async save(batch: Batch): Promise<void> {
     await this.db.insert(batches).values(batchToRow(batch));
   }
 
+  /** @inheritdoc */
   async getPending(): Promise<Batch[]> {
     const rows = await this.db
       .select()
@@ -18,6 +25,7 @@ export class SqliteBatchRepositoryImpl implements BatchRepository {
     return rows.map(rowToBatch);
   }
 
+  /** @inheritdoc */
   async markComplete(id: string, completedAt: string): Promise<void> {
     await this.db
       .update(batches)
@@ -25,6 +33,7 @@ export class SqliteBatchRepositoryImpl implements BatchRepository {
       .where(eq(batches.id, id));
   }
 
+  /** @inheritdoc */
   async markFailed(id: string): Promise<void> {
     await this.db
       .update(batches)

@@ -1,5 +1,11 @@
 import type { CannotFitError, CannotFillError } from './impl/render/fit.js';
 
+/**
+ * Domain service for HTML → PDF rendering. Two pipelines: a fit-loop
+ * resume renderer that binary-searches CSS sizing until the content fills
+ * exactly one page, and a natural-layout cover-letter renderer that
+ * preserves whitespace and paginates organically.
+ */
 export interface RenderService {
   /**
    * Render HTML body content to a one-page PDF via Playwright + fit algorithm.

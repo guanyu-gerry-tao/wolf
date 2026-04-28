@@ -4,12 +4,18 @@ import type { AddOptions, AddResult } from '../../utils/types/index.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { CompanyRepository } from '../../repository/companyRepository.js';
 
+/**
+ * SQLite-backed `AddApplicationService`. Looks up the company by name through
+ * `CompanyRepository`, creates one when missing, then writes the job row +
+ * JD prose via `JobRepository`.
+ */
 export class AddApplicationServiceImpl implements AddApplicationService {
   constructor(
     private readonly jobRepository: JobRepository,
     private readonly companyRepository: CompanyRepository,
   ) {}
 
+  /** @inheritdoc */
   async add(options: AddOptions): Promise<AddResult> {
     const now = new Date().toISOString();
 

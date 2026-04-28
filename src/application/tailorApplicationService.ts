@@ -1,14 +1,25 @@
 import type { TailorOptions, TailorResult } from '../utils/types/index.js';
 
+/** Result of the brief step — the absolute path to `tailoring-brief.md`. */
 export interface AnalyzeResult {
   briefPath: string;
 }
 
+/** Result of a writer step (resume or cover letter) — the rendered HTML + PDF. */
 export interface WriteStepResult {
   htmlPath: string;
   pdfPath: string;
 }
 
+/**
+ * Use case for `wolf tailor` — the 3-agent checkpoint pipeline that takes
+ * a `(profile, resume_pool, JD)` triple and produces a tailored resume +
+ * cover letter as both HTML (editable checkpoint) and PDF (final).
+ *
+ * The pipeline is exposed both as a one-shot (`tailor`) and as discrete
+ * steps (`analyze` → `writeResume` / `writeCoverLetter`) so users can
+ * inspect or hand-edit `tailoring-brief.md` before the writers run.
+ */
 export interface TailorApplicationService {
   /**
    * Full pipeline: analyze -> brief -> (resume + cover letter in parallel).

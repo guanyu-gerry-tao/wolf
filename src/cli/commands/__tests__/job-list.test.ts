@@ -327,12 +327,12 @@ describe('runJobListCli()', () => {
     expect(process.exitCode).toBe(1);
 
     // The user-facing message must be on stderr and must name the bad flag.
-    const errCalls = errSpy.mock.calls.map((c) => String(c[0]));
-    expect(errCalls.some((s) => s.includes('Invalid --status "nonsense"'))).toBe(true);
+    const errCalls = errSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(errCalls.some((s: string) => s.includes('Invalid --status "nonsense"'))).toBe(true);
 
     // Stack frames look like `    at <fn> (...)` — the whole point of the
     // fix is that this noise must not appear anywhere in our output.
-    const allOut = [...errCalls, ...logSpy.mock.calls.map((c) => String(c[0]))].join('\n');
+    const allOut = [...errCalls, ...logSpy.mock.calls.map((c: unknown[]) => String(c[0]))].join('\n');
     expect(allOut).not.toMatch(/^\s+at\s/m);
 
     // No success row may be printed when validation fails.
@@ -353,7 +353,7 @@ describe('runJobListCli()', () => {
     expect(process.exitCode).toBe(0);
     expect(errSpy).not.toHaveBeenCalled();
     // Table output: header line + at least one data row containing the job.
-    const stdout = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
+    const stdout = logSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
     expect(stdout).toMatch(/^ID\s+COMPANY\s+TITLE\s+STATUS\s+SCORE/m);
     expect(stdout).toContain('Acme');
     expect(stdout).toContain('SWE');
@@ -371,7 +371,7 @@ describe('runJobListCli()', () => {
     await runJobListCli({}, true, ctx);
 
     expect(process.exitCode).toBe(0);
-    const stdout = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
+    const stdout = logSpy.mock.calls.map((c: unknown[]) => String(c[0])).join('\n');
     // Must parse as JSON and carry the expected shape.
     const parsed = JSON.parse(stdout);
     expect(parsed.jobs).toHaveLength(1);

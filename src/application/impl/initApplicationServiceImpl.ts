@@ -14,9 +14,16 @@ import type {
 
 const DEFAULT_PROFILE_NAME = 'default';
 
+/**
+ * `InitApplicationService` impl. Owns the bundled markdown templates
+ * (imported as raw strings via tsup's `.md` loader) and the workspace
+ * skeleton writer. No DB / repo deps — safe to instantiate as a module
+ * singleton.
+ */
 export class InitApplicationServiceImpl implements InitApplicationService {
   readonly defaultProfileName = DEFAULT_PROFILE_NAME;
 
+  /** @inheritdoc */
   buildDefaultConfig(mode?: 'stable' | 'dev'): AppConfig {
     return {
       ...(mode ? { instance: { mode } } : {}),
@@ -29,6 +36,7 @@ export class InitApplicationServiceImpl implements InitApplicationService {
     };
   }
 
+  /** @inheritdoc */
   async writeWorkspace(options: WriteWorkspaceOptions): Promise<void> {
     const { workspaceDir, config, overwriteConfig } = options;
     await fs.mkdir(workspaceDir, { recursive: true });

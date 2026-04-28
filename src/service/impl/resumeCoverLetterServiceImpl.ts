@@ -6,7 +6,14 @@ import COVER_LETTER_SYSTEM_PROMPT from './prompts/cover-letter-system.md';
 import type { ResumeCoverLetterService } from '../resumeCoverLetterService.js';
 import type { AiConfig, Profile } from '../../utils/types/index.js';
 
+/**
+ * Anthropic-backed `ResumeCoverLetterService`. Loads the prompts bundled
+ * under `service/impl/prompts/`, fills them with `(pool, jd, profile, brief)`,
+ * calls `aiClient`, and returns the raw HTML body. Empty AI responses throw
+ * rather than silently rendering a blank PDF.
+ */
 export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
+  /** @inheritdoc */
   async tailorResumeToHtml(
     resumePool: string,
     jdText: string,
@@ -46,6 +53,7 @@ export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
     return validateAndLogOrThrow(raw, 'resume', profile.name);
   }
 
+  /** @inheritdoc */
   async generateCoverLetter(
     resumePool: string,
     jdText: string,

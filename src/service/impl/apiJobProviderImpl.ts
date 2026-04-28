@@ -1,5 +1,11 @@
 import type { JobProvider, RawJob } from '../jobProvider.js';
 
+/**
+ * Configuration for a generic HTTP-API provider. The whole point is that
+ * users can point wolf at any JSON-returning endpoint without writing a
+ * provider class — AI-driven field extraction normalizes the response
+ * downstream.
+ */
 export interface ApiProviderConfig {
   name: string;
   url: string;
@@ -8,6 +14,12 @@ export interface ApiProviderConfig {
   body?: string;
 }
 
+/**
+ * Generic HTTP-API `JobProvider`. Accepts either a JSON array directly or
+ * a wrapper object with a single array-valued field (the common shape for
+ * paginated APIs). Anything else throws so misconfigured endpoints fail
+ * loudly instead of silently returning zero jobs.
+ */
 export class ApiJobProviderImpl implements JobProvider {
   readonly name: string;
   private readonly config: ApiProviderConfig;
@@ -17,6 +29,7 @@ export class ApiJobProviderImpl implements JobProvider {
     this.config = config;
   }
 
+  /** @inheritdoc */
   async fetch(): Promise<RawJob[]> {
     const method = this.config.method ?? 'GET';
 
