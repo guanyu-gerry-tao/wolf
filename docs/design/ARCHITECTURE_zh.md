@@ -37,10 +37,10 @@ wolf 是一个双接口应用：既可以作为 **CLI 工具**（供人类用户
                └────────────┬───────────┘
                             │
                             v
-        ┌──────────┬─────────────┬──────────┬─────────┐
-        │  Claude  │   SQLite    │ xelatex  │  Gmail  │   工具层 + 外部服务
-        │   API    │             │ pdfinfo  │   API   │
-        └──────────┴─────────────┴──────────┴─────────┘
+        ┌──────────┬─────────────┬────────────┬─────────┐
+        │  Claude  │   SQLite    │ Playwright │  Gmail  │   工具层 + 外部服务
+        │   API    │             │ (Chromium) │   API   │
+        └──────────┴─────────────┴────────────┴─────────┘
 ```
 
 ## 分层架构
@@ -282,8 +282,7 @@ src/application/impl/
 ├── hunt/             # 职位批量接入 — 从 provider 拉取原始职位，存入数据库
 ├── add/              # 单条职位接入 — 存储来自 MCP 调用方的 AI 结构化职位
 ├── score/            # 职位处理 — AI 字段提取、dealbreaker 过滤、评分
-├── tailor/           # 简历定制 — resume.tex + resume.txt + JD → 定制 PDF
-├── templategen/      # 模板生成 — txt + style_ref.jpg → resume.tex（Claude Vision）
+├── tailor/           # 简历定制 — profile + resume_pool + JD → HTML → PDF（Playwright + fit-loop）
 ├── fill/             # 表单自动填写
 ├── reach/            # HR 联系人查找和推广
 ├── status/           # 职位追踪看板

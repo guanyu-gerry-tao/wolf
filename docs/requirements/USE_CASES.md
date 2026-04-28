@@ -223,21 +223,15 @@ NEXT: On success, AI may immediately chain into `wolf_score` with `{ jobId, sing
    - `--cover-letter` → after tailoring completes, generate a cover letter for each job in the batch (same logic as UC-07.1.1).
 - 2 - wolf reads all jobs with `selected: true` AND (`status: scored` OR `status: tailor_error`) from SQLite (or just the specified job if `--jobid` is set), extracting JD, company, title, and other relevant fields.
 - 3 - wolf reads the user's profile from `profile.md` at profile's folder and resume bullet points from `resume_pool.md` under that folder.
-- 4 - wolf submits all jobs to Claude Batch API in a single batch, each request including the JD text and resume pool. CLI provides progress updates while polling.
-   - 4.1 - If `--jobid` is set → skip batch, make a single synchronous call instead.
-   - 4.2 - If a response is missing or completely unreadable (not valid `.tex`) → mark `status: tailor_error`, continue to the next job. Partial or compilable-but-flawed `.tex` proceeds to step 5 and is handled by the compile-and-review loop (steps 6–8).
-The following steps (5–8) run per-job after the batch results are received. Each job goes through its own independent review loop.
-- 5 - wolf writes the tailored `.tex` file to the workspace.
-- 6 - wolf compiles `.tex` to PDF via `xelatex`.
-   - 6.1 - If `xelatex` is not installed → skip steps 6–8 for all jobs, print a warning, and continue to step 9.
-   - 6.2 - If compilation fails → send the `.tex` and error log back to Claude to fix, then retry compilation. If it still fails → mark `status: tailor_error`, skip to next job.
-- 7 - wolf takes screenshots of the PDF: 1 JPG per page, capturing at most 2 pages.
-- 8 - wolf sends the screenshot(s) and the `.tex` source to Claude with the instruction: "If you see a second page or orphan words, fix the `.tex` with minimal changes and return the updated source. Otherwise return LGTM."
-   - 8.1 - If Claude returns updated `.tex` → go back to step 6. Repeat up to **3 times total** across steps 6–8 for this job.
-   - 8.2 - If Claude returns LGTM → continue to next job.
-   - 8.3 - After 3 attempts without LGTM → wolf checks the final PDF page count: if 1 page → accept and continue; if 2 pages → mark `status: tailor_error`, continue to next job.
-- 9 - wolf prints a summary: jobs tailored, errors, and output file paths.
-- 10 - If `--cover-letter` was set → run UC-07.1.1 for all successfully tailored jobs in this batch.
+- 4 - wolf runs the **3-agent checkpoint pipeline** per job. Stage 1 (analyst) runs first; stages 2a + 2b (writers) run in parallel after the analyst finishes.
+   - 4.1 - **Analyst** — Claude reads `profile.md`, `resume_pool.md`, JD, and optional `hint.md`, and writes `data/jobs/<dir>/src/tailoring-brief.md` (the shared brief consumed by both writers).
+- 5 - **Resume writer** (parallel branch 2a) — Claude consumes pool + JD + profile + brief, returns an HTML body, which wolf writes to `data/jobs/<dir>/src/resume.html`.
+- 6 - wolf renders `resume.html` to PDF via Playwright Chromium with a deterministic **fit-loop**: a binary search over CSS variables (`--font-size`, `--line-height`, `--margin-in`) shrinks (or expands) the layout until the content fits one Letter page within configured floors / ceilings. The PDF is written to `data/jobs/<dir>/resume.pdf`.
+   - 6.1 - If even the floor parameters overflow → throws `CannotFitError`; the user is asked to cut content. No system dependencies (xelatex, pdfinfo, etc.) are required — Playwright bundles its own Chromium.
+- 7 - **Cover letter writer** (parallel branch 2b) — Claude consumes pool + JD + profile + brief + tone, returns an HTML body, which wolf writes to `data/jobs/<dir>/src/cover_letter.html`.
+- 8 - wolf renders `cover_letter.html` to PDF via Playwright Chromium with **natural CSS-driven layout** (no fit-loop; multi-page output is acceptable). The PDF is written to `data/jobs/<dir>/cover_letter.pdf`.
+   - 8.1 - If `--no-cover-letter` was set → skip steps 7–8.
+- 9 - wolf updates the Job row with the resume PDF path and cover letter PDF path, then prints a per-job summary including artifact paths. Tailor failures are surfaced as thrown errors with codes `tailor_resume_error` / `tailor_cover_letter_error`; the caller decides how to record them. (Tailor itself does not transition `Job.status` — that field is owned by the application lifecycle.)
 
 ## UC-06.1.2 · Tailor Resume (MCP)
 
@@ -246,7 +240,7 @@ The following steps (5–8) run per-job after the batch results are received. Ea
 
 - 1 - User asks the AI to tailor their resume for a job (e.g. "Tailor my resume for job 42").
 - 2 - AI calls `wolf_tailor` with `{ jobId }` to tailor a specific job, or with no arguments to tailor all selected jobs. `profileId` is a placeholder arg for future multi-profile support (TBD); omit for now.
-- 3 - wolf performs tailoring as described in UC-06.1.1 steps 2–10 and returns per-job results: PDF path, page count, number of visual review iterations used, cover letter path (if generated), and any errors (`tailor_error` jobs are included with reason).
+- 3 - wolf performs tailoring as described in UC-06.1.1 steps 2–9 and returns per-job results: resume PDF path, cover letter PDF path (if generated), brief path, fit-loop final parameters, and any errors (`tailor_resume_error` / `tailor_cover_letter_error` with reason).
 - 4 - AI presents a summary to the user: which jobs were tailored successfully, which hit `tailor_error` and why, and offers next steps (e.g. run `wolf_cover_letter` or `wolf_fill`).
 
 ## UC-07.1.1 · Generate Cover Letter (`wolf cover-letter`)
@@ -259,9 +253,9 @@ The following steps (5–8) run per-job after the batch results are received. Ea
 - 3 - wolf checks whether the JD or `companies` table contains a company description.
    - 3.1 - If a company description is available → full CL including a "why this company" section.
    - 3.2 - If no company description is found → CL focused on user+job fit only; the "why this company" section is omitted rather than hallucinated.
-- 4 - wolf calls Claude API to draft the cover letter.
-- 5 - wolf saves the draft as a `.md` file alongside the tailored resume and records the path in `evaluations.coverLetterPath`.
-- 6 - wolf converts `.md` to PDF via `md-to-pdf`. If `md-to-pdf` is not installed → skip PDF conversion for all jobs, print a warning, and continue.
+- 4 - wolf calls Claude API to draft the cover letter and returns an HTML body.
+- 5 - wolf writes the HTML to `data/jobs/<dir>/src/cover_letter.html` and records the path on the Job row.
+- 6 - wolf renders the HTML to PDF via Playwright Chromium (natural CSS-driven layout, multi-page allowed) and writes `data/jobs/<dir>/cover_letter.pdf`. No system dependencies required.
 - 7 - wolf prints the output file paths.
 
 ## UC-07.1.2 · Generate Cover Letter (MCP)
@@ -271,7 +265,7 @@ The following steps (5–8) run per-job after the batch results are received. Ea
 
 - 1 - User asks the AI to generate a cover letter (e.g. "Write a cover letter for job 42"), or AI triggers this automatically during UC-08.1.2 when a CL field is detected.
 - 2 - AI calls `wolf_cover_letter` with `{ jobId }`. `profileId` is a placeholder arg for future multi-profile support (TBD); omit for now.
-- 3 - wolf generates the cover letter as described in UC-07.1.1 steps 2–6 and returns the cover letter content, `.md` path, PDF path (if conversion succeeded), and whether company context was available.
+- 3 - wolf generates the cover letter as described in UC-07.1.1 steps 2–6 and returns the cover letter HTML content, HTML path, PDF path, and whether company context was available.
 - 4 - AI displays the cover letter content to the user for review.
    - 4.1 - If the user requests changes → AI calls `wolf_cover_letter` again with revision instructions; repeat from step 4.
 

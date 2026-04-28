@@ -103,9 +103,9 @@ Each section corresponds to a User Story and Use Case.
 **Story:** US-04 · **Use case:** UC-04
 
 **AC-04-1 — Output files created**
-- Given a valid jobId and a `.tex` resume source
+- Given a valid jobId and a populated `resume_pool.md`
 - When `wolf tailor <jobId>` completes successfully
-- Then a tailored `.tex` file and a compiled PDF are written to the workspace
+- Then `data/jobs/<dir>/src/tailoring-brief.md`, `src/resume.html`, and `resume.pdf` are written to the workspace, and the resume PDF path is recorded on the Job row
 
 **AC-04-2 — Factual accuracy preserved**
 - Given Claude rewrites bullet points
@@ -119,10 +119,10 @@ Each section corresponds to a User Story and Use Case.
 - When tailoring completes
 - Then the terminal prints a before/after comparison of every changed bullet point
 
-**AC-04-4 — Page count guard**
-- Given the tailored resume exceeds the original page count
-- When the refinement loop runs
-- Then wolf re-prompts Claude to shorten content until the page count matches
+**AC-04-4 — Single-page guard**
+- Given the tailored resume body would overflow one page at default rendering parameters
+- When the fit-loop runs (deterministic binary search over font-size / line-height / margin)
+- Then wolf shrinks the layout within configured floors until the PDF fits one page; if even the floor parameters overflow, wolf throws `CannotFitError` and asks the user to cut content
 
 ---
 
@@ -132,18 +132,18 @@ Each section corresponds to a User Story and Use Case.
 
 **AC-05-1 — Output files created**
 - Given a valid jobId
-- When `wolf tailor <jobId> --cover-letter` completes
-- Then a `.md` and a PDF cover letter are written to the workspace alongside the tailored resume
+- When `wolf tailor <jobId>` completes (cover letter is on by default; `--no-cover-letter` skips it)
+- Then `data/jobs/<dir>/src/cover_letter.html` and `cover_letter.pdf` are written to the workspace alongside the tailored resume, and the cover letter PDF path is recorded on the Job row
 
 **AC-05-2 — Cover letter references the JD**
 - Given a job description with a specific role title and company name
 - When the cover letter is generated
 - Then the cover letter includes the correct role title and company name
 
-**AC-05-3 — PDF compilation failure is non-blocking**
-- Given `md-to-pdf` is not installed
+**AC-05-3 — No system dependencies**
+- Given a fresh machine with only `npm install` run
 - When cover letter generation runs
-- Then wolf saves the `.md` file, prints a warning about PDF compilation, and exits cleanly
+- Then it succeeds without any system-level tooling installed (no xelatex, no md-to-pdf, no ImageMagick); Playwright bundles its own Chromium
 
 ---
 
