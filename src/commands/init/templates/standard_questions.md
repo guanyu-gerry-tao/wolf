@@ -74,6 +74,35 @@ LinkedIn
 > [!TIP]
 > Optional. Leave blank if NG/intern with no current role.
 
+## How do you handle stress / failure?
+> [!IMPORTANT]
+> Behavioral question; common in NG / intern interviews. Write a short
+> story (situation + your reaction + outcome) you can adapt across roles.
+
+## What motivates you?
+> [!IMPORTANT]
+> Reused across "why this role" / "why this company" follow-ups.
+
+## Describe a time you led a team or project
+> [!IMPORTANT]
+> STAR+R story. Even an intern-scale lead (study group, hackathon team,
+> open-source maintainer) works. Pick the one with the most concrete result.
+
+## Describe a time you handled feedback you disagreed with
+> [!IMPORTANT]
+> STAR+R story. The interviewer is checking maturity, not your ability to
+> win arguments. Lean toward "I tried it, learned X, here's what I'd do now."
+
+## What is your management style?
+> [!TIP]
+> Optional for NG / IC roles. Fill if you've led people (TA, intern lead,
+> club president) or if the role is manager-track.
+
+## Tell me about a project you're proud of
+> [!IMPORTANT]
+> Pick ONE project, real depth: what you built, why it was hard, what you
+> learned. AI will adapt this for "biggest accomplishment" form questions too.
+
 ## When can you start?
 Available immediately
 
