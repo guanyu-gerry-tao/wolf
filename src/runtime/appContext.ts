@@ -43,6 +43,11 @@ import { ProfileApplicationServiceImpl } from '../application/impl/profileApplic
 import { DoctorApplicationServiceImpl } from '../application/impl/doctorApplicationServiceImpl.js';
 import { InitApplicationServiceImpl } from '../application/impl/initApplicationServiceImpl.js';
 import { JobApplicationServiceImpl } from '../application/impl/jobApplicationServiceImpl.js';
+import { HuntApplicationServiceImpl } from '../application/impl/huntApplicationServiceImpl.js';
+import { ScoreApplicationServiceImpl } from '../application/impl/scoreApplicationServiceImpl.js';
+import { FillApplicationServiceImpl } from '../application/impl/fillApplicationServiceImpl.js';
+import { ReachApplicationServiceImpl } from '../application/impl/reachApplicationServiceImpl.js';
+import { FillServiceImpl } from '../service/impl/fillServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
@@ -69,6 +74,11 @@ import type { ProfileApplicationService } from '../application/profileApplicatio
 import type { DoctorApplicationService } from '../application/doctorApplicationService.js';
 import type { InitApplicationService } from '../application/initApplicationService.js';
 import type { JobApplicationService } from '../application/jobApplicationService.js';
+import type { HuntApplicationService } from '../application/huntApplicationService.js';
+import type { ScoreApplicationService } from '../application/scoreApplicationService.js';
+import type { FillApplicationService } from '../application/fillApplicationService.js';
+import type { ReachApplicationService } from '../application/reachApplicationService.js';
+import type { FillService } from '../service/fillService.js';
 import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
@@ -93,6 +103,11 @@ export interface AppContext {
   doctorApp: DoctorApplicationService;
   initApp: InitApplicationService;
   jobApp: JobApplicationService;
+  huntApp: HuntApplicationService;
+  scoreApp: ScoreApplicationService;
+  fillApp: FillApplicationService;
+  reachApp: ReachApplicationService;
+  fillService: FillService;
   // config
   defaultAiConfig: AiConfig;
 }
@@ -150,6 +165,11 @@ function wireContext(
   const doctorApp = new DoctorApplicationServiceImpl(profileRepository);
   const initApp = new InitApplicationServiceImpl();
   const jobApp = new JobApplicationServiceImpl(jobRepo, companyRepo);
+  const huntApp = new HuntApplicationServiceImpl();
+  const scoreApp = new ScoreApplicationServiceImpl();
+  const fillApp = new FillApplicationServiceImpl();
+  const reachApp = new ReachApplicationServiceImpl();
+  const fillService = new FillServiceImpl();
 
   return {
     jobRepository: jobRepo,
@@ -170,6 +190,11 @@ function wireContext(
     doctorApp,
     initApp,
     jobApp,
+    huntApp,
+    scoreApp,
+    fillApp,
+    reachApp,
+    fillService,
     defaultAiConfig,
   };
 }
