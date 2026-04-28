@@ -2,18 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { add } from '../index.js';
 import type { AppContext } from '../../../runtime/appContext.js';
 import type { Company } from '../../../utils/types/company.js';
+import { AddApplicationServiceImpl } from '../../../application/impl/addApplicationServiceImpl.js';
 
 // Build a fake AppContext where every repository/service method is a vi.fn() spy.
 // Default: companyRepository.getByName returns null (simulates company-not-found).
-// Pass overrides to swap specific repos for different test scenarios.
+// addApp is wired with the (mocked) repositories so behavioral assertions on
+// companyRepository / jobRepository continue to work end-to-end.
 function makeCtx(overrides: Partial<AppContext> = {}): AppContext {
+  const jobRepository = overrides.jobRepository ?? { save: vi.fn(), saveMany: vi.fn(), get: vi.fn(), query: vi.fn(), update: vi.fn(), updateMany: vi.fn(), countByStatus: vi.fn(), delete: vi.fn(), getWorkspaceDir: vi.fn(), readJdText: vi.fn(), writeJdText: vi.fn() } as unknown as AppContext['jobRepository'];
+  const companyRepository = overrides.companyRepository ?? { get: vi.fn(), getByName: vi.fn().mockResolvedValue(null), upsert: vi.fn(), update: vi.fn(), query: vi.fn(), getWorkspaceDir: vi.fn(), readInfo: vi.fn() } as unknown as AppContext['companyRepository'];
   return {
-    jobRepository: { save: vi.fn(), saveMany: vi.fn(), get: vi.fn(), query: vi.fn(), update: vi.fn(), updateMany: vi.fn(), countByStatus: vi.fn(), delete: vi.fn(), getWorkspaceDir: vi.fn(), readJdText: vi.fn(), writeJdText: vi.fn() },
-    companyRepository: { get: vi.fn(), getByName: vi.fn().mockResolvedValue(null), upsert: vi.fn(), update: vi.fn(), query: vi.fn(), getWorkspaceDir: vi.fn(), readInfo: vi.fn() },
+    jobRepository,
+    companyRepository,
     batchRepository: { save: vi.fn(), getPending: vi.fn(), markComplete: vi.fn(), markFailed: vi.fn() },
     profileRepository: { get: vi.fn(), getDefault: vi.fn(), list: vi.fn(), getResumePool: vi.fn() },
     batchService: { submit: vi.fn(), pollAll: vi.fn() },
     jobProviders: [],
+    addApp: new AddApplicationServiceImpl(jobRepository, companyRepository),
     ...overrides,
   } as unknown as AppContext;
 }

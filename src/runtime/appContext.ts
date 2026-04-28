@@ -36,6 +36,7 @@ import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterS
 import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefServiceImpl.js';
 import { StatusApplicationServiceImpl } from '../application/impl/statusApplicationServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
+import { AddApplicationServiceImpl } from '../application/impl/addApplicationServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
@@ -55,6 +56,7 @@ import type {
   StatusCounter,
 } from '../application/statusApplicationService.js';
 import type { TailorApplicationService } from '../application/tailorApplicationService.js';
+import type { AddApplicationService } from '../application/addApplicationService.js';
 import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
@@ -72,6 +74,7 @@ export interface AppContext {
   // application services
   tailorApp: TailorApplicationService;
   statusApp: StatusApplicationService;
+  addApp: AddApplicationService;
   // config
   defaultAiConfig: AiConfig;
 }
@@ -122,6 +125,7 @@ function wireContext(
     { label: 'applied',  count: async () => (await jobRepo.countByStatus()).applied },
   ];
   const statusApp = new StatusApplicationServiceImpl(statusCounters);
+  const addApp = new AddApplicationServiceImpl(jobRepo, companyRepo);
 
   return {
     jobRepository: jobRepo,
@@ -135,6 +139,7 @@ function wireContext(
     briefService,
     tailorApp,
     statusApp,
+    addApp,
     defaultAiConfig,
   };
 }
