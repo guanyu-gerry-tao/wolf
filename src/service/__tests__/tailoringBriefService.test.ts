@@ -6,7 +6,7 @@ import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
 import type { Profile, AiConfig } from '../../utils/types/index.js';
 
 // Mock aiClient so tests never touch the network.
-vi.mock('../../utils/ai/index.js', () => ({
+vi.mock('../../service/ai/index.js', () => ({
   aiClient: vi.fn(),
 }));
 

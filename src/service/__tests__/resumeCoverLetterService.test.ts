@@ -7,7 +7,7 @@ import type { Profile } from '../../utils/types/index.js';
 import type { AiConfig } from '../../utils/types/index.js';
 
 // Mock aiClient so tests never make real API calls.
-vi.mock('../../utils/ai/index.js', () => ({
+vi.mock('../../service/ai/index.js', () => ({
   aiClient: vi.fn(),
 }));
 
