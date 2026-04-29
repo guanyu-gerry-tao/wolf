@@ -79,44 +79,79 @@ wolf/
 | Local storage | SQLite |
 | Email | Gmail API (OAuth2) |
 
-## Quick start
+## Quick start (5 minutes)
+
+> Requires Node.js 20 LTS or newer.
 
 ```bash
-# Install dependencies
-npm install
+# 1. Install
+npm install -g @gerryt/wolf
 
-# Build and install globally
-npm run build
-npm install -g .
-
-# Set up your workspace (creates wolf.toml, resume/, data/)
-mkdir my-job-search && cd my-job-search
-wolf init
-
-# Configure API keys (written to ~/.zshrc)
+# 2. Configure your Anthropic API key (get one at https://console.anthropic.com/)
 wolf env set
 
-# Run CLI
-wolf --help
+# 3. Create a workspace (defaults to ~/wolf)
+wolf init
 
-# Start MCP server
+# 4. Fill in your profile (REQUIRED before tailor will run)
+#    Edit these three files in any text editor — replace the > [!IMPORTANT]
+#    blocks with your real information:
+#      ~/wolf/profiles/default/profile.md           # name, contact, work auth
+#      ~/wolf/profiles/default/resume_pool.md       # your full experience bank
+#      ~/wolf/profiles/default/standard_questions.md  # application Q&A
+
+# 5. Sanity-check that the profile is filled enough to tailor
+wolf doctor
+
+# 6. Add a job (paste the JD text)
+wolf add -t "Senior Backend Engineer" -c "Acme Corp" -j "$(pbpaste)"
+# returns a jobId — copy it for the next step
+
+# 7. Tailor a resume + cover letter for that job
+wolf tailor full -j <jobId>
+# outputs: ~/wolf/data/jobs/<jobId>/resume.pdf + cover_letter.pdf
+```
+
+The first `wolf tailor` run downloads Playwright Chromium (~150 MB, one-time)
+to render the PDFs. Subsequent runs reuse it.
+
+### What's not yet available
+
+`wolf hunt`, `wolf score`, `wolf fill`, and `wolf reach` are registered in
+`wolf --help` but are still on the roadmap — they print "not yet available"
+and exit. See [`docs/overview/MILESTONES.md`](docs/overview/MILESTONES.md)
+for the timeline. The available end-to-end path today is
+**add → tailor → use the generated PDFs to apply manually**.
+
+### MCP server
+
+```bash
 wolf mcp serve
 ```
 
-### Quick start — dev build (for contributors)
+Use this from Claude Desktop, OpenClaw, or any MCP-aware AI orchestrator.
 
-If you're hacking on wolf itself, use the dev build so your code changes never touch your real `~/wolf` workspace or your production API key. See [CONTRIBUTING.md](CONTRIBUTING.md) "Step 3.5" for the full contract.
+### Hacking on wolf (dev build)
+
+If you're contributing, use the dev build so your code changes never touch
+your real `~/wolf` workspace or production API key. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full contract.
 
 ```bash
+git clone https://github.com/guanyu-gerry-tao/wolf.git && cd wolf
 npm install
 npm run build:dev
+npm link                                       # installs `wolf-dev` globally
 
-export WOLF_DEV_HOME=~/wolf-dev                # any directory you want for testing
-export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # separate from your production key
+export WOLF_DEV_HOME=~/wolf-dev                # separate workspace
+export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # separate API key
 
-npm run wolf -- init --dev --empty             # create a dev workspace (no prompts)
-npm run wolf -- <command>                      # run any wolf command against the dev build
+wolf-dev init --dev --empty                    # create dev workspace
+wolf-dev <command>                             # run any wolf command in dev mode
 ```
+
+The dev binary `wolf-dev` and the stable `wolf` coexist on your PATH —
+dogfood the stable npm release at the same time as you iterate on dev.
 
 ## License
 

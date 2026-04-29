@@ -4,6 +4,8 @@ node_modules/
 # Build output
 dist/
 build/
+# Stable npm publish staging directory (created by scripts/publish-stable.sh)
+dist-package/
 
 # Environment & secrets
 .env

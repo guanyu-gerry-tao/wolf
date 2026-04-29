@@ -165,6 +165,46 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - When creating or updating an English doc, always create or update the corresponding `_zh` version in the same commit
 - Chinese versions must stay in sync with their English counterparts
 
+## Workspace migrations
+
+wolf is in `0.x` — workspace format is **not stable**. Whenever you make a
+breaking change to any of the surfaces below, you **must also land a
+migration framework in the same PR**. Don't defer it.
+
+Surfaces that count as workspace state:
+- `wolf.toml` schema (renamed/removed fields, new required fields)
+- `profile.md` / `resume_pool.md` / `standard_questions.md` shape (REQUIRED H2 sections, structured field names)
+- SQLite schema (any non-additive change — column rename, drop, type change, table rename)
+- `data/jobs/<dir>/` artifact layout (filenames, directory structure)
+
+Migration contract:
+- New code reads a `schema_version` field; runs ordered migrations from the workspace's recorded version up to the current one.
+- Missing `schema_version` is treated as v1 (the pre-migration baseline).
+- **New code migrates old data.** Old code is never patched retroactively to "prepare" for a future format.
+
+Until the first migration framework lands, every breaking change requires a
+`### Breaking changes` section in `CHANGELOG.md` with explicit re-init guidance.
+
+## Releasing (stable npm)
+
+Stable release = publish a new `@gerryt/wolf@0.x.y` to npm. Hard gates,
+all four mandatory:
+
+- (a) Full smoke + acceptance pass, **including AI-paid acceptance groups**.
+- (b) Git tag `v0.x.y` matching `package.stable.json#version` exists.
+- (c) `CHANGELOG.md` updated with a `## v0.x.y — YYYY-MM-DD` heading.
+- (d) Branch is `main`, working tree clean.
+
+Procedure: bump version + CHANGELOG → tag → `npm run publish:stable` (stages
+`dist-package/` and stops before `npm publish`) → human runs `npm publish` →
+fresh-shell verification → push tag → GitHub release.
+
+Failure recovery: `npm unpublish` within 72h, else `deprecate`. Same version
+number can never be re-published.
+
+Never run `npm publish` in an automated context. The agent prepares; the
+human publishes.
+
 ## Common commands
 
 ```bash

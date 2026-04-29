@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import updateNotifier from 'update-notifier';
-import { hunt } from './commands/hunt.js';
-import { score } from './commands/score.js';
+// hunt / score / fill / reach are not yet implemented — registered with
+// stub action handlers via notYetMessage() rather than imported here. When
+// each milestone lands, re-import its command function and replace the stub.
 import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from './commands/tailor.js';
-import { fill } from './commands/fill.js';
-import { reach } from './commands/reach.js';
 import { status, formatStatus } from './commands/status.js';
 import { doctor, formatDoctor } from './commands/doctor.js';
 import { runJobListCli } from './commands/job/index.js';
@@ -17,6 +16,7 @@ import { profileList, profileCreate, profileUse, profileDelete } from './command
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
 import { MissingApiKeyError, MissingChromiumError } from '../utils/errors/index.js';
+import { statusTag, notYetMessage } from '../utils/commandStatus.js';
 
 const program = new Command();
 
@@ -94,36 +94,26 @@ program
 
 program
   .command('hunt')
-  .description('Find and score jobs')
+  .description('Find and score jobs' + statusTag('hunt'))
   .option('-p, --profile <id>', 'Profile to use')
   .option('-r, --role <role>', 'Override target role')
   .option('-l, --location <location>', 'Override target location')
   .option('-n, --max-results <n>', 'Max results to fetch', parseInt)
-  .action(async (opts) => {
-    const result = await hunt({
-      profileId: opts.profile,
-      role: opts.role,
-      location: opts.location,
-      maxResults: opts.maxResults,
-    });
-    console.log(JSON.stringify(result, null, 2));
+  .action(async (_opts) => {
+    process.stderr.write(notYetMessage('hunt') + '\n');
+    process.exit(1);
   });
 
 program
   .command('score')
-  .description('Process unscored jobs: extract fields, apply filters, and score via Claude Batch API')
+  .description('Process unscored jobs: extract fields, apply filters, and score via Claude Batch API' + statusTag('score'))
   .option('-p, --profile <id>', 'Profile to use')
   .option('-j, --jobs <ids...>', 'Score only specific job IDs')
   .option('--single', 'Score one job synchronously via Haiku (skips Batch API); requires --jobs with a single ID')
   .option('--poll', 'Poll pending batches for results without submitting new jobs')
-  .action(async (opts) => {
-    const result = await score({
-      profileId: opts.profile,
-      jobIds: opts.jobs,
-      single: opts.single,
-      poll: opts.poll,
-    });
-    console.log(JSON.stringify(result, null, 2));
+  .action(async (_opts) => {
+    process.stderr.write(notYetMessage('score') + '\n');
+    process.exit(1);
   });
 
 const tailorCmd = new Command('tailor')
@@ -182,32 +172,24 @@ program.addCommand(tailorCmd);
 
 program
   .command('fill')
-  .description('Auto-fill a job application form')
+  .description('Auto-fill a job application form' + statusTag('fill'))
   .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
   .option('--dry-run', 'Preview fields without submitting', true)
-  .action(async (opts) => {
-    const result = await fill({
-      jobId: opts.job,
-      profileId: opts.profile,
-      dryRun: opts.dryRun,
-    });
-    console.log(JSON.stringify(result, null, 2));
+  .action(async (_opts) => {
+    process.stderr.write(notYetMessage('fill') + '\n');
+    process.exit(1);
   });
 
 program
   .command('reach')
-  .description('Find HR contacts and send outreach emails')
+  .description('Find HR contacts and send outreach emails' + statusTag('reach'))
   .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
   .option('--send', 'Send email after drafting')
-  .action(async (opts) => {
-    const result = await reach({
-      jobId: opts.job,
-      profileId: opts.profile,
-      send: opts.send,
-    });
-    console.log(JSON.stringify(result, null, 2));
+  .action(async (_opts) => {
+    process.stderr.write(notYetMessage('reach') + '\n');
+    process.exit(1);
   });
 
 program
