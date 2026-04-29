@@ -20,5 +20,8 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/__tests__/**/*.ts"],
     exclude: ["dist/**", "node_modules/**"],
     passWithNoTests: true,
+    // Stub WOLF_ANTHROPIC_API_KEY + playwright.chromium so guards don't
+    // fail mid-test. See vitest.setup.ts for details.
+    setupFiles: ["./vitest.setup.ts"],
   },
 });
