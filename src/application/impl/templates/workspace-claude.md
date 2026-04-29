@@ -9,8 +9,7 @@ If `__WOLF_BIN__ init` was just run, the three profile markdown files are in
 **template state**: section structure is there but actual content is empty
 (or filled with `> [!IMPORTANT]` / `> [!TIP]` callouts that get stripped
 before the AI sees the file). Tailor / fill / reach will refuse to run on
-empty templates — see [src/application/impl/tailorApplicationServiceImpl.ts]
-`assertReadyForTailor` for the gate.
+empty templates — `__WOLF_BIN__ doctor` is the gate.
 
 When the user opens this workspace and asks anything (or implicitly when
 the first wolf command is about to be run), **proactively check** whether
@@ -42,9 +41,8 @@ into the scaffold, NOT rewriting the scaffold.
   `wolf doctor`) match on exact heading text. Renaming a heading silently
   breaks the gate.
 - **Do NOT delete or edit any `> [!IMPORTANT]` / `> [!NOTE]` / `> [!TIP]`
-  callout block.** Callouts are runtime-stripped (see
-  `src/utils/stripComments.ts`) and stay in the source file as future-edit
-  prompts for the user.
+  callout block.** Callouts are runtime-stripped before the AI ever sees
+  them and stay in the source file as future-edit prompts for the user.
 - **Write answers BELOW the callout** as plain (non-`>`) Markdown. Never
   overwrite the callout, never put the answer inside the blockquote.
 - For `resume_pool.md` specifically: when the user pastes their existing
@@ -56,9 +54,8 @@ into the scaffold, NOT rewriting the scaffold.
   new heading.
 
 If a heading or callout truly needs to change, that is a wolf-source-level
-change (the template lives at `src/application/impl/templates/`), not a
-workspace-level edit. Tell the user to file an issue instead of editing
-the scaffold.
+change, not a workspace-level edit. Tell the user to file an issue
+instead of editing the scaffold.
 
 ### Three-state answering rule (CRITICAL — applies to every H2)
 
@@ -160,9 +157,6 @@ wolf is a CLI tool that:
 - Drafts outreach emails to hiring contacts
 
 ## Command status (read this before suggesting commands)
-
-> Source of truth: `src/utils/commandStatus.ts` in the wolf source tree.
-> Keep this table in sync when commands ship.
 
 | Command | Status |
 |---|---|
