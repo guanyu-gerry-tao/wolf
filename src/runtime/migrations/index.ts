@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { parse } from 'smol-toml';
 import { loadConfig, saveConfig } from '../../utils/config.js';
 import { log } from '../../utils/logger.js';
+import { v1ToV2 } from './v1ToV2.js';
 
 /**
  * Workspace schema migration runtime.
@@ -72,18 +73,19 @@ export interface Migration {
  * recorded schemaVersion is greater than this means the user is running
  * an older binary against a newer workspace — refuse to run.
  */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
- * Ordered registry of migrations. Empty in commit α (this commit) — the
- * first concrete migration (v1 → v2: profile.md → profile.toml + jd.md →
- * SQLite description_md column) lands in commit β.
+ * Ordered registry of migrations. v1 → v2 (profile .md trio → single
+ * profile.toml) is the first; jd.md → SQLite description_md column lands
+ * with the jobs-side overhaul in a subsequent β commit (will be appended
+ * here when its migration is implemented).
  *
  * Tests pass a custom registry into `planMigrations` / `runMigrations` so
  * the framework can be exercised without coupling to whatever real
  * migrations have been added.
  */
-export const MIGRATIONS: ReadonlyArray<Migration> = [];
+export const MIGRATIONS: ReadonlyArray<Migration> = [v1ToV2];
 
 /**
  * Reads the workspace's recorded `schemaVersion` from `wolf.toml`.

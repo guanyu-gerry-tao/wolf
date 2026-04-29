@@ -109,18 +109,27 @@ describe('migrations runtime', () => {
       expect(await isSchemaCurrent(tmpDir)).toBe(true);
     });
 
-    // A workspace at an older version (or missing the field, treated as v1)
-    // returns false when the binary's CURRENT is bumped past 1.
+    // A workspace whose recorded version is below CURRENT_SCHEMA_VERSION
+    // returns false. We compute the gap dynamically so this test stays
+    // valid as CURRENT is bumped over future migrations.
     it('returns false when the workspace lags the binary', async () => {
-      // Synthesize a future-CURRENT scenario: write v1, then check against
-      // a binary that thinks current is something higher. We can't easily
-      // mutate CURRENT_SCHEMA_VERSION (it's a const export), so instead we
-      // rely on the v1 == CURRENT == 1 baseline + dedicated runMigrations
-      // tests exercising the higher-version paths.
-      await writeWolfToml(tmpDir, 1);
-      // CURRENT_SCHEMA_VERSION is 1 in commit α — this is the only path we
-      // can exercise without a custom registry. The v1 baseline matches.
-      expect(await isSchemaCurrent(tmpDir)).toBe(true);
+      // Cast to widen the literal type; TypeScript narrows the imported
+      // const to its current value, but this test must hold across future
+      // bumps. Skip the path when CURRENT is the v1 baseline (no lagging
+      // version exists yet).
+      const current = CURRENT_SCHEMA_VERSION as number;
+      if (current === 1) return;
+      await writeWolfToml(tmpDir, current - 1);
+      expect(await isSchemaCurrent(tmpDir)).toBe(false);
+    });
+
+    // Missing schemaVersion (treated as v1) lags only when the binary's
+    // CURRENT > 1.
+    it('returns false when the workspace has no schemaVersion field and binary is past v1', async () => {
+      const current = CURRENT_SCHEMA_VERSION as number;
+      if (current === 1) return;
+      await writeWolfToml(tmpDir); // no schemaVersion field
+      expect(await isSchemaCurrent(tmpDir)).toBe(false);
     });
   });
 
