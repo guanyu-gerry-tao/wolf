@@ -1,4 +1,4 @@
-import { getEnvValue } from './instance.js';
+import { getEnvValue, currentBinaryName } from './instance.js';
 import { MissingApiKeyError } from './errors/missingApiKeyError.js';
 
 /**
@@ -26,5 +26,7 @@ export function assertApiKey(name: keyof typeof KEY_HINTS | string): void {
   if (value && value.length > 0) return;
 
   const hintUrl = KEY_HINTS[name] ?? '';
-  throw new MissingApiKeyError(`WOLF_${name}`, hintUrl);
+  // setCommand reflects the binary the user actually ran (`wolf` for stable,
+  // `wolf-dev` for dev) so the error banner suggests a command they can copy.
+  throw new MissingApiKeyError(`WOLF_${name}`, hintUrl, `${currentBinaryName()} env set`);
 }

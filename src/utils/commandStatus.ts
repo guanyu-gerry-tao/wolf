@@ -1,3 +1,5 @@
+import { currentBinaryName } from './instance.js';
+
 /**
  * Single source of truth for which CLI commands are implemented vs. still
  * scheduled for a future milestone. Consumed by:
@@ -51,5 +53,5 @@ export function statusTag(name: CommandName): string {
 export function notYetMessage(name: CommandName): string {
   const s = COMMAND_STATUS[name];
   if (s.available) throw new Error(`notYetMessage called for available command: ${name}`);
-  return `wolf ${name}: not yet available in this release (${s.milestone}). See https://github.com/guanyu-gerry-tao/wolf/blob/main/docs/overview/MILESTONES.md for the roadmap.`;
+  return `${currentBinaryName()} ${name}: not yet available in this release (${s.milestone}). See https://github.com/guanyu-gerry-tao/wolf/blob/main/docs/overview/MILESTONES.md for the roadmap.`;
 }

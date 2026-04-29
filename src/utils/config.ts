@@ -4,7 +4,8 @@ import path from 'node:path';
 import { parse, stringify } from 'smol-toml';
 import type { AppConfig } from './types/index.js';
 import { AppConfigSchema } from './schemas.js';
-import { resolveWorkspaceDir } from './instance.js';
+import { resolveWorkspaceDir, workspaceEnvVarName, currentBinaryName } from './instance.js';
+import { WorkspaceNotInitializedError } from './errors/workspaceNotInitializedError.js';
 
 /** Returns the path to wolf.toml in the resolved stable/dev workspace. */
 const configPath = (workspaceDir = resolveWorkspaceDir()) => path.join(workspaceDir, 'wolf.toml');
@@ -34,7 +35,8 @@ export function loadConfigSync(): AppConfig {
 /**
  * Loads the user config from `wolf.toml` in the current working directory.
  *
- * @throws If `wolf.toml` does not exist — run `wolf init` first.
+ * @throws {WorkspaceNotInitializedError} If `wolf.toml` does not exist —
+ *   the user has never run `wolf init` for this workspace.
  * @throws If the file cannot be parsed.
  */
 export async function loadConfig(): Promise<AppConfig> {
@@ -42,7 +44,13 @@ export async function loadConfig(): Promise<AppConfig> {
   try {
     raw = await fs.readFile(configPath(), 'utf-8');
   } catch {
-    throw new Error('wolf.toml not found. Run wolf init to set up your workspace.');
+    // Surface the typed error so the CLI top-level catch can render a clean
+    // banner and the MCP layer can return a structured errorCode.
+    throw new WorkspaceNotInitializedError(
+      resolveWorkspaceDir(),
+      workspaceEnvVarName(),
+      `${currentBinaryName()} init`,
+    );
   }
   const parsed = parse(raw);
   return AppConfigSchema.parse(parsed);

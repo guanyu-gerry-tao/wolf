@@ -45,10 +45,16 @@ describe('config utils', () => {
       expect(loaded.tailor.defaultCoverLetterTone).toBe('professional');
     });
 
-    it('throws if wolf.toml does not exist', async () => {
+    // Asserts the typed-error contract: a missing wolf.toml yields a
+    // `WorkspaceNotInitializedError` whose fields drive the CLI banner +
+    // MCP structured response. Catching as `Error` and inspecting `.code`
+    // avoids importing the class (and its sibling `instance.ts` deps) in
+    // tests that don't need them.
+    it('throws WorkspaceNotInitializedError if wolf.toml does not exist', async () => {
       const { loadConfig } = await import('../config.js');
+      const { WorkspaceNotInitializedError } = await import('../errors/workspaceNotInitializedError.js');
       await fs.rm(path.join(tmpDir, 'wolf.toml'), { force: true });
-      await expect(loadConfig()).rejects.toThrow('wolf.toml not found');
+      await expect(loadConfig()).rejects.toBeInstanceOf(WorkspaceNotInitializedError);
     });
   });
 

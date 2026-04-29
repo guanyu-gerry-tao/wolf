@@ -2,8 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { add } from '../cli/commands/add.js';
 import { tailor } from '../cli/commands/tailor.js';
-import { DEV_WARNING, getEnvValue, isDevBuild } from '../utils/instance.js';
-import { MissingApiKeyError, MissingChromiumError } from '../utils/errors/index.js';
+import { DEV_WARNING, getEnvValue, isDevBuild, currentBinaryName } from '../utils/instance.js';
+import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
 
 type ToolBaseName = 'hunt' | 'add' | 'score' | 'tailor' | 'fill' | 'reach' | 'status';
 
@@ -57,6 +57,25 @@ function errorResponse(
             withMcpWarning({
               errorCode: err.code,
               installCommand: err.installCommand,
+              message: err.message,
+            }),
+          ),
+        },
+      ],
+      isError: true,
+    };
+  }
+  if (err instanceof WorkspaceNotInitializedError) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            withMcpWarning({
+              errorCode: err.code,
+              workspacePath: err.workspacePath,
+              envVarName: err.envVarName,
+              initCommand: err.initCommand,
               message: err.message,
             }),
           ),
@@ -124,14 +143,23 @@ then present the result to the user and offer to run wolf_tailor.`,
       if (!args.title || !args.company || !args.jdText) {
         return jsonContent(missingParam('title/company/jdText', 'Extract title, company, and jdText from the user\'s input before calling wolf_add.'));
       }
-      const result = await add({
-        title: args.title as string,
-        company: args.company as string,
-        jdText: args.jdText as string,
-        url: args.url as string | undefined,
-        profileId: args.profileId as string | undefined,
-      });
-      return jsonContent(result);
+      try {
+        const result = await add({
+          title: args.title as string,
+          company: args.company as string,
+          jdText: args.jdText as string,
+          url: args.url as string | undefined,
+          profileId: args.profileId as string | undefined,
+        });
+        return jsonContent(result);
+      } catch (err) {
+        // wolf_add reads `wolf.toml` + the profile, so a missing workspace
+        // surfaces here as `WorkspaceNotInitializedError`. Map all our typed
+        // errors so the AI orchestrator can guide the user.
+        const mapped = errorResponse(err);
+        if (mapped) return mapped;
+        throw err;
+      }
     }
   );
 
@@ -271,10 +299,10 @@ Returns what's missing and what the next step should be.`,
             apify: !!getEnvValue('APIFY_API_TOKEN'),
           },
           next_step: !hasProfile
-            ? 'Run `wolf init` in your workspace to set up your profile.'
+            ? `Run \`${currentBinaryName()} init\` in your workspace to set up your profile.`
             : !getEnvValue('ANTHROPIC_API_KEY')
               ? 'Set WOLF_ANTHROPIC_API_KEY in your shell to enable AI features.'
-              : 'Wolf is ready. Try `wolf_add` or `wolf_hunt` to get started.',
+              : `Wolf is ready. Try \`${mcpToolName('add')}\` or \`${mcpToolName('hunt')}\` to get started.`,
         };
 
         return jsonContent(result);
@@ -282,7 +310,7 @@ Returns what's missing and what the next step should be.`,
         return jsonContent({
           profile: 'missing',
           integrations: { anthropic: false, apify: false },
-          next_step: 'No wolf.toml found. Run `wolf init` in your workspace directory first.',
+          next_step: `No wolf.toml found. Run \`${currentBinaryName()} init\` in your workspace directory first.`,
         });
       }
     }

@@ -197,6 +197,36 @@ describe('init()', () => {
 
   // Dev empty init is the exact path the acceptance orchestrator will run in
   // /tmp/wolf-at-* workspaces. The dev marker makes the workspace self-labeling.
+  // Asserts the `__WOLF_BIN__` placeholder in workspace-claude.md gets
+  // substituted at write time. A typo in the placeholder regex (or a forgotten
+  // .replace() call) would silently ship the literal token to friends'
+  // workspaces — this test pins the contract so the binary name in CLAUDE.md
+  // and AGENTS.md tracks the active build.
+  it('substitutes __WOLF_BIN__ placeholder in CLAUDE.md / AGENTS.md', async () => {
+    const dir = makeTempDir();
+    await fs.mkdir(dir, { recursive: true });
+    const originalCwd = process.cwd();
+    process.chdir(dir);
+
+    try {
+      await init({ empty: true, here: true });
+
+      for (const filename of ['CLAUDE.md', 'AGENTS.md']) {
+        const content = await fs.readFile(path.join(dir, filename), 'utf-8');
+        // Placeholder must be fully resolved — never escape into user files.
+        expect(content).not.toContain('__WOLF_BIN__');
+        // The actual binary name (`wolf` for stable, `wolf-dev` for dev)
+        // must appear at least where the substitution happened. Tests run
+        // in stable mode by default (no WOLF_BUILD_MODE set), so we expect
+        // `wolf init` to materialize.
+        expect(content).toContain('wolf init');
+      }
+    } finally {
+      process.chdir(originalCwd);
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('writes instance.mode = dev for --dev --empty workspaces', async () => {
     const dir = makeTempDir();
     process.env.WOLF_BUILD_MODE = 'dev';

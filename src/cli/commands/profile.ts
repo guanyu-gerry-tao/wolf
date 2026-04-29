@@ -1,4 +1,5 @@
 import { createAppContext, type AppContext } from '../../runtime/appContext.js';
+import { currentBinaryName } from '../../utils/instance.js';
 
 /**
  * Lists every profile directory under profiles/, marking the default with `*`.
@@ -6,11 +7,11 @@ import { createAppContext, type AppContext } from '../../runtime/appContext.js';
 export async function profileList(ctx: AppContext = createAppContext()): Promise<void> {
   const result = await ctx.profileApp.list();
   if (result.kind === 'no-profiles-dir') {
-    console.log('No profiles directory. Run `wolf init` first.');
+    console.log(`No profiles directory. Run \`${currentBinaryName()} init\` first.`);
     return;
   }
   if (result.kind === 'empty') {
-    console.log('No profiles. Run `wolf init` or `wolf profile create <name>`.');
+    console.log(`No profiles. Run \`${currentBinaryName()} init\` or \`${currentBinaryName()} profile create <name>\`.`);
     return;
   }
   for (const { name, isDefault } of result.profiles) {

@@ -5,7 +5,7 @@ This directory is a **wolf workspace** — an AI-powered job hunting environment
 
 ## First-time setup — DO THIS BEFORE ANYTHING ELSE
 
-If `wolf init` was just run, the three profile markdown files are in
+If `__WOLF_BIN__ init` was just run, the three profile markdown files are in
 **template state**: section structure is there but actual content is empty
 (or filled with `> [!IMPORTANT]` / `> [!TIP]` callouts that get stripped
 before the AI sees the file). Tailor / fill / reach will refuse to run on
@@ -93,16 +93,16 @@ wolf is a CLI tool that:
 
 | Command | Status |
 |---|---|
-| `wolf init` / `add` / `tailor` / `status` / `doctor` / `job list` / `profile` / `config` / `env` / `mcp serve` | available |
-| `wolf hunt` / `score` | NOT YET IMPLEMENTED — M2 |
-| `wolf fill` | NOT YET IMPLEMENTED — M4 |
-| `wolf reach` | NOT YET IMPLEMENTED — M5 |
+| `__WOLF_BIN__ init` / `add` / `tailor` / `status` / `doctor` / `job list` / `profile` / `config` / `env` / `mcp serve` | available |
+| `__WOLF_BIN__ hunt` / `score` | NOT YET IMPLEMENTED — M2 |
+| `__WOLF_BIN__ fill` | NOT YET IMPLEMENTED — M4 |
+| `__WOLF_BIN__ reach` | NOT YET IMPLEMENTED — M5 |
 
 **Do not suggest `hunt` / `score` / `fill` / `reach` to the user as a path to
 their goal yet** — those verbs are registered in the CLI for discoverability
 but their action handlers print "not yet available" and exit 1. If the user
 wants the underlying behaviour today, use the available substitute:
-- "find me a job" → ask the user to paste a JD or URL, then `wolf add`
+- "find me a job" → ask the user to paste a JD or URL, then `__WOLF_BIN__ add`
 - "score this job" → not yet, but tailor will still produce a tailored
   resume + cover letter without a score
 - "fill out the form" / "send the email" → not yet; offer to draft the
@@ -113,54 +113,54 @@ wants the underlying behaviour today, use the available substitute:
 ### Job lifecycle
 | Command | What it does |
 |---|---|
-| `wolf add` | Add a job manually (title, company, JD text) - returns a `jobId` |
-| `wolf hunt` | NOT YET (M2) — auto-fetch job listings from online sources |
-| `wolf score` | NOT YET (M2) — score pending jobs against the profile |
-| `wolf status` | List all tracked jobs with status and scores |
+| `__WOLF_BIN__ add` | Add a job manually (title, company, JD text) - returns a `jobId` |
+| `__WOLF_BIN__ hunt` | NOT YET (M2) — auto-fetch job listings from online sources |
+| `__WOLF_BIN__ score` | NOT YET (M2) — score pending jobs against the profile |
+| `__WOLF_BIN__ status` | List all tracked jobs with status and scores |
 
 ### Tailor pipeline (3-agent flow with checkpoints)
 | Command | What it does |
 |---|---|
-| `wolf tailor full --job <id>` | Full pipeline: analyst brief -> resume + cover letter (parallel) |
-| `wolf tailor brief --job <id>` | Step 1 only: produce the tailoring brief |
-| `wolf tailor resume --job <id>` | Step 2a only: write resume (requires existing brief) |
-| `wolf tailor cover --job <id>` | Step 2b only: write cover letter (requires existing brief) |
+| `__WOLF_BIN__ tailor full --job <id>` | Full pipeline: analyst brief -> resume + cover letter (parallel) |
+| `__WOLF_BIN__ tailor brief --job <id>` | Step 1 only: produce the tailoring brief |
+| `__WOLF_BIN__ tailor resume --job <id>` | Step 2a only: write resume (requires existing brief) |
+| `__WOLF_BIN__ tailor cover --job <id>` | Step 2b only: write cover letter (requires existing brief) |
 
 All tailor commands accept `--hint "<text>"` to give the analyst pre-analysis guidance.
 
 ### Apply & reach out
 | Command | What it does |
 |---|---|
-| `wolf fill --job <id>` | NOT YET (M4) — auto-fill a job application form |
-| `wolf reach --job <id>` | NOT YET (M5) — find hiring contacts and draft outreach emails |
+| `__WOLF_BIN__ fill --job <id>` | NOT YET (M4) — auto-fill a job application form |
+| `__WOLF_BIN__ reach --job <id>` | NOT YET (M5) — find hiring contacts and draft outreach emails |
 
 ### Config & profile management
 | Command | What it does |
 |---|---|
-| `wolf config get/set <key> [value]` | Read or edit `wolf.toml` fields by dot-path (e.g. `tailor.model`) |
-| `wolf profile list` | List all profile directories (default marked with `*`) |
-| `wolf profile create <name> [--from <src>]` | Create a new profile (clones default unless --from given) |
-| `wolf profile use <name>` | Switch the default profile (updates `wolf.toml.default`) |
-| `wolf profile delete <name> --yes` | Delete a profile directory |
-| `wolf env show / set / clear` | Manage `WOLF_*` API keys in shell |
+| `__WOLF_BIN__ config get/set <key> [value]` | Read or edit `wolf.toml` fields by dot-path (e.g. `tailor.model`) |
+| `__WOLF_BIN__ profile list` | List all profile directories (default marked with `*`) |
+| `__WOLF_BIN__ profile create <name> [--from <src>]` | Create a new profile (clones default unless --from given) |
+| `__WOLF_BIN__ profile use <name>` | Switch the default profile (updates `wolf.toml.default`) |
+| `__WOLF_BIN__ profile delete <name> --yes` | Delete a profile directory |
+| `__WOLF_BIN__ env show / set / clear` | Manage `WOLF_*` API keys in shell |
 
 > Profile data lives in `profiles/<name>/profile.md` and `standard_questions.md`.
-> Edit those files directly with any text editor — there is no `wolf profile get/set` CLI.
+> Edit those files directly with any text editor — there is no `__WOLF_BIN__ profile get/set` CLI.
 
 ## Typical workflow
 
 ### One-shot (trust the AI)
 ```
-wolf add --title "SWE" --company "Acme" --jd-text "..."   # returns jobId
-wolf tailor full --job <jobId>                            # full 3-agent pipeline
+__WOLF_BIN__ add --title "SWE" --company "Acme" --jd-text "..."   # returns jobId
+__WOLF_BIN__ tailor full --job <jobId>                            # full 3-agent pipeline
 ```
 
 ### Iterative (human-in-the-loop)
 ```
-wolf tailor brief --job <jobId> --hint "focus on ML ops"  # steer the analyst
+__WOLF_BIN__ tailor brief --job <jobId> --hint "focus on ML ops"  # steer the analyst
 # inspect and optionally edit data/jobs/<...>/src/tailoring-brief.md
-wolf tailor resume --job <jobId>                          # write resume using the brief
-wolf tailor cover --job <jobId>                           # write cover letter using the brief
+__WOLF_BIN__ tailor resume --job <jobId>                          # write resume using the brief
+__WOLF_BIN__ tailor cover --job <jobId>                           # write cover letter using the brief
 # not happy? edit brief and re-run resume/cover; no need to re-analyze
 ```
 
@@ -192,8 +192,8 @@ structured fields (id, title, score, status, etc.) that need indexing.
 
 **All `.md` and `.html` files under `src/` are editable checkpoints.** If the
 resume is off but the cover letter is fine, edit `tailoring-brief.md` (or
-`resume.html` directly) and re-run just `wolf tailor resume`. The analyst does
-not re-run unless you call `wolf tailor brief` again.
+`resume.html` directly) and re-run just `__WOLF_BIN__ tailor resume`. The analyst does
+not re-run unless you call `__WOLF_BIN__ tailor brief` again.
 
 ### hint.md / info.md convention
 
@@ -224,7 +224,7 @@ default = "default"   # the profile folder name under profiles/
 [hunt]
 minScore = 0.5                  # 0.0-1.0 - jobs below this are filtered
 maxResults = 50                 # max jobs fetched per hunt run
-# no model - wolf hunt does not call AI
+# no model - __WOLF_BIN__ hunt does not call AI
 
 [tailor]
 model = "anthropic/claude-sonnet-4-6"
@@ -283,18 +283,18 @@ skills, and education. wolf selects the most relevant content per job.
 
 **`attachments/`** — files referenced by `standard_questions.md`. Files must
 live directly in this folder; subdirectories or absolute paths are rejected.
-If a file referenced in `standard_questions.md` is missing, `wolf fill` pauses
+If a file referenced in `standard_questions.md` is missing, `__WOLF_BIN__ fill` pauses
 and asks you to drop it in.
 
 ## API keys
 
 Stored as shell environment variables, not in files here.
-Run `wolf env show` to see which keys are configured.
-Run `wolf env set` to add missing keys.
+Run `__WOLF_BIN__ env show` to see which keys are configured.
+Run `__WOLF_BIN__ env set` to add missing keys.
 
 | Key | Required for |
 |---|---|
 | `WOLF_ANTHROPIC_API_KEY` | All AI features (tailor, score, reach) |
-| `WOLF_APIFY_API_TOKEN` | `wolf hunt` |
-| `WOLF_GMAIL_CLIENT_ID` | `wolf reach` (sending email) |
-| `WOLF_GMAIL_CLIENT_SECRET` | `wolf reach` (sending email) |
+| `WOLF_APIFY_API_TOKEN` | `__WOLF_BIN__ hunt` |
+| `WOLF_GMAIL_CLIENT_ID` | `__WOLF_BIN__ reach` (sending email) |
+| `WOLF_GMAIL_CLIENT_SECRET` | `__WOLF_BIN__ reach` (sending email) |

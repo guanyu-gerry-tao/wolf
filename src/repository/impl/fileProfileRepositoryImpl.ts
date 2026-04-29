@@ -4,6 +4,8 @@ import { parse } from 'smol-toml';
 import type { ProfileRepository } from '../profileRepository.js';
 import type { Profile } from '../../utils/types/index.js';
 import { AppConfigSchema } from '../../utils/schemas.js';
+import { WorkspaceNotInitializedError } from '../../utils/errors/workspaceNotInitializedError.js';
+import { workspaceEnvVarName, currentBinaryName } from '../../utils/instance.js';
 
 /**
  * Reads profiles from `<workspace>/profiles/<name>/`. Each profile is a folder
@@ -43,18 +45,24 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
     try {
       raw = await fs.readFile(configPath, 'utf-8');
     } catch {
-      throw new Error('wolf.toml not found. Run wolf init to set up your workspace.');
+      // Same typed error surfaced from `loadConfig` so both entry points
+      // produce the same structured "workspace not initialized" signal.
+      throw new WorkspaceNotInitializedError(
+        this.workspaceDir,
+        workspaceEnvVarName(),
+        `${currentBinaryName()} init`,
+      );
     }
     const config = AppConfigSchema.parse(parse(raw));
     const defaultName = config.default;
     if (!defaultName) {
-      throw new Error('wolf.toml is missing the `default` field. Run wolf init to repair your config.');
+      throw new Error(`wolf.toml is missing the \`default\` field. Run \`${currentBinaryName()} init\` to repair your config.`);
     }
     if (!(await this.dirExists(defaultName))) {
       throw new Error(
         `Default profile directory 'profiles/${defaultName}/' not found. ` +
         `Either rename a profile folder back to '${defaultName}', or run ` +
-        `\`wolf profile use <name>\` to point wolf.toml at an existing profile.`,
+        `\`${currentBinaryName()} profile use <name>\` to point wolf.toml at an existing profile.`,
       );
     }
     const md = await this.getProfileMd(defaultName);
@@ -85,7 +93,7 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       return await fs.readFile(mdPath, 'utf-8');
     } catch {
       throw new Error(
-        `profile.md for profile '${name}' not found. Expected profiles/${name}/profile.md to exist. Run wolf init to create it.`,
+        `profile.md for profile '${name}' not found. Expected profiles/${name}/profile.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
       );
     }
   }
@@ -96,7 +104,7 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       return await fs.readFile(mdPath, 'utf-8');
     } catch {
       throw new Error(
-        `Resume pool for profile '${name}' not found. Expected profiles/${name}/resume_pool.md to exist. Run wolf init to create it.`,
+        `Resume pool for profile '${name}' not found. Expected profiles/${name}/resume_pool.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
       );
     }
   }
@@ -107,7 +115,7 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       return await fs.readFile(mdPath, 'utf-8');
     } catch {
       throw new Error(
-        `standard_questions.md for profile '${name}' not found. Expected profiles/${name}/standard_questions.md to exist. Run wolf init to create it.`,
+        `standard_questions.md for profile '${name}' not found. Expected profiles/${name}/standard_questions.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
       );
     }
   }

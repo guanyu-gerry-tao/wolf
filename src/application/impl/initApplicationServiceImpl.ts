@@ -6,6 +6,7 @@ import standardQuestionsTemplate from './templates/standard_questions.md';
 import attachmentsReadmeTemplate from './templates/attachments-readme.md';
 import resumePoolTemplate from './templates/resume_pool.md';
 import { saveConfig } from '../../utils/config.js';
+import { currentBinaryName } from '../../utils/instance.js';
 import type { AppConfig } from '../../utils/types/index.js';
 import type {
   InitApplicationService,
@@ -89,8 +90,16 @@ async function ensureGitignore(workspaceDir: string): Promise<void> {
 // CLAUDE.md and AGENTS.md tell any AI assistant operating in this workspace
 // (Claude Code, OpenClaw, etc.) how the directory is laid out and what files
 // to edit. Same content; both files written so each agent finds its expected name.
+//
+// The bundled template uses `__WOLF_BIN__` placeholders for any spot that
+// names a CLI command the user (or AI agent) might run. We substitute the
+// real binary name at write time so a stable workspace's CLAUDE.md says
+// `wolf init` while a dev workspace's says `wolf-dev init`. Project-name
+// references like "wolf workspace" or "What wolf does" stay literal — they
+// describe the project, not commands to type.
 async function ensureAgentInstructions(workspaceDir: string): Promise<void> {
+  const personalized = claudeTemplate.replace(/__WOLF_BIN__/g, currentBinaryName());
   for (const filename of ['CLAUDE.md', 'AGENTS.md']) {
-    await writeIfAbsent(path.join(workspaceDir, filename), claudeTemplate);
+    await writeIfAbsent(path.join(workspaceDir, filename), personalized);
   }
 }

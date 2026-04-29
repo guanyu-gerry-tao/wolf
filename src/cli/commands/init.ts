@@ -4,7 +4,7 @@ import path from 'node:path';
 import { confirm } from '@inquirer/prompts';
 import { backupConfig } from '../../utils/config.js';
 import { envSet } from './env.js';
-import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir } from '../../utils/instance.js';
+import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir, currentBinaryName } from '../../utils/instance.js';
 import { InitApplicationServiceImpl } from '../../application/impl/initApplicationServiceImpl.js';
 
 // init must run in a fresh workspace where wolf.toml does not yet exist, so
@@ -92,11 +92,11 @@ ${missing.map(k => `  ${red('✗')} ${k}`).join('\n')}
 
 ${bold("If you don't need all of them:")}
   Only ${bold('WOLF_ANTHROPIC_API_KEY')} is required to get started.
-  Others can be added later via ${bold('wolf env set')}.
+  Others can be added later via ${bold(`${currentBinaryName()} env set`)}.
 
 ${bold('If you already set them but haven\'t restarted yet:')}
   Restart your terminal, or run: ${bold('source ~/.zshrc')}
-  Then verify with: ${bold('wolf env show')}
+  Then verify with: ${bold(`${currentBinaryName()} env show`)}
 `);
     const setupNow = await confirm({
       message: 'Set up missing keys now?',
@@ -121,7 +121,7 @@ Consider cd-ing to a dedicated folder first, e.g.:
       default: false,
     });
     if (!proceed) {
-      console.log('Cancelled. cd to your preferred directory and run wolf init again.');
+      console.log(`Cancelled. cd to your preferred directory and run ${currentBinaryName()} init again.`);
       return;
     }
   }
