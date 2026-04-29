@@ -165,6 +165,61 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - When creating or updating an English doc, always create or update the corresponding `_zh` version in the same commit
 - Chinese versions must stay in sync with their English counterparts
 
+## Workspace migrations
+
+wolf is in `0.x` — workspace format is **not stable**. Whenever you make a
+breaking change to any of the surfaces below, you **must also land a
+migration framework in the same PR**. Don't defer it.
+
+Surfaces that count as workspace state:
+- `wolf.toml` schema (renamed/removed fields, new required fields)
+- `profile.md` / `resume_pool.md` / `standard_questions.md` shape (REQUIRED H2 sections, structured field names)
+- SQLite schema (any non-additive change — column rename, drop, type change, table rename)
+- `data/jobs/<dir>/` artifact layout (filenames, directory structure)
+
+Migration contract:
+- New code reads a `schema_version` field; runs ordered migrations from the workspace's recorded version up to the current one.
+- Missing `schema_version` is treated as v1 (the pre-migration baseline).
+- **New code migrates old data.** Old code is never patched retroactively to "prepare" for a future format.
+
+Until the first migration framework lands, every breaking change requires a
+`### Breaking changes` section in `CHANGELOG.md` with explicit re-init guidance.
+
+## Releasing (stable npm)
+
+Stable release = publish a new `@gerryt/wolf@0.x.y` to npm. Hard gates,
+all four mandatory:
+
+- (a) Full smoke + acceptance pass, **including AI-paid acceptance groups**.
+  No "skip paid because it's expensive" — friends will run the paid path,
+  it must be verified.
+- (b) Git tag `v0.x.y` matching `package.stable.json#version` exists locally
+  and is pushed.
+- (c) `CHANGELOG.md` updated with a `## v0.x.y — YYYY-MM-DD` heading and
+  bullet list of changes (reverse-chronological order).
+- (d) Branch is `main`, working tree is clean.
+
+Procedure:
+1. Update `package.stable.json#version` and `CHANGELOG.md`. Commit on `main`.
+2. `git tag -a v0.x.y -m 'release 0.x.y'`
+3. `npm run publish:stable` — runs `bash scripts/publish-stable.sh`, which
+   checks gates (b)/(d), builds, stages `dist-package/`, and stops *before*
+   `npm publish` so you (the human) run the final command in your own
+   terminal (which triggers the npm 2FA prompt).
+4. After publish, in a fresh shell: `npm i -g @gerryt/wolf@0.x.y`, verify
+   `wolf --version`, `wolf init --here`, `wolf doctor`, and a real
+   `wolf tailor full` end-to-end.
+5. `git push origin v0.x.y`. Create a GitHub release tagged `v0.x.y` with
+   the `CHANGELOG.md` entry as notes.
+
+If verification fails:
+- Within 72h: `npm unpublish @gerryt/wolf@0.x.y`, fix, bump patch, repeat.
+- After 72h: `npm deprecate @gerryt/wolf@0.x.y "<reason>"`, bump patch.
+- Same version number can never be re-published, even after unpublish.
+
+Never run `npm publish` in an automated context. The agent prepares; the
+human publishes.
+
 ## Common commands
 
 ```bash

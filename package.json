@@ -1,10 +1,11 @@
 {
-  "name": "wolf",
-  "version": "0.1.0",
-  "description": "AI-powered job hunting CLI and MCP server",
+  "name": "wolf-dev-workspace",
+  "version": "0.0.0-dev",
+  "private": true,
+  "description": "wolf monorepo — dev workspace. Stable npm distribution lives at @gerryt/wolf (built via scripts/publish-stable.sh + package.stable.json).",
   "type": "module",
   "bin": {
-    "wolf": "./dist/cli/index.js"
+    "wolf-dev": "./dist/cli/index.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -12,7 +13,8 @@
     "build:dev": "npm run typecheck && WOLF_BUILD_MODE=dev tsup",
     "dev": "tsup --watch",
     "wolf": "node dist/cli/index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "publish:stable": "bash scripts/publish-stable.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

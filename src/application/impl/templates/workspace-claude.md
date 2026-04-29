@@ -86,14 +86,36 @@ wolf is a CLI tool that:
 - Auto-fills application forms
 - Drafts outreach emails to hiring contacts
 
+## Command status (read this before suggesting commands)
+
+> Source of truth: `src/utils/commandStatus.ts` in the wolf source tree.
+> Keep this table in sync when commands ship.
+
+| Command | Status |
+|---|---|
+| `wolf init` / `add` / `tailor` / `status` / `doctor` / `job list` / `profile` / `config` / `env` / `mcp serve` | available |
+| `wolf hunt` / `score` | NOT YET IMPLEMENTED — M2 |
+| `wolf fill` | NOT YET IMPLEMENTED — M4 |
+| `wolf reach` | NOT YET IMPLEMENTED — M5 |
+
+**Do not suggest `hunt` / `score` / `fill` / `reach` to the user as a path to
+their goal yet** — those verbs are registered in the CLI for discoverability
+but their action handlers print "not yet available" and exit 1. If the user
+wants the underlying behaviour today, use the available substitute:
+- "find me a job" → ask the user to paste a JD or URL, then `wolf add`
+- "score this job" → not yet, but tailor will still produce a tailored
+  resume + cover letter without a score
+- "fill out the form" / "send the email" → not yet; offer to draft the
+  cover letter + outreach text instead so the user can paste it manually
+
 ## Commands
 
 ### Job lifecycle
 | Command | What it does |
 |---|---|
 | `wolf add` | Add a job manually (title, company, JD text) - returns a `jobId` |
-| `wolf hunt` | Auto-fetch job listings from online sources (requires Apify) |
-| `wolf score` | Score pending jobs against the profile |
+| `wolf hunt` | NOT YET (M2) — auto-fetch job listings from online sources |
+| `wolf score` | NOT YET (M2) — score pending jobs against the profile |
 | `wolf status` | List all tracked jobs with status and scores |
 
 ### Tailor pipeline (3-agent flow with checkpoints)
@@ -109,8 +131,8 @@ All tailor commands accept `--hint "<text>"` to give the analyst pre-analysis gu
 ### Apply & reach out
 | Command | What it does |
 |---|---|
-| `wolf fill --job <id>` | Auto-fill a job application form (requires Playwright) |
-| `wolf reach --job <id>` | Find hiring contacts and draft outreach emails |
+| `wolf fill --job <id>` | NOT YET (M4) — auto-fill a job application form |
+| `wolf reach --job <id>` | NOT YET (M5) — find hiring contacts and draft outreach emails |
 
 ### Config & profile management
 | Command | What it does |
