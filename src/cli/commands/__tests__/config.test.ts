@@ -10,6 +10,7 @@ import type { AppConfig } from '../../../utils/types/index.js';
 
 // A complete, schema-valid baseline so tests can focus on the field they care about.
 const BASELINE: AppConfig = {
+  schemaVersion: 1,
   default: 'default',
   hunt: { minScore: 0.5, maxResults: 50 },
   tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },

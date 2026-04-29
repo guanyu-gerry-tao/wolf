@@ -7,6 +7,7 @@ import attachmentsReadmeTemplate from './templates/attachments-readme.md';
 import resumePoolTemplate from './templates/resume_pool.md';
 import { saveConfig } from '../../utils/config.js';
 import { currentBinaryName } from '../../utils/instance.js';
+import { CURRENT_SCHEMA_VERSION } from '../../runtime/migrations/index.js';
 import type { AppConfig } from '../../utils/types/index.js';
 import type {
   InitApplicationService,
@@ -26,7 +27,14 @@ export class InitApplicationServiceImpl implements InitApplicationService {
 
   /** @inheritdoc */
   buildDefaultConfig(mode?: 'stable' | 'dev'): AppConfig {
+    // Write `schemaVersion` explicitly so a freshly initialized workspace
+    // declares its version on disk. Fresh installs are already at the
+    // binary's `CURRENT_SCHEMA_VERSION` (no migration needed) — but having
+    // the field present makes future `wolf migrate` invocations faster (no
+    // "missing field, treat as v1" inference) and lets older binaries
+    // recognise a too-new workspace and refuse cleanly.
     return {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       ...(mode ? { instance: { mode } } : {}),
       default: DEFAULT_PROFILE_NAME,
       hunt: { minScore: 0.5, maxResults: 50 },

@@ -17,6 +17,12 @@ const DEFAULT_SONNET = 'anthropic/claude-sonnet-4-6';
 const DEFAULT_HAIKU  = 'anthropic/claude-haiku-4-5-20251001';
 
 export const AppConfigSchema = z.object({
+  // Workspace schema version. Bumped by wolf releases that introduce a
+  // breaking workspace-format change (e.g. when a future release migrates
+  // profile.md to profile.toml). Missing field is treated as v1 (the
+  // pre-migration baseline) by the migrations runtime — see
+  // `src/runtime/migrations/`. Users upgrade by running `wolf migrate`.
+  schemaVersion: z.number().int().positive().default(1),
   instance: z.object({
     mode: z.enum(['stable', 'dev']),
   }).optional(),

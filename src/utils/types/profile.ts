@@ -34,6 +34,10 @@ export type ModelRef = string;
  * default* fields are baselines — individual command runs can override them via options.
  */
 export interface AppConfig {
+  // Workspace schema version. Bumped by wolf releases that introduce a
+  // breaking workspace-format change. Missing field is treated as v1
+  // (the pre-migration baseline). See `src/runtime/migrations/`.
+  schemaVersion: number;
   instance?: {
     mode: 'stable' | 'dev';
   };

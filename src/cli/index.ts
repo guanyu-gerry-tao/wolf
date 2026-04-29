@@ -13,6 +13,7 @@ import { add } from './commands/add.js';
 import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
 import { configGet, configSet } from './commands/config.js';
 import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
+import { migrate } from './commands/migrate.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild, currentBinaryName } from '../utils/instance.js';
 import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
@@ -224,6 +225,14 @@ program
     const report = await doctor();
     console.log(formatDoctor(report));
     if (!report.ready) process.exitCode = 1;
+  });
+
+program
+  .command('migrate')
+  .description('Upgrade this workspace to the binary\'s current schema version')
+  .option('--dry-run', 'Print the migration plan without applying any change')
+  .action(async (opts) => {
+    await migrate({ dryRun: opts.dryRun });
   });
 
 // Commander's collector for repeatable flags. Each occurrence of --search

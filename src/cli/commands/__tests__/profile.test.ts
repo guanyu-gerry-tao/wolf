@@ -9,6 +9,7 @@ import type { AppConfig } from '../../../utils/types/index.js';
 
 // Minimal config — `default` points at the conventional initial profile dir.
 const CONFIG: AppConfig = {
+  schemaVersion: 1,
   default: 'default',
   hunt: { minScore: 0.5, maxResults: 50 },
   tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },

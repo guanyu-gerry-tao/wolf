@@ -33,21 +33,27 @@ export function loadConfigSync(): AppConfig {
 }
 
 /**
- * Loads the user config from `wolf.toml` in the current working directory.
+ * Loads the user config from `wolf.toml` in the resolved (or supplied)
+ * workspace directory.
+ *
+ * @param workspaceDir - Optional workspace path. Defaults to the resolved
+ *   stable/dev workspace via `resolveWorkspaceDir()`. The migrations runtime
+ *   passes an explicit dir so it can target an arbitrary workspace (and so
+ *   tests can point at a tmp dir without touching the user's real workspace).
  *
  * @throws {WorkspaceNotInitializedError} If `wolf.toml` does not exist —
  *   the user has never run `wolf init` for this workspace.
  * @throws If the file cannot be parsed.
  */
-export async function loadConfig(): Promise<AppConfig> {
+export async function loadConfig(workspaceDir?: string): Promise<AppConfig> {
   let raw: string;
   try {
-    raw = await fs.readFile(configPath(), 'utf-8');
+    raw = await fs.readFile(configPath(workspaceDir), 'utf-8');
   } catch {
     // Surface the typed error so the CLI top-level catch can render a clean
     // banner and the MCP layer can return a structured errorCode.
     throw new WorkspaceNotInitializedError(
-      resolveWorkspaceDir(),
+      workspaceDir ?? resolveWorkspaceDir(),
       workspaceEnvVarName(),
       `${currentBinaryName()} init`,
     );
