@@ -1,0 +1,831 @@
+schemaVersion = 2
+
+# ###########################################################################
+# Profile — your wolf workspace identity & preferences
+# ###########################################################################
+#
+# Three answering modes per field:
+#   - You have an answer       → write between the triple quotes below.
+#   - You don't care / skip    → leave blank (the empty `"""\n\n"""` shape).
+#                                 wolf hides the field from any AI prompt;
+#                                 doctor flags it only if REQUIRED.
+#   - You explicitly refuse    → write the literal phrase, e.g.
+#                                 "Decline to answer" / "Prefer not to say".
+#                                 forms will fill that exact text.
+#
+# Edit:
+#   - Use `wolf profile set <key> <value>` for simple fields (preserves comments).
+#   - Use `wolf profile add experience` / `wolf profile add project` /
+#     `wolf profile add education` to append a new resume entry.
+#   - For complex changes, edit this file directly with any text editor.
+#     Don't delete the comment blocks — they help future-you remember
+#     what each field is for.
+
+# ===========================================================================
+# Resume layout
+# ===========================================================================
+
+[resume]
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Order of sections on your generated resume. One section name
+# per line as a markdown bullet. Leave empty to let tailor pick a default.
+# Values must be one of: experience, project, education, skills, awards,
+# publications, patents, hackathons, open_source, certifications,
+# languages_spoken, volunteer, interests, speaking.
+# ---------------------------------------------------------------------------
+section_order = """
+
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Identity
+# ===========================================================================
+
+[identity]
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Wolf cannot guess this. Used as the resume header.
+# ---------------------------------------------------------------------------
+legal_first_name = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Leave blank if none.
+# ---------------------------------------------------------------------------
+legal_middle_name = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Wolf cannot guess this. Used as the resume header.
+# ---------------------------------------------------------------------------
+legal_last_name = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Leave blank to use legal first name on outreach.
+# ---------------------------------------------------------------------------
+preferred_name = """
+
+"""
+
+pronouns = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Required by some non-US ATS forms; format YYYY-MM-DD.
+# ---------------------------------------------------------------------------
+date_of_birth = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Country whose passport you hold (e.g. "United States",
+# "China", "India"). Wolf fill uses this to answer ATS "Country of
+# citizenship" dropdowns. Fact, not strategy.
+# ---------------------------------------------------------------------------
+country_of_citizenship = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Where you are physically right now. Defaults to United States
+# (most NG mass-apply scenarios). Update if you're abroad.
+# ---------------------------------------------------------------------------
+country_currently_in = """
+United States
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Contact
+# ===========================================================================
+
+[contact]
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Resume header & outreach From: address.
+# ---------------------------------------------------------------------------
+email = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Resume header.
+# ---------------------------------------------------------------------------
+phone = """
+
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Address
+# ===========================================================================
+
+[address]
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Complete address including country, e.g.
+# "123 Main St, Apt 4, San Francisco, CA 94102, USA".
+# ---------------------------------------------------------------------------
+full = """
+
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Links
+# ===========================================================================
+
+[links]
+
+# ---------------------------------------------------------------------------
+# REQUIRED — At minimum your LinkedIn. Wolf infers link type
+# (LinkedIn / GitHub / portfolio / LeetCode) from the URL.
+# ---------------------------------------------------------------------------
+first = """
+
+"""
+
+second = """
+
+"""
+
+# OPTIONAL — additional URLs, one per line (markdown bullet style).
+others = """
+
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Job preferences
+# ===========================================================================
+
+[job_preferences]
+
+# ---------------------------------------------------------------------------
+# REQUIRED — One role per line, e.g.
+# - Software Engineer
+# - Backend Engineer
+# ---------------------------------------------------------------------------
+target_roles = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# REQUIRED — One location per line, e.g.
+# - SF Bay Area
+# - NYC
+# - Remote-US
+# ---------------------------------------------------------------------------
+target_locations = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Values: "remote only" / "hybrid only" / "onsite only" /
+# "no preference" (default).
+# ---------------------------------------------------------------------------
+remote_preference = """
+no preference
+"""
+
+# Relocation preferences — HONEST answers for hunt filtering.
+# Values: "yes" / "no" / "maybe".
+relocation_within_metro = """
+yes
+"""
+relocation_within_state = """
+yes
+"""
+relocation_cross_country = """
+yes
+"""
+relocation_international = """
+no
+"""
+relocation_free_text = """
+
+"""
+
+# Sponsorship strategy — which jobs you're willing to APPLY to.
+# Values: "yes" / "no" / "only if no other option" / "NA".
+sponsorship_h1b = """
+NA
+"""
+sponsorship_green_card = """
+NA
+"""
+sponsorship_cpt = """
+NA
+"""
+sponsorship_opt = """
+NA
+"""
+sponsorship_none = """
+NA
+"""
+sponsorship_free_text = """
+
+"""
+
+# OPTIONAL — companies to never recommend (one per line, markdown bullets).
+hard_reject_companies = """
+
+"""
+
+# OPTIONAL — companies wolf should still tailor for but NOT auto-fill
+# (you apply manually). One per line, markdown bullets.
+precision_apply_companies = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — minimum hourly rate in USD (intern role floor); blank for no floor.
+# ---------------------------------------------------------------------------
+min_hourly_rate_usd = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — minimum annual salary in USD (NG role floor); blank for no floor.
+# ---------------------------------------------------------------------------
+min_annual_salary_usd = """
+
+"""
+
+scoring_notes = """
+
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Demographics — OPTIONAL EEO; all voluntary by US law.
+# ===========================================================================
+#
+# Skip = leave blank. Decline = write "Decline to answer" or similar
+# literal — wolf fill writes that exact text into ATS forms.
+
+[demographics]
+
+race = """
+
+"""
+
+gender = """
+
+"""
+
+ethnicity = """
+
+"""
+
+veteran_status = """
+I am not a protected veteran
+"""
+
+disability_status = """
+
+"""
+
+lgbtq = """
+
+"""
+
+transgender = """
+
+"""
+
+first_gen_college = """
+No
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Clearance
+# ===========================================================================
+
+[clearance]
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — "Yes" / "No". Edit to "Yes" if you have an active clearance.
+# ---------------------------------------------------------------------------
+has_active = """
+No
+"""
+
+# Only fill if active clearance: Secret / Top Secret / TS-SCI.
+level = """
+
+"""
+
+# Only fill if active clearance: Active / Inactive / Eligible.
+status = """
+
+"""
+
+willing_to_obtain = """
+Yes
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Form answers — verbatim values wolf fill writes into ATS forms
+# ===========================================================================
+
+[form_answers]
+
+# ---------------------------------------------------------------------------
+# REQUIRED — Verbatim form answer. E.g. "Yes, I am authorized to work in
+# the United States." Strategic preference (which jobs to apply to) lives
+# in [job_preferences].sponsorship_*.
+# ---------------------------------------------------------------------------
+authorized_to_work = """
+
+"""
+
+require_sponsorship = """
+
+"""
+
+willing_to_relocate = """
+
+"""
+
+# ---------------------------------------------------------------------------
+# OPTIONAL — Default below. Edit if you want a different stance.
+# ---------------------------------------------------------------------------
+salary_expectation = """
+Open to discuss based on the full compensation package and role scope.
+"""
+
+how_did_you_hear = """
+LinkedIn
+"""
+
+when_can_you_start = """
+Available immediately
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Documents — file names inside attachments/
+# ===========================================================================
+
+[documents]
+
+transcript = """
+
+"""
+
+unofficial_transcript = """
+
+"""
+
+reference_letter = """
+
+"""
+
+portfolio_sample = """
+
+"""
+
+note = """
+
+"""
+
+# ===========================================================================
+# Skills
+# ===========================================================================
+
+[skills]
+
+# Comma- or newline-separated; wolf reformats per JD.
+languages = """
+
+"""
+frameworks = """
+
+"""
+tools = """
+
+"""
+domains = """
+
+"""
+free_text = """
+
+"""
+
+# ===========================================================================
+# Optional resume sections — fill what you have.
+# ===========================================================================
+
+[awards]
+items = """
+
+"""
+note = """
+
+"""
+
+[publications]
+items = """
+
+"""
+note = """
+
+"""
+
+[patents]
+items = """
+
+"""
+note = """
+
+"""
+
+[hackathons]
+items = """
+
+"""
+note = """
+
+"""
+
+[open_source]
+items = """
+
+"""
+note = """
+
+"""
+
+[certifications]
+items = """
+
+"""
+note = """
+
+"""
+
+[languages_spoken]
+items = """
+
+"""
+note = """
+
+"""
+
+[volunteer]
+items = """
+
+"""
+note = """
+
+"""
+
+[interests]
+free_text = """
+
+"""
+note = """
+
+"""
+
+[speaking]
+items = """
+
+"""
+note = """
+
+"""
+
+# ===========================================================================
+# Resume content — Experience
+# ===========================================================================
+#
+# Add one [[experience]] block per role. AI agents do this via
+# `wolf profile add experience --slug-from "Amazon, SWE Intern, 2024"`.
+# To remove: `wolf profile remove experience <id>`.
+#
+# Example shape (delete this comment, write your real entries):
+#
+# [[experience]]
+# id = "amazon-internship-2024"           # snake/dash-case slug
+# job_title = """Software Engineer Intern"""
+# company = """Amazon"""
+# start = """2024-06"""                   # YYYY-MM
+# end = """2024-09"""                     # YYYY-MM or "Present"
+# location = """Seattle, WA"""
+# bullets = """
+# - Reduced API latency by 40%
+# - Led TS migration across 12-person team
+# """
+# subnote = """
+#
+# """
+
+# ===========================================================================
+# Resume content — Projects
+# ===========================================================================
+#
+# [[project]]
+# id = "personal-site-2023"
+# name = """Personal site"""
+# year = """2023"""
+# tech_stack = """
+# - Next.js
+# - Vercel
+# """
+# bullets = """
+# - Built static blog with MDX
+# """
+# subnote = """
+#
+# """
+
+# ===========================================================================
+# Resume content — Education
+# ===========================================================================
+#
+# [[education]]
+# id = "university-of-x-2025"
+# degree = """B.S. in Computer Science"""
+# school = """University of X"""
+# start = """2021-09"""
+# end = """2025-05"""
+# gpa = """3.8/4.0"""
+# relevant_coursework = """
+# - Algorithms
+# - Operating Systems
+# """
+# subnote = """
+#
+# """
+
+# ===========================================================================
+# Stories — behavioral interview answers (17 builtin prompts seeded below)
+# ===========================================================================
+#
+# wolf seeds 17 common interview prompts. Fill in `star_story` for each one
+# you have an answer for; leave blank to skip. wolf doctor flags REQUIRED
+# stories (`required = true`) if their `star_story` is empty.
+#
+# These prompts are wolf-defined: don't change `prompt`, `required`, or
+# `id` — those are read-only. You CAN change `star_story` and `subnote`.
+# When wolf adds new builtins in a future release, missing ones are
+# auto-injected on the next read.
+
+[[story]]
+id = "tell_me_about_yourself"
+prompt = """
+Tell me about yourself
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "tell_me_about_failure"
+prompt = """
+Tell me about a time you failed
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "tell_me_about_conflict"
+prompt = """
+Tell me about a time you faced conflict
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "biggest_strength"
+prompt = """
+Biggest strength
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "biggest_weakness"
+prompt = """
+Biggest weakness (with what you're doing about it)
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "five_year_goal"
+prompt = """
+Where do you see yourself in 5 years?
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "why_leaving_current_role"
+prompt = """
+Why are you leaving your current role?
+"""
+required = false
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "handle_stress_failure"
+prompt = """
+How do you handle stress / failure?
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "what_motivates"
+prompt = """
+What motivates you?
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "led_team_or_project"
+prompt = """
+Describe a time you led a team or project
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "handled_disagreed_feedback"
+prompt = """
+Describe a time you handled feedback you disagreed with
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "management_style"
+prompt = """
+What is your management style?
+"""
+required = false
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "proudest_project"
+prompt = """
+Tell me about a project you're proud of
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "view_company_framework"
+prompt = """
+How do you view our company? — your framework
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "view_product_framework"
+prompt = """
+How do you view our product? — your framework
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "suggestions_company_framework"
+prompt = """
+What suggestions do you have for our company? — your framework
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
+
+[[story]]
+id = "suggestions_product_framework"
+prompt = """
+What suggestions do you have for our product? — your framework
+"""
+required = true
+star_story = """
+
+"""
+subnote = """
+
+"""
