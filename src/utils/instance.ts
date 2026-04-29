@@ -41,3 +41,20 @@ export function assertDevBuildForDevFlag(): void {
     throw new Error('--dev requires a dev build; run `npm run build:dev` then retry from the clone.');
   }
 }
+
+/**
+ * Bin name the user just typed — `wolf` for stable, `wolf-dev` for dev.
+ * Used in user-facing error messages so the suggested fix command matches
+ * whichever binary they're actually running.
+ */
+export function currentBinaryName(): string {
+  return isDevBuild() ? 'wolf-dev' : 'wolf';
+}
+
+/**
+ * Env var that overrides the workspace directory for the current build.
+ * `WOLF_DEV_HOME` for dev builds, `WOLF_HOME` for stable.
+ */
+export function workspaceEnvVarName(): string {
+  return isDevBuild() ? 'WOLF_DEV_HOME' : 'WOLF_HOME';
+}

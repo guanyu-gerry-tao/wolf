@@ -4,6 +4,8 @@ import { parse } from 'smol-toml';
 import type { ProfileRepository } from '../profileRepository.js';
 import type { Profile } from '../../utils/types/index.js';
 import { AppConfigSchema } from '../../utils/schemas.js';
+import { WorkspaceNotInitializedError } from '../../utils/errors/workspaceNotInitializedError.js';
+import { workspaceEnvVarName, currentBinaryName } from '../../utils/instance.js';
 
 /**
  * Reads profiles from `<workspace>/profiles/<name>/`. Each profile is a folder
@@ -43,7 +45,13 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
     try {
       raw = await fs.readFile(configPath, 'utf-8');
     } catch {
-      throw new Error('wolf.toml not found. Run wolf init to set up your workspace.');
+      // Same typed error surfaced from `loadConfig` so both entry points
+      // produce the same structured "workspace not initialized" signal.
+      throw new WorkspaceNotInitializedError(
+        this.workspaceDir,
+        workspaceEnvVarName(),
+        `${currentBinaryName()} init`,
+      );
     }
     const config = AppConfigSchema.parse(parse(raw));
     const defaultName = config.default;

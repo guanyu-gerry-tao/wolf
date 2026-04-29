@@ -15,7 +15,7 @@ import { configGet, configSet } from './commands/config.js';
 import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
-import { MissingApiKeyError, MissingChromiumError } from '../utils/errors/index.js';
+import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
 import { statusTag, notYetMessage } from '../utils/commandStatus.js';
 
 const program = new Command();
@@ -52,6 +52,20 @@ function renderError(err: unknown): void {
   }
   if (err instanceof MissingChromiumError) {
     process.stderr.write(`wolf: ${err.message}\n`);
+    process.exit(1);
+  }
+  if (err instanceof WorkspaceNotInitializedError) {
+    // Use a top + bottom banner so a non-technical user can immediately see
+    // this is a "you need to do something" message, not a wolf crash.
+    const bar = '='.repeat(64);
+    process.stderr.write(
+      `\n${bar}\n` +
+      `  wolf: workspace not initialized\n\n` +
+      `  Path checked:  ${err.workspacePath}\n` +
+      `  Init command:  ${err.initCommand}\n\n` +
+      `  Set ${err.envVarName} to use a different directory.\n` +
+      `${bar}\n\n`,
+    );
     process.exit(1);
   }
   // Unknown — let Node's default handler print the stack and exit non-zero.

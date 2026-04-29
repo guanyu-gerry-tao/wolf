@@ -4,3 +4,4 @@
  */
 export { MissingApiKeyError } from './missingApiKeyError.js';
 export { MissingChromiumError } from './missingChromiumError.js';
+export { WorkspaceNotInitializedError } from './workspaceNotInitializedError.js';
