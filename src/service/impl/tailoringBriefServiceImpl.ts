@@ -68,16 +68,17 @@ export class TailoringBriefServiceImpl implements TailoringBriefService {
 // service. Each builder returns a complete, stand-alone section.
 // ---------------------------------------------------------------------------
 
-// Profile is included verbatim — the analyst reads name, contact, demographics,
-// work auth and target roles directly from the user-authored markdown. Keeping
-// the section labelled "Candidate Profile" lets the system prompt refer to it.
+// Profile feeds the analyst — strip alert callouts AND drop unfilled H2
+// sections so the model only sees real, user-supplied content. dropEmptyH2s
+// also hides any "(optional)" / OPTIONAL hint that lived in alert bodies,
+// so the AI does not see fields it might decide to skip.
 function buildCandidateSection(profile: Profile): string {
-  return `## Candidate Profile (profile.md)\n${profile.md}`;
+  return `## Candidate Profile (profile.md)\n${stripComments(profile.md, { dropEmptyH2s: true })}`;
 }
 
-// Strip `//` comment lines from the pool before the AI sees them.
+// Resume pool feeds the analyst — same rationale as profile above.
 function buildResumePoolSection(resumePool: string): string {
-  return `## Resume Pool\n${stripComments(resumePool)}`;
+  return `## Resume Pool\n${stripComments(resumePool, { dropEmptyH2s: true })}`;
 }
 
 function buildJdSection(jdText: string): string {

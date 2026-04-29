@@ -95,7 +95,9 @@ function checkPlaywrightChromium(): FileCheck {
 function checkProfile(md: string): FileCheck {
   // Strip first: an H2 whose body is only a `> [!IMPORTANT]` callout
   // (the unfilled-template state) should count as empty, not "answered".
-  const stripped = stripComments(md);
+  // dropEmptyH2s: false preserves the empty H2 so extractH2Content can
+  // see "this required field is empty" and report it as missing.
+  const stripped = stripComments(md, { dropEmptyH2s: false });
   const missing = PROFILE_REQUIRED_H2.filter(
     (field) => extractH2Content(stripped, field).length === 0,
   );
@@ -110,7 +112,9 @@ function checkProfile(md: string): FileCheck {
 }
 
 function checkResumePool(md: string): FileCheck {
-  const stripped = stripComments(md);
+  // dropEmptyH2s: false — we need the full skeleton to count substantive
+  // lines accurately. The check is structural, not AI-facing.
+  const stripped = stripComments(md, { dropEmptyH2s: false });
   const substantiveLines = stripped
     .split('\n')
     .filter((line) => {
@@ -131,7 +135,9 @@ function checkResumePool(md: string): FileCheck {
 function checkStandardQuestions(md: string): FileCheck {
   // Treat the whole file as "ready" when at least 3 H2s have non-callout
   // bodies — fill (M4) can pause-and-ask for any missing field at apply time.
-  const stripped = stripComments(md);
+  // dropEmptyH2s: false because countAnsweredH2s wants to walk the H2
+  // skeleton and tell answered vs unanswered apart.
+  const stripped = stripComments(md, { dropEmptyH2s: false });
   const sections = countAnsweredH2s(stripped);
   const ready = sections.answered >= 3;
   return {

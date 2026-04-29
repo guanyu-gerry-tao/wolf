@@ -255,7 +255,9 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     let raw: string;
     try { raw = await readFile(hintPath, 'utf-8'); }
     catch { return undefined; }
-    const active = stripComments(raw).trim();
+    // hint.md feeds the analyst prompt directly — strip alert blocks and
+    // hide any unanswered H2 sections so the model sees only real guidance.
+    const active = stripComments(raw, { dropEmptyH2s: true }).trim();
     return active.length > 0 ? active : undefined;
   }
 
@@ -353,8 +355,10 @@ const REQUIRED_PROFILE_FIELDS = [
 function assertReadyForTailor(profile: Profile, resumePool: string): void {
   // Strip alert callouts before extraction: an H2 whose body is only a
   // `> [!IMPORTANT]` block (the un-edited template state) must count as
-  // empty, not "answered".
-  const strippedProfile = stripComments(profile.md);
+  // empty, not "answered". Use dropEmptyH2s: false — we DEPEND on empty
+  // H2s being preserved here so extractH2Content can detect missing
+  // REQUIRED fields and report them to the user.
+  const strippedProfile = stripComments(profile.md, { dropEmptyH2s: false });
   const missing = REQUIRED_PROFILE_FIELDS.filter(
     (field) => extractH2Content(strippedProfile, field).length === 0,
   );
@@ -369,7 +373,9 @@ function assertReadyForTailor(profile: Profile, resumePool: string): void {
     );
   }
 
-  const stripped = stripComments(resumePool);
+  // Same rationale as profile above: dropEmptyH2s: false preserves the H2
+  // skeleton so the substantive-line count reflects actual user content.
+  const stripped = stripComments(resumePool, { dropEmptyH2s: false });
   const substantiveLines = stripped
     .split('\n')
     .filter((line) => {

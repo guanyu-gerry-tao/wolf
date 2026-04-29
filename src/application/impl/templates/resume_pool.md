@@ -1,176 +1,160 @@
 # Resume Pool
 
 <!--
-> [!TIP]
-> Consumed by:
->   wolf tailor — full text, both stages. The analyst (briefService) reads
->                  it to decide which experience to emphasize for a given JD;
->                  the resume writer (resumeCoverLetterService) reads it to
->                  produce the tailored resume HTML.
->   (Not consumed by fill / score / reach. Fill uses the tailored resume
->    artifact produced by tailor; score works on the JD; reach uses
->    profile.md.)
+// Consumed by:
+//   wolf tailor — full text, both stages. The analyst (briefService) reads
+//                  it to decide which experience to emphasize for a given JD;
+//                  the resume writer (resumeCoverLetterService) reads it to
+//                  produce the tailored resume HTML.
+//   (Not consumed by fill / score / reach. Fill uses the tailored resume
+//    artifact produced by tailor; score works on the JD; reach uses
+//    profile.md.)
 -->
 
 > [!TIP]
-> This is your "everything" resume — wolf reads this and selects the most relevant
-> content for each job. Include ALL experience, projects, and skills, even older ones.
-> wolf will pick the right subset per application.
-> LINES STARTING WITH // ARE NOTES FOR YOU ONLY — THE AI WILL NOT READ THEM.
-
-> [!TIP]
-> ## Section honesty + ordering (READ THIS)
-> 1. Sections are OPTIONAL. If you have no Education (e.g. bootcamp grad), no Experience
->    (e.g. first job seeker), or no separate Projects, just leave that section out. wolf
->    will NEVER fabricate a section that doesn't exist in your pool.
-> 2. The ORDER of sections in this file IS the order on your generated resume. If you
->    put Skills first, the writer will put Skills first — even if convention says
->    Experience comes first. You decide. The writer is forbidden from reordering.
-> 3. Section TITLES are kept verbatim. If you write "## Work Experience" it stays
->    "Work Experience" (not normalized to "Experience"). Visual styling like ALL CAPS is
->    applied by the template's CSS, not by the writer.
-
-> [!TIP]
-> ## Contact
-> Your contact info (name, email, phone, address, links, etc.) is NOT stored here.
-> To update it, edit: profiles/default/profile.md
-
+> This is your "everything" resume — wolf reads it and picks the most
+> relevant content for each job. Include ALL experience, projects, and
+> skills; wolf selects per application.
+>
+> Section honesty + ordering:
+>   1. Sections are OPTIONAL. If you have no Education, Experience,
+>      or separate Projects, leave that section empty — wolf will NEVER
+>      fabricate a section that doesn't exist in your pool. Empty sections
+>      are also automatically hidden from the AI prompt.
+>   2. The ORDER of sections in this file IS the order on your generated
+>      resume. The writer is forbidden from reordering.
+>   3. Section TITLES are kept verbatim. "## Work Experience" stays
+>      "Work Experience" (not normalized to "Experience").
+>
+> Three answering modes apply to every section: write content, leave
+> empty (hidden from AI), or "Decline to answer" if you want a literal
+> refusal. Contact info (name, email, links) is NOT stored here — edit
+> profiles/default/profile.md for that.
 
 ## Experience
 
-> [!TIP]
-> List every role, including short stints and older jobs — wolf picks what's relevant.
-> Use strong action verbs and include metrics where possible (e.g. "reduced latency by 40%").
+> [!NOTE]
+> List every role, including short stints and older jobs — wolf picks
+> what's relevant. Use strong action verbs and include metrics where
+> possible (e.g. "reduced latency by 40%"). Shape:
 >
-> EXAMPLE (delete this block, write your real entries with the same shape):
-> ### Job Title — Company Name
-> *Month Year - Month Year (or Present)*
-> - Bullet describing impact or responsibility
-> - Bullet with metrics if available
+>     ### Job Title — Company Name
+>     *Month Year - Month Year (or Present)*
+>     - Bullet describing impact or responsibility
+>     - Bullet with metrics if available
 
 ## Projects
 
-> [!TIP]
-> Include personal, open-source, and side projects — not just work projects.
-> Mention the tech stack and what problem it solved.
+> [!NOTE]
+> OPTIONAL — personal, open-source, and side projects. Mention the tech
+> stack and the problem solved. Shape:
 >
-> EXAMPLE (delete and write your real entries):
-> ### Project Name
-> *Year*
-> - What it does, what you built, and what tech you used
+>     ### Project Name
+>     *Year*
+>     - What it does, what you built, and what tech you used
 
 ## Education
 
-> [!TIP]
-> List degrees in reverse chronological order. Include GPA if 3.5+.
-> Relevant coursework is optional but useful for new grads.
+> [!NOTE]
+> OPTIONAL — degrees in reverse chronological order. Include GPA if 3.5+.
+> Relevant coursework is optional but useful for new grads. Shape:
 >
-> EXAMPLE (delete and write your real entries):
-> ### Degree — University Name
-> *Year - Year*
+>     ### Degree — University Name
+>     *Year - Year*
 
 ## Skills
-> [!TIP]
-> Comma-separated list. Group loosely by category if helpful (e.g. Languages, Tools, Platforms).
-> wolf will reformat this to match the JD's preferred phrasing.
+
+> [!NOTE]
+> OPTIONAL — comma-separated list. Group loosely by category if helpful
+> (e.g. Languages, Tools, Platforms). wolf will reformat to match the
+> JD's preferred phrasing. Shape:
 >
-> EXAMPLE (delete and write your real list):
-> TypeScript, Python, SQL, Postgres, Docker, AWS
+>     TypeScript, Python, SQL, Postgres, Docker, AWS
 
-> [!TIP]
-> ## Certifications (optional)
-> Include professional certs: AWS, GCP, Azure, PMP, CFA, etc.
-> Add the issuing body and year.
+## Certifications
 
-> [!TIP]
-> ## Certifications (optional)
-> - AWS Certified Solutions Architect — Amazon, 2024
-> - Google Cloud Professional Data Engineer — Google, 2023
+> [!NOTE]
+> OPTIONAL — professional certs (AWS, GCP, Azure, PMP, CFA, etc.) with
+> issuing body and year. Shape:
+>
+>     - AWS Certified Solutions Architect — Amazon, 2024
+>     - Google Cloud Professional Data Engineer — Google, 2023
 
-> [!TIP]
-> ## Awards & Honors (optional)
-> Hackathon wins, academic honors, competitive programming, scholarships.
-> Even older awards are worth keeping — wolf will decide if they're relevant.
+## Awards & Honors
 
-> [!TIP]
-> ## Awards & Honors (optional)
-> - 1st Place — HackMIT 2023
-> - Dean's List — University Name, 2019–2021
+> [!NOTE]
+> OPTIONAL — hackathon wins, academic honors, competitive programming,
+> scholarships. Even older awards are worth keeping — wolf decides
+> relevance per JD. Shape:
+>
+>     - 1st Place — HackMIT 2023
+>     - Dean's List — University Name, 2019–2021
 
-> [!TIP]
-> ## Publications (optional)
-> Research papers, technical blog posts, or articles. Important for ML/research roles.
-> Include venue/journal and year.
+## Publications
 
-> [!TIP]
-> ## Publications (optional)
-> - "Paper Title" — NeurIPS 2023
-> - "Blog Post Title" — Personal blog, 2024 (link)
+> [!NOTE]
+> OPTIONAL — research papers, technical blog posts, articles. Important
+> for ML / research roles. Include venue/journal and year. Shape:
+>
+>     - "Paper Title" — NeurIPS 2023
+>     - "Blog Post Title" — Personal blog, 2024 (link)
 
-> [!TIP]
-> ## Patents (optional)
-> Granted or pending patents. Important for research / hardware / ML / infra roles.
-> Format: title — patent or application number, year, brief description.
+## Patents
 
-> [!TIP]
-> ## Patents (optional)
-> - "System and method for X" — US Patent 11,234,567, 2024
-> - "Method for distributed Y" — pending, 2025
+> [!NOTE]
+> OPTIONAL — granted or pending. Important for research / hardware / ML /
+> infra roles. Shape:
+>
+>     - "System and method for X" — US Patent 11,234,567, 2024
+>     - "Method for distributed Y" — pending, 2025
 
-> [!TIP]
-> ## Hackathons (optional)
-> Wins, finalist runs, notable demo days. NG加分项 — common starting signal.
-> Format: event — placement, year, what you built / used.
+## Hackathons
 
-> [!TIP]
-> ## Hackathons (optional)
-> - HackMIT 2024 — 2nd place, RAG-powered legal search demo
-> - TreeHacks 2023 — finalist, real-time multiplayer ML game
+> [!NOTE]
+> OPTIONAL — wins, finalist runs, notable demo days. NG加分项 — common
+> starting signal. Shape:
+>
+>     - HackMIT 2024 — 2nd place, RAG-powered legal search demo
+>     - TreeHacks 2023 — finalist, real-time multiplayer ML game
 
-> [!TIP]
-> ## Open Source (optional)
-> Notable contributions beyond your own projects. Include repo links and impact.
-> Especially valuable if contributions are to well-known projects.
+## Open Source
 
-> [!TIP]
-> ## Open Source (optional)
-> - Contributor to facebook/react — fixed hydration bug, 200+ stars on PR
-> - Maintainer of your-lib (2.4k stars on GitHub)
+> [!NOTE]
+> OPTIONAL — notable contributions beyond your own projects. Include
+> repo links and impact. Shape:
+>
+>     - Contributor to facebook/react — fixed hydration bug
+>     - Maintainer of your-lib (2.4k stars on GitHub)
 
-> [!TIP]
-> ## Languages (optional)
-> Spoken/written languages. Useful for international or customer-facing roles.
-> Format: Language (Proficiency level).
+## Languages
 
-> [!TIP]
-> ## Languages (optional)
-> - English (Native)
-> - Mandarin (Fluent)
-> - Spanish (Conversational)
+> [!NOTE]
+> OPTIONAL — spoken/written languages. Useful for international or
+> customer-facing roles. Shape:
+>
+>     - English (Native)
+>     - Mandarin (Fluent)
+>     - Spanish (Conversational)
 
-> [!TIP]
-> ## Volunteer (optional)
-> Community work, non-profit, or mentoring. Shows character and range.
-> Rarely included unless directly relevant or the role values culture-add.
+## Volunteer
 
-> [!TIP]
-> ## Volunteer (optional)
-> - Coding instructor — Code.org, 2022–present
+> [!NOTE]
+> OPTIONAL — community work, non-profit, mentoring. Shape:
+>
+>     - Coding instructor — Code.org, 2022–present
 
-> [!TIP]
-> ## Interests (optional)
-> Keep it brief and genuine — avoid generic hobbies like "reading" or "travel".
-> Best used when the company culture values personality fit.
+## Interests
 
-> [!TIP]
-> ## Interests (optional)
-> Competitive chess, trail running, generative art
+> [!NOTE]
+> OPTIONAL — keep brief and genuine. Best used when company culture
+> values personality fit. Shape:
+>
+>     Competitive chess, trail running, generative art
 
-> [!TIP]
-> ## Speaking (optional)
-> Conference talks, panels, podcasts. More relevant for senior or staff roles.
-> Rarely included unless you speak regularly or the role involves evangelism.
+## Speaking
 
-> [!TIP]
-> ## Speaking (optional)
-> - "Talk Title" — Conference Name, Year
+> [!NOTE]
+> OPTIONAL — conference talks, panels, podcasts. More relevant for
+> senior / staff roles. Shape:
+>
+>     - "Talk Title" — Conference Name, Year

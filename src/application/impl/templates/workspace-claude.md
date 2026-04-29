@@ -21,36 +21,108 @@ the profile is filled, and **walk the user through it** if not.
 Run from the workspace root:
 
 ```bash
-grep -l "\[!IMPORTANT\]" profiles/*/profile.md profiles/*/standard_questions.md profiles/*/resume_pool.md 2>/dev/null
+__WOLF_BIN__ doctor
 ```
 
-If any file matches, REQUIRED sections are still empty. The user has not
-finished onboarding.
+`doctor` is the source of truth: it strips runtime-only callouts and checks
+whether REQUIRED H2 sections have real content. If `profile.md`,
+`resume_pool.md`, or `standard_questions.md` show `not ready`, the user has
+not finished onboarding. Do NOT grep for `[!IMPORTANT]` / `[!TIP]` —
+callouts are intentionally kept around after answering (see below), so grep
+will produce false positives.
+
+### Template-preservation rules (apply to ALL three files)
+
+These files ship as **scaffolds** — the structure encodes wolf's contract
+with the AI. When you fill them in, you are transcribing the user's data
+into the scaffold, NOT rewriting the scaffold.
+
+- **Do NOT change, rename, reorder, add, or remove any `# H1` or `## H2`
+  heading.** wolf's parsers (`extractH2Content`, `assertReadyForTailor`,
+  `wolf doctor`) match on exact heading text. Renaming a heading silently
+  breaks the gate.
+- **Do NOT delete or edit any `> [!IMPORTANT]` / `> [!NOTE]` / `> [!TIP]`
+  callout block.** Callouts are runtime-stripped (see
+  `src/utils/stripComments.ts`) and stay in the source file as future-edit
+  prompts for the user.
+- **Write answers BELOW the callout** as plain (non-`>`) Markdown. Never
+  overwrite the callout, never put the answer inside the blockquote.
+- For `resume_pool.md` specifically: when the user pastes their existing
+  resume, **transcribe** it into the scaffold's `## Experience` /
+  `## Projects` / `## Education` / `## Skills` (and other) sections. Do
+  NOT replace the file body with the raw resume. Do NOT invent new
+  top-level headings. If the user's resume has content that doesn't fit
+  any existing H2, ask the user where it belongs rather than adding a
+  new heading.
+
+If a heading or callout truly needs to change, that is a wolf-source-level
+change (the template lives at `src/application/impl/templates/`), not a
+workspace-level edit. Tell the user to file an issue instead of editing
+the scaffold.
+
+### Three-state answering rule (CRITICAL — applies to every H2)
+
+Each `## H2` callout starts with either `REQUIRED —` or `OPTIONAL —`.
+For every H2 the user can be in one of three states. Map them carefully:
+
+1. **User gives an answer** — write the answer as plain Markdown below
+   the callout. The H2 is filled. Both `wolf doctor` and the AI prompt
+   builders see it.
+
+2. **User skips / says "doesn't matter" / "I don't care" / stays silent**
+   → leave the body **completely empty**. Do NOT write `N/A`, `—`,
+   `(skipped)`, `Decline to answer`, `unknown`, or any placeholder.
+   Empty H2s are hidden entirely from the AI prompt (see the "AI-prompt
+   mode" branch of `stripComments` — `dropEmptyH2s: true`). For OPTIONAL
+   sections this is fine and intended. For REQUIRED sections, `wolf
+   doctor` will report the field as missing — surface that to the user.
+
+3. **User explicitly refuses** ("Decline to answer", "Prefer not to say",
+   "N/A — I won't answer this", etc.) → write the literal phrase the
+   user used. wolf treats this as a real answer and forms will fill that
+   exact text. This is meaningfully different from state 2: state 2 = "I
+   don't have an opinion, ask me later"; state 3 = "I have decided to
+   refuse, fill the form with this literal text".
+
+If you cannot tell whether the user means state 2 or state 3, ASK:
+"Skip this for now (we can revisit later), or mark it as
+'Decline to answer' (forms will fill that exact text)?"
+
+Never invent content. If the user gives no info, leave the body empty.
 
 ### Walkthrough order
 
 Walk the user through, one file at a time, in this order:
 
-1. **`profiles/default/profile.md`** — identity facts (name, contact, address,
-   demographics, work auth preference, etc.). For each `## H2` whose body
-   only contains `> [!IMPORTANT]` callouts (or is blank), ask the user the
-   question, capture their answer, and replace the callout block with the
-   answer. Skip H2s that already have non-callout content (defaults, or
-   already-edited sections). Keep going until `grep "\[!IMPORTANT\]"
-   profile.md` returns nothing.
+1. **`profiles/default/profile.md`** — identity facts (name, contact,
+   address, demographics, work auth preference, etc.). Walk through each
+   `## H2`. Apply the three-state rule above for every one: answer →
+   write below the callout; skip → leave empty; refuse → write the
+   literal refusal phrase. Skip H2s that already carry a default value
+   (e.g. `## Country you're currently in\nUnited States`) unless the
+   user wants to change it. Re-run `__WOLF_BIN__ doctor` to confirm
+   REQUIRED fields are filled.
 
-2. **`profiles/default/resume_pool.md`** — full experience bank. The
-   `[!TIP]` blocks under each `## Experience / ## Projects / ## Education /
-   ## Skills` heading contain example shapes. Ask the user about real roles,
-   projects, education, and skills; build out each section. Pool needs at
-   least ~5 substantive (non-blank, non-heading) lines after `> [!TIP]`
-   stripping or tailor will refuse — aim for one full role with 3+ bullets
-   to start, then expand iteratively.
+2. **`profiles/default/resume_pool.md`** — full experience bank. If the
+   user pastes a resume, **transcribe** it into the existing scaffold
+   (`## Experience` / `## Projects` / `## Education` / `## Skills` /
+   `## Certifications` / `## Awards & Honors` / etc.). Each H2 with no
+   matching content from the user's resume → leave the body empty (the
+   H2 will be hidden from the AI). Pool needs at least ~5 substantive
+   (non-blank, non-heading) lines after stripping or tailor refuses —
+   aim for one full role with 3+ bullets to start, then expand
+   iteratively. Do NOT overwrite the file with the raw resume; do NOT
+   delete or rename the H2 headings; do NOT delete the callouts.
 
 3. **`profiles/default/standard_questions.md`** — application-only Q&A
    (why this company / why this role / behavioral STAR stories /
-   work-auth phrasing for forms). Same pattern: each `## H2` with an
-   `[!IMPORTANT]` body needs a real answer.
+   work-auth phrasing for forms). Same three-state rule per H2. Note
+   that REQUIRED behavioral H2s (Tell me about a failure, conflict
+   story, etc.) need real STAR+R stories the agent will reuse across
+   applications — push gently for at least one solid story per REQUIRED
+   H2. The Documents H3s under `## What academic documents do you have?`
+   take a bare file name (e.g. `transcript.pdf`); leave empty if the
+   user doesn't have that document.
 
 ### Tone
 
@@ -59,10 +131,11 @@ Walk the user through, one file at a time, in this order:
 - Suggest answers when the user is stuck (e.g. propose a typical "Why this
   role?" template they can edit), but never invent facts (employers,
   schools, dates).
-- For required-but-personal fields (work auth, demographics), explain the
-  field's purpose briefly, then accept whatever the user provides — including
-  "Decline to answer" where the field is voluntary.
-- After each file is finished, run the detection grep again and confirm
+- For required-but-personal fields (work auth, demographics), explain
+  the field's purpose briefly, then accept whatever the user provides.
+  Match the three-state rule above: skip → empty body, decline → literal
+  "Decline to answer".
+- After each file is finished, run `__WOLF_BIN__ doctor` again and confirm
   with the user before moving to the next file.
 
 ### When the user skips onboarding
@@ -74,8 +147,8 @@ profile.md is filled — want to do that now or later?"
 
 ### When onboarding is already done
 
-If the detection grep returns nothing, skip this section entirely. Don't
-re-onboard the user. Move on to whatever they actually asked.
+If `__WOLF_BIN__ doctor` reports all profile files ready, skip this section
+entirely. Don't re-onboard the user. Move on to whatever they actually asked.
 
 ## What wolf does
 

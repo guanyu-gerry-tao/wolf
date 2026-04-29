@@ -115,21 +115,21 @@ function validateAndLogOrThrow(
 // in the public methods above. All section bodies are plain markdown.
 // ---------------------------------------------------------------------------
 
-// Profile.md is included verbatim. The AI gets full identity context (name,
-// contact, address, demographics, work auth, links) in user-authored markdown
-// — much richer than the old typed-field summary block.
+// Profile.md feeds the resume + cover-letter writers. dropEmptyH2s: true
+// strips alert callouts AND hides unfilled sections so the writer never
+// sees an unanswered H2 it might try to fabricate, and never sees the
+// "OPTIONAL" / "REQUIRED" hints that live inside callout bodies.
 function buildProfileSection(profile: Profile): string {
-  return `## Candidate Profile (profile.md)\n${profile.md}`;
+  return `## Candidate Profile (profile.md)\n${stripComments(profile.md, { dropEmptyH2s: true })}`;
 }
 
 function buildBriefSection(brief: string): string {
   return `## Tailoring Brief\n${brief}`;
 }
 
-// Strip `//` comment lines from the pool before the AI sees them — those are
-// human-only notes and would confuse the AI's selection of content.
+// Resume pool feeds the writer — same rationale as profile above.
 function buildResumePoolSection(resumePool: string): string {
-  return `## Resume Pool\n${stripComments(resumePool)}`;
+  return `## Resume Pool\n${stripComments(resumePool, { dropEmptyH2s: true })}`;
 }
 
 function buildJdSection(jdText: string): string {
