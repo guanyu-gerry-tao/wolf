@@ -14,7 +14,7 @@ import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
 import { configGet, configSet } from './commands/config.js';
 import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
 import { startMcpServer } from '../mcp/server.js';
-import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
+import { DEV_WARNING, isDevBuild, currentBinaryName } from '../utils/instance.js';
 import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
 import { statusTag, notYetMessage } from '../utils/commandStatus.js';
 
@@ -72,8 +72,11 @@ function renderError(err: unknown): void {
   throw err;
 }
 
+// Bin name reflects which binary the user actually invoked (`wolf` for stable,
+// `wolf-dev` for dev builds), so `--help` and subcommand `--help` echo back
+// the exact command they typed.
 program
-  .name('wolf')
+  .name(currentBinaryName())
   .description('Workflow of Outreaching, LinkedIn & Filling — AI-powered job hunting CLI')
   .version('0.1.0');
 
@@ -166,7 +169,7 @@ tailorCmd
   });
 tailorCmd
   .command('resume')
-  .description('Step 2a: write resume HTML + PDF using the existing brief (requires `wolf tailor brief` first)')
+  .description(`Step 2a: write resume HTML + PDF using the existing brief (requires \`${currentBinaryName()} tailor brief\` first)`)
   .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
   .action(async (opts) => {
@@ -175,7 +178,7 @@ tailorCmd
   });
 tailorCmd
   .command('cover')
-  .description('Step 2b: write cover letter HTML + PDF using the existing brief (requires `wolf tailor brief` first)')
+  .description(`Step 2b: write cover letter HTML + PDF using the existing brief (requires \`${currentBinaryName()} tailor brief\` first)`)
   .requiredOption('-j, --job <id>', 'Job ID')
   .option('-p, --profile <id>', 'Profile to use')
   .action(async (opts) => {

@@ -56,13 +56,13 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
     const config = AppConfigSchema.parse(parse(raw));
     const defaultName = config.default;
     if (!defaultName) {
-      throw new Error('wolf.toml is missing the `default` field. Run wolf init to repair your config.');
+      throw new Error(`wolf.toml is missing the \`default\` field. Run \`${currentBinaryName()} init\` to repair your config.`);
     }
     if (!(await this.dirExists(defaultName))) {
       throw new Error(
         `Default profile directory 'profiles/${defaultName}/' not found. ` +
         `Either rename a profile folder back to '${defaultName}', or run ` +
-        `\`wolf profile use <name>\` to point wolf.toml at an existing profile.`,
+        `\`${currentBinaryName()} profile use <name>\` to point wolf.toml at an existing profile.`,
       );
     }
     const md = await this.getProfileMd(defaultName);
@@ -93,7 +93,7 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       return await fs.readFile(mdPath, 'utf-8');
     } catch {
       throw new Error(
-        `profile.md for profile '${name}' not found. Expected profiles/${name}/profile.md to exist. Run wolf init to create it.`,
+        `profile.md for profile '${name}' not found. Expected profiles/${name}/profile.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
       );
     }
   }
@@ -104,7 +104,7 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       return await fs.readFile(mdPath, 'utf-8');
     } catch {
       throw new Error(
-        `Resume pool for profile '${name}' not found. Expected profiles/${name}/resume_pool.md to exist. Run wolf init to create it.`,
+        `Resume pool for profile '${name}' not found. Expected profiles/${name}/resume_pool.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
       );
     }
   }
@@ -115,7 +115,7 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       return await fs.readFile(mdPath, 'utf-8');
     } catch {
       throw new Error(
-        `standard_questions.md for profile '${name}' not found. Expected profiles/${name}/standard_questions.md to exist. Run wolf init to create it.`,
+        `standard_questions.md for profile '${name}' not found. Expected profiles/${name}/standard_questions.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
       );
     }
   }

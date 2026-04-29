@@ -1,5 +1,6 @@
 import type { AppContext } from '../../runtime/appContext.js';
 import { createAppContext } from '../../runtime/appContext.js';
+import { currentBinaryName } from '../../utils/instance.js';
 import type { DoctorReport } from '../../application/doctorApplicationService.js';
 
 export type { DoctorReport, FileCheck } from '../../application/doctorApplicationService.js';
@@ -35,7 +36,7 @@ export function formatDoctor(report: DoctorReport): string {
   if (!report.ready) {
     lines.push(``);
     lines.push(`Open profiles/${report.profileName}/profile.md and fill the > [!IMPORTANT]`);
-    lines.push(`sections, then re-run \`wolf doctor\`.`);
+    lines.push(`sections, then re-run \`${currentBinaryName()} doctor\`.`);
   }
   return lines.join('\n');
 }

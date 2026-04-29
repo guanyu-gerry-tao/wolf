@@ -1,5 +1,6 @@
 import { confirm, input } from '@inquirer/prompts';
 import { EnvApplicationServiceImpl } from '../../application/impl/envApplicationServiceImpl.js';
+import { currentBinaryName } from '../../utils/instance.js';
 
 // env commands have no DB / repo dependencies, so we use a module-level
 // singleton rather than threading the full AppContext through. The application
@@ -116,7 +117,7 @@ ${bold('Written to')} ${rcFile}
 Restart your terminal to apply, or run:
   ${bold(`source ${rcFile}`)}
 
-Then verify with: ${bold('wolf env show')}
+Then verify with: ${bold(`${currentBinaryName()} env show`)}
 `);
 }
 
@@ -144,7 +145,7 @@ export async function envSetOne(key: string, value: string, rcFile?: string): Pr
   console.log(`\n  ${green('✓')} ${bold(key)} written to ${target}\n`);
   console.log(`Restart your terminal to apply, or run:`);
   console.log(`  ${bold(`source ${target}`)}\n`);
-  console.log(`Then verify with: ${bold('wolf env show')}\n`);
+  console.log(`Then verify with: ${bold(`${currentBinaryName()} env show`)}\n`);
 }
 
 /**
