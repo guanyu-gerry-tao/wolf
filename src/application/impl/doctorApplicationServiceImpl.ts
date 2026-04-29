@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { chromium } from 'playwright';
 import { stripComments } from '../../utils/stripComments.js';
 import { extractH2Content } from '../../utils/extractH2.js';
-import { getEnvValue } from '../../utils/instance.js';
+import { getEnvValue, currentBinaryName } from '../../utils/instance.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type {
   DoctorApplicationService,
@@ -71,7 +71,7 @@ function checkAnthropicKey(): FileCheck {
     missing: ready ? [] : ['environment variable not set'],
     hint: ready
       ? 'API key present'
-      : "run `wolf env set` or get a key at https://console.anthropic.com/",
+      : `run \`${currentBinaryName()} env set\` or get a key at https://console.anthropic.com/`,
   };
 }
 
@@ -88,7 +88,7 @@ function checkPlaywrightChromium(): FileCheck {
     missing: ready ? [] : ['binary not found'],
     hint: ready
       ? 'Chromium installed (tailor render path is ready)'
-      : 'run `npx playwright install chromium` (~150 MB), or just run `wolf tailor` once and wolf will auto-install it',
+      : `run \`npx playwright install chromium\` (~150 MB), or just run \`${currentBinaryName()} tailor\` once and wolf will auto-install it`,
   };
 }
 

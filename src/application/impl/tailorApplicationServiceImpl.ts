@@ -17,6 +17,7 @@ import type {
 } from '../../utils/types/index.js';
 import { log } from '../../utils/logger.js';
 import { assertApiKey } from '../../utils/apiKeyGuard.js';
+import { currentBinaryName } from '../../utils/instance.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
@@ -283,7 +284,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       });
       throw new Error(
         `Tailoring brief not found at ${ctx.briefPath}. ` +
-        `Run \`wolf tailor brief --job ${ctx.job.id}\` first.`,
+        `Run \`${currentBinaryName()} tailor brief --job ${ctx.job.id}\` first.`,
       );
     }
   }

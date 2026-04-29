@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { loadConfig, saveConfig, backupConfig } from '../../utils/config.js';
-import { resolveWorkspaceDir } from '../../utils/instance.js';
+import { resolveWorkspaceDir, currentBinaryName, workspaceEnvVarName } from '../../utils/instance.js';
+import { WorkspaceNotInitializedError } from '../../utils/errors/workspaceNotInitializedError.js';
 import type {
   ProfileApplicationService,
   ProfileListResult,
@@ -85,7 +86,15 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
 
     const srcName = opts.from ?? (await loadConfig()
       .then(c => c.default)
-      .catch(() => { throw new Error('No wolf.toml yet. Run `wolf init` first.'); }));
+      // Surface the same typed error other workspace-read sites use so the
+      // CLI banner / MCP structured response render uniformly across commands.
+      .catch(() => {
+        throw new WorkspaceNotInitializedError(
+          resolveWorkspaceDir(),
+          workspaceEnvVarName(),
+          `${currentBinaryName()} init`,
+        );
+      }));
 
     const srcDir = profileDir(srcName);
     if (!(await dirExists(srcDir))) {
@@ -131,7 +140,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     const config = await loadConfig();
     if (name === config.default) {
       throw new Error(
-        `Cannot delete the default profile "${name}". Switch defaults first: wolf profile use <other-name>`,
+        `Cannot delete the default profile "${name}". Switch defaults first: \`${currentBinaryName()} profile use <other-name>\``,
       );
     }
 
@@ -143,7 +152,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     if (!opts.yes) {
       throw new Error(
         `Refusing to delete ${targetDir} without --yes flag. ` +
-        `Run: wolf profile delete ${name} --yes`,
+        `Run: \`${currentBinaryName()} profile delete ${name} --yes\``,
       );
     }
 
