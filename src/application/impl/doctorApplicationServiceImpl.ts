@@ -1,5 +1,8 @@
+import fs from 'node:fs';
+import { chromium } from 'playwright';
 import { stripComments } from '../../utils/stripComments.js';
 import { extractH2Content } from '../../utils/extractH2.js';
+import { getEnvValue } from '../../utils/instance.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type {
   DoctorApplicationService,
@@ -42,13 +45,51 @@ export class DoctorApplicationServiceImpl implements DoctorApplicationService {
       await this.profileRepository.getStandardQuestions(profile.name),
     );
 
-    const checks = [profileCheck, poolCheck, sqCheck];
+    // Runtime preflight checks — fail fast on these and tailor will error
+    // before any AI call. Reported alongside the profile checks so the user
+    // sees one consolidated readiness picture.
+    const apiKeyCheck = checkAnthropicKey();
+    const chromiumCheck = checkPlaywrightChromium();
+
+    const checks = [profileCheck, poolCheck, sqCheck, apiKeyCheck, chromiumCheck];
     return {
       profileName: profile.name,
       checks,
       ready: checks.every((c) => c.ready),
     };
   }
+}
+
+// API key check — uses `getEnvValue` so dev builds correctly read
+// `WOLF_DEV_ANTHROPIC_API_KEY` with fallback to `WOLF_ANTHROPIC_API_KEY`.
+function checkAnthropicKey(): FileCheck {
+  const value = getEnvValue('ANTHROPIC_API_KEY');
+  const ready = !!value && value.length > 0;
+  return {
+    file: 'WOLF_ANTHROPIC_API_KEY',
+    ready,
+    missing: ready ? [] : ['environment variable not set'],
+    hint: ready
+      ? 'API key present'
+      : "run `wolf env set` or get a key at https://console.anthropic.com/",
+  };
+}
+
+// Chromium presence — pure stat check, no spawning. Tailor's render service
+// will auto-install on first use, but doctor lets the user pre-warm the
+// install (and confirms the auto-install actually persisted) before the
+// first tailor run.
+function checkPlaywrightChromium(): FileCheck {
+  const exe = chromium.executablePath();
+  const ready = !!exe && fs.existsSync(exe);
+  return {
+    file: 'Playwright Chromium',
+    ready,
+    missing: ready ? [] : ['binary not found'],
+    hint: ready
+      ? 'Chromium installed (tailor render path is ready)'
+      : 'run `npx playwright install chromium` (~150 MB), or just run `wolf tailor` once and wolf will auto-install it',
+  };
 }
 
 function checkProfile(md: string): FileCheck {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { add } from '../cli/commands/add.js';
 import { tailor } from '../cli/commands/tailor.js';
 import { DEV_WARNING, getEnvValue, isDevBuild } from '../utils/instance.js';
+import { MissingApiKeyError, MissingChromiumError } from '../utils/errors/index.js';
 
 type ToolBaseName = 'hunt' | 'add' | 'score' | 'tailor' | 'fill' | 'reach' | 'status';
 
@@ -16,6 +17,55 @@ export function withMcpWarning<T extends object>(payload: T): T & { _warning?: s
 
 function jsonContent(payload: object): { content: [{ type: 'text'; text: string }] } {
   return { content: [{ type: 'text', text: JSON.stringify(withMcpWarning(payload)) }] };
+}
+
+/**
+ * Map known typed errors to a structured MCP tool response so an AI
+ * orchestrator can branch on `errorCode` instead of regex-matching messages.
+ * Falls through to `null` for anything unrecognised — caller rethrows.
+ */
+function errorResponse(
+  err: unknown,
+):
+  | { content: [{ type: 'text'; text: string }]; isError: true }
+  | null {
+  if (err instanceof MissingApiKeyError) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            withMcpWarning({
+              errorCode: err.code,
+              keyName: err.keyName,
+              hintUrl: err.hintUrl,
+              setCommand: err.setCommand,
+              message: err.message,
+            }),
+          ),
+        },
+      ],
+      isError: true,
+    };
+  }
+  if (err instanceof MissingChromiumError) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            withMcpWarning({
+              errorCode: err.code,
+              installCommand: err.installCommand,
+              message: err.message,
+            }),
+          ),
+        },
+      ],
+      isError: true,
+    };
+  }
+  return null;
 }
 
 function notImplemented(tool: string): object {
@@ -127,13 +177,21 @@ takes effect on subsequent tailor runs until overwritten.`,
       if (!args.jobId) {
         return jsonContent(missingParam('jobId', 'A jobId is required. Run wolf_add or wolf_hunt first.'));
       }
-      const result = await tailor({
-        jobId: args.jobId as string,
-        profileId: args.profileId as string | undefined,
-        coverLetter: args.coverLetter as boolean | undefined,
-        hint: args.hint as string | undefined,
-      });
-      return jsonContent(result);
+      try {
+        const result = await tailor({
+          jobId: args.jobId as string,
+          profileId: args.profileId as string | undefined,
+          coverLetter: args.coverLetter as boolean | undefined,
+          hint: args.hint as string | undefined,
+        });
+        return jsonContent(result);
+      } catch (err) {
+        // Surface our typed errors as structured `isError: true` responses
+        // so the AI orchestrator can prompt the user with the next step.
+        const mapped = errorResponse(err);
+        if (mapped) return mapped;
+        throw err;
+      }
     }
   );
 

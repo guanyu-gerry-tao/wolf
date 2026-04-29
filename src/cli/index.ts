@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import updateNotifier from 'update-notifier';
 import { hunt } from './commands/hunt.js';
 import { score } from './commands/score.js';
 import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from './commands/tailor.js';
@@ -15,11 +16,46 @@ import { configGet, configSet } from './commands/config.js';
 import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild } from '../utils/instance.js';
+import { MissingApiKeyError, MissingChromiumError } from '../utils/errors/index.js';
 
 const program = new Command();
 
 if (isDevBuild()) {
   console.error(DEV_WARNING);
+}
+
+// Stable builds notify the user when a newer @gerryt/wolf is on npm. The
+// library caches the last check in ~/.config/configstore/ and forks the RTT
+// to a child process, so this call is non-blocking and only hits the network
+// roughly once per `updateCheckInterval`. Skip in dev builds — devs run from
+// a clone, not from npm.
+if (!isDevBuild()) {
+  // Inline the package metadata that `update-notifier` needs. We avoid an
+  // `import * from '../../package.json'` because tsup bundles to dist/cli/
+  // and the relative path would not survive bundling cleanly.
+  updateNotifier({
+    pkg: { name: '@gerryt/wolf', version: '0.1.0' },
+    updateCheckInterval: 1000 * 60 * 60 * 24,
+  }).notify({ defer: false });
+}
+
+// Top-level catch: render typed errors as a single clean stderr line + exit 1
+// rather than dumping a Node stack trace at the user. Anything we don't
+// recognise rethrows so the default unhandled-rejection path still surfaces
+// real bugs.
+process.on('uncaughtException', renderError);
+process.on('unhandledRejection', renderError);
+function renderError(err: unknown): void {
+  if (err instanceof MissingApiKeyError) {
+    process.stderr.write(`wolf: ${err.message}\n`);
+    process.exit(1);
+  }
+  if (err instanceof MissingChromiumError) {
+    process.stderr.write(`wolf: ${err.message}\n`);
+    process.exit(1);
+  }
+  // Unknown — let Node's default handler print the stack and exit non-zero.
+  throw err;
 }
 
 program

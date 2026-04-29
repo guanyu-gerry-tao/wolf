@@ -8,8 +8,12 @@ const FAKE_PDF = Buffer.from('fake-pdf-bytes');
 
 // Mock Playwright so tests don't need a real browser.
 // page.pdf returns FAKE_PDF to support renderCoverLetterPdf tests.
+// executablePath returns process.execPath (always-exists) so the render
+// service's ensureChromium guard treats Chromium as installed and skips
+// the npx auto-install branch.
 vi.mock('playwright', () => ({
   chromium: {
+    executablePath: () => process.execPath,
     launch: vi.fn().mockResolvedValue({
       newPage: vi.fn().mockResolvedValue({
         emulateMedia: vi.fn().mockResolvedValue(undefined),

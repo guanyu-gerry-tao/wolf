@@ -16,6 +16,7 @@ import type {
   Job,
 } from '../../utils/types/index.js';
 import { log } from '../../utils/logger.js';
+import { assertApiKey } from '../../utils/apiKeyGuard.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { RenderService } from '../../service/renderService.js';
@@ -77,6 +78,11 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
 
   /** @inheritdoc */
   async tailor(options: TailorOptions): Promise<TailorResult> {
+    // Fail fast if the user hasn't set their Anthropic key — saves a
+    // confusing 401 from deep inside the SDK and gives the CLI / MCP
+    // layer a typed error to present cleanly.
+    assertApiKey('ANTHROPIC_API_KEY');
+
     // Resolve job/profile/paths once; every step below works against this context.
     const ctx = await this.prepareContext(options);
 
@@ -142,6 +148,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
 
   /** @inheritdoc */
   async analyze(options: TailorOptions): Promise<AnalyzeResult> {
+    assertApiKey('ANTHROPIC_API_KEY');
     const ctx = await this.prepareContext(options);
     await this.ensureHintFile(ctx.hintPath, options.hint);
     await this.runAnalysis(ctx);
@@ -150,6 +157,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
 
   /** @inheritdoc */
   async writeResume(options: TailorOptions): Promise<WriteStepResult> {
+    assertApiKey('ANTHROPIC_API_KEY');
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
     const step = await this.runResume(ctx, brief);
@@ -159,6 +167,7 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
 
   /** @inheritdoc */
   async writeCoverLetter(options: TailorOptions): Promise<WriteStepResult> {
+    assertApiKey('ANTHROPIC_API_KEY');
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
     const step = await this.runCoverLetter(ctx, brief);
