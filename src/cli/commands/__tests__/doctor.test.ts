@@ -5,7 +5,7 @@ import type { Profile } from '../../../utils/types/index.js';
 import type { AppContext } from '../../../runtime/appContext.js';
 import { DoctorApplicationServiceImpl } from '../../../application/impl/doctorApplicationServiceImpl.js';
 import { parseProfileToml, type ProfileToml } from '../../../utils/profileToml.js';
-import profileTomlTemplate from '../../../application/impl/templates/profile.toml';
+import { profileTomlTemplate } from '../../../utils/profileTomlGenerate.js';
 
 // All doctor tests run against a typed ProfileToml. We start from the
 // bundled template (so every field has the canonical default) and override

@@ -1,8 +1,9 @@
-import { isFilled, type ProfileToml } from '../../utils/profileToml.js';
+import { isFilled, getByPath, type ProfileToml } from '../../utils/profileToml.js';
 import {
   renderProfileMarkdown,
   renderResumePoolMarkdown,
 } from '../../utils/profileTomlRender.js';
+import { PROFILE_FIELDS } from '../../utils/profileFields.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type {
   ContextApplicationService,
@@ -30,6 +31,13 @@ import type {
  *   used by `wolf tailor` itself (that command builds its own prompt
  *   internally), but available for any wrapper / orchestrator that
  *   wants to drive tailor through chat.
+ *
+ * # How field selection works (search)
+ *
+ * Field membership in the search bundle is declared on PROFILE_FIELDS via
+ * `inSearchContext: true`. The renderer below loops that list — there is
+ * no second hand-maintained "fields to dump" array. Adding / removing a
+ * field from search context is a one-character change on the spec.
  */
 export class ContextApplicationServiceImpl implements ContextApplicationService {
   constructor(private readonly profileRepository: ProfileRepository) {}
@@ -69,40 +77,17 @@ function renderSearchContext(toml: ProfileToml): string {
   lines.push("instead of silently dropping or recommending a job that violates them.");
   lines.push('');
 
-  // ## User preferences — distilled bullet list.
+  // ## User preferences — single loop over PROFILE_FIELDS, no special
+  // formatting per field. Multi-line values get a heading-only line then
+  // the body, so AI sees clean shape without the field name competing
+  // with the bullet list on the same line.
   const prefLines: string[] = [];
-  if (isFilled(toml.job_preferences.target_roles)) {
-    prefLines.push('Target roles:');
-    for (const r of asBullets(toml.job_preferences.target_roles)) prefLines.push(`  - ${r}`);
-  }
-  if (isFilled(toml.job_preferences.target_locations)) {
-    prefLines.push('Target locations:');
-    for (const r of asBullets(toml.job_preferences.target_locations)) prefLines.push(`  - ${r}`);
-  }
-  if (isFilled(toml.job_preferences.remote_preference)) {
-    prefLines.push(`Remote preference: ${toml.job_preferences.remote_preference.trim()}`);
-  }
-  if (isFilled(toml.job_preferences.hard_reject_companies)) {
-    prefLines.push('Hard-reject companies (NEVER recommend):');
-    for (const c of asBullets(toml.job_preferences.hard_reject_companies)) prefLines.push(`  - ${c}`);
-  }
-  if (isFilled(toml.job_preferences.precision_apply_companies)) {
-    prefLines.push('Precision-apply companies (recommend, but flag manual-apply):');
-    for (const c of asBullets(toml.job_preferences.precision_apply_companies)) prefLines.push(`  - ${c}`);
-  }
-  // Sponsorship strategy (compact one-liner; details in [job_preferences]).
-  const sponsor = renderSponsorshipShort(toml);
-  if (sponsor) prefLines.push(`Sponsorship: ${sponsor}`);
-  if (isFilled(toml.job_preferences.min_hourly_rate_usd)) {
-    prefLines.push(`Min hourly rate (intern): $${toml.job_preferences.min_hourly_rate_usd.trim()}`);
-  }
-  if (isFilled(toml.job_preferences.min_annual_salary_usd)) {
-    prefLines.push(`Min annual salary (NG): $${toml.job_preferences.min_annual_salary_usd.trim()}`);
-  }
-  if (isFilled(toml.job_preferences.scoring_notes)) {
-    prefLines.push('');
-    prefLines.push('Scoring notes (free-form preferences):');
-    prefLines.push(toml.job_preferences.scoring_notes.trim());
+  for (const f of PROFILE_FIELDS) {
+    if (!f.inSearchContext) continue;
+    if (!f.heading) continue;
+    const v = getByPath(toml, f.path);
+    if (typeof v !== 'string' || !isFilled(v)) continue;
+    appendField(prefLines, f.heading, v);
   }
   if (prefLines.length > 0) {
     lines.push('## User preferences');
@@ -111,23 +96,9 @@ function renderSearchContext(toml: ProfileToml): string {
     lines.push('');
   }
 
-  // ## Clearance (affects which jobs are eligible)
-  const clrLines: string[] = [];
-  if (isFilled(toml.clearance.has_active)) {
-    clrLines.push(`Active clearance: ${toml.clearance.has_active.trim()}`);
-  }
-  if (isFilled(toml.clearance.level)) clrLines.push(`Level: ${toml.clearance.level.trim()}`);
-  if (isFilled(toml.clearance.willing_to_obtain)) {
-    clrLines.push(`Willing to obtain: ${toml.clearance.willing_to_obtain.trim()}`);
-  }
-  if (clrLines.length > 0) {
-    lines.push('## Clearance');
-    lines.push('');
-    lines.push(...clrLines);
-    lines.push('');
-  }
-
-  // ## User notes — collected from each table's `note` field.
+  // ## User notes — collected from each table's `note` field + per-entry
+  // subnotes. Note paths are derived from PROFILE_FIELDS; subnotes loop
+  // over the array-of-tables.
   const notes = collectNotes(toml);
   if (notes.length > 0) {
     lines.push('## User notes (small thoughts to weigh)');
@@ -157,6 +128,19 @@ function renderSearchContext(toml: ProfileToml): string {
   lines.push('  the user\'s signals, but the user can always override per-search.');
 
   return lines.join('\n').replace(/\n+$/, '') + '\n';
+}
+
+/** Append `<heading>: <value>` for single-line values, or `<heading>:\n<body>`
+ *  for multi-line ones. Keeps headings visually aligned for the AI even
+ *  when the value contains markdown bullets. */
+function appendField(out: string[], heading: string, value: string): void {
+  const trimmed = value.trim();
+  if (trimmed.includes('\n')) {
+    out.push(`${heading}:`);
+    out.push(trimmed);
+  } else {
+    out.push(`${heading}: ${trimmed}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -213,36 +197,10 @@ function renderTailorContext(toml: ProfileToml): string {
 // helpers
 // ---------------------------------------------------------------------------
 
-/** Splits a multiline-string list into individual non-empty bullet items.
- *  Strips leading bullet markers (`- ` / `* ` / `+ `). */
-function asBullets(value: string): string[] {
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => line.replace(/^[-*+]\s+/, ''));
-}
-
 /** Folds multi-line text into a single line for compact "small thoughts"
  *  display. Newlines collapse to ` ⏎ ` (visible, but doesn't wrap). */
 function oneLine(text: string): string {
   return text.trim().replace(/\s*\n\s*/g, ' ⏎ ');
-}
-
-/** Returns a one-liner like "H-1B = no, OPT = yes". Skips NA values. */
-function renderSponsorshipShort(toml: ProfileToml): string {
-  const parts: string[] = [];
-  const fields: Array<[string, string]> = [
-    ['H-1B',  toml.job_preferences.sponsorship_h1b.trim()],
-    ['GC',    toml.job_preferences.sponsorship_green_card.trim()],
-    ['CPT',   toml.job_preferences.sponsorship_cpt.trim()],
-    ['OPT',   toml.job_preferences.sponsorship_opt.trim()],
-    ['none',  toml.job_preferences.sponsorship_none.trim()],
-  ];
-  for (const [label, value] of fields) {
-    if (value && value.toUpperCase() !== 'NA') parts.push(`${label} = ${value}`);
-  }
-  return parts.join(', ');
 }
 
 interface CollectedNote {
@@ -250,26 +208,21 @@ interface CollectedNote {
   text: string;
 }
 
-/** Walks every `note` / `subnote` field and returns the filled ones. */
+/** Walks every `*.note` path in PROFILE_FIELDS plus per-entry `.subnote`
+ *  fields on the array-of-tables, returning the filled ones. Note-path
+ *  enumeration is automatic — adding a `<table>.note` to PROFILE_FIELDS
+ *  picks it up here on next render. */
 function collectNotes(toml: ProfileToml): CollectedNote[] {
   const out: CollectedNote[] = [];
-  // Top-level table notes.
-  const tables: Array<[string, string]> = [
-    ['identity.note',          toml.identity.note],
-    ['contact.note',           toml.contact.note],
-    ['address.note',           toml.address.note],
-    ['links.note',             toml.links.note],
-    ['job_preferences.note',   toml.job_preferences.note],
-    ['demographics.note',      toml.demographics.note],
-    ['clearance.note',         toml.clearance.note],
-    ['form_answers.note',      toml.form_answers.note],
-    ['documents.note',         toml.documents.note],
-    ['resume.note',            toml.resume.note],
-  ];
-  for (const [source, text] of tables) {
-    if (isFilled(text)) out.push({ source, text });
+  // Top-level table .note fields, derived from PROFILE_FIELDS.
+  for (const f of PROFILE_FIELDS) {
+    if (!f.path.endsWith('.note')) continue;
+    const v = getByPath(toml, f.path);
+    if (typeof v === 'string' && isFilled(v)) {
+      out.push({ source: f.path, text: v });
+    }
   }
-  // Per-entry subnotes.
+  // Per-entry subnotes (array-of-tables — not field-shaped, must loop).
   for (const e of toml.experience) {
     if (isFilled(e.subnote)) out.push({ source: `experience.${e.id}.subnote`, text: e.subnote });
   }

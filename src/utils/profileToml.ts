@@ -84,17 +84,12 @@ const JobPreferencesSchema = z.object({
   target_roles: MultilineString,
   target_locations: MultilineString,
   remote_preference: MultilineString,
-  relocation_within_metro: MultilineString,
-  relocation_within_state: MultilineString,
-  relocation_cross_country: MultilineString,
-  relocation_international: MultilineString,
-  relocation_free_text: MultilineString,
-  sponsorship_h1b: MultilineString,
-  sponsorship_green_card: MultilineString,
-  sponsorship_cpt: MultilineString,
-  sponsorship_opt: MultilineString,
-  sponsorship_none: MultilineString,
-  sponsorship_free_text: MultilineString,
+  // β.10f: collapsed 5 relocation_* + 6 sponsorship_* fields into single
+  // freeform fields. None of those pseudo-enum values had structural
+  // consumers — every reader handed them to an AI as prose. See
+  // PROFILE_FIELDS comments + DECISIONS.md for the full argument.
+  relocation_preferences: MultilineString,
+  sponsorship_preferences: MultilineString,
   hard_reject_companies: MultilineString,
   precision_apply_companies: MultilineString,
   min_hourly_rate_usd: MultilineString,
@@ -116,10 +111,11 @@ const DemographicsSchema = z.object({
 }).default({} as never);
 
 const ClearanceSchema = z.object({
-  has_active: MultilineString,
-  level: MultilineString,
-  status: MultilineString,
-  willing_to_obtain: MultilineString,
+  // β.10f: collapsed has_active / level / status / willing_to_obtain
+  // (4 pseudo-enum fields) into one freeform `preferences` block. Form fill
+  // writes verbatim ATS answers from `form_answers.*`, NOT from these
+  // fields, so this is a clean collapse.
+  preferences: MultilineString,
   note: MultilineString,
 }).default({} as never);
 

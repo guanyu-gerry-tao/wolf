@@ -117,7 +117,37 @@ export interface JobQuery {
   limit?: number;
 }
 
+/**
+ * Partial-update patch — every field on the `jobs` row that's user-editable
+ * appears here. System-managed columns (`id`, `companyId`, `createdAt`,
+ * `updatedAt`) are intentionally NOT updatable through this surface.
+ *
+ * Two layers consume this:
+ *
+ *   - **pipeline writers** (score / tailor / fill / reach) typically patch
+ *     a small targeted slice (e.g. `{ status, score }` after scoring).
+ *   - **`wolf job set <field>`** patches exactly one field at a time, with
+ *     the user-supplied value coerced to the field's runtime type.
+ *
+ * Adding a new editable column means:
+ *   - add it here,
+ *   - add it to `JOB_FIELDS` in `src/utils/jobFields.ts` (drives CLI),
+ *   - extend `sqliteJobRepositoryImpl.update` if it doesn't already
+ *     pass through unknown keys (drizzle's `set(patch)` does — no change
+ *     needed for typical scalar additions).
+ */
 export interface JobUpdate {
+  // ---- core (set by `wolf add` / `wolf hunt`; rarely re-edited)
+  title?: string;
+  url?: string;
+  source?: JobSource;
+  location?: string;
+  remote?: boolean;
+  salary?: Salary | null;
+  workAuthorizationRequired?: Sponsorship;
+  clearanceRequired?: boolean;
+
+  // ---- pipeline state
   status?: JobStatus;
   error?: JobError | null;
   appliedProfileId?: string | null;

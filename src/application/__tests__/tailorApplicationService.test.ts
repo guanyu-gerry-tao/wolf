@@ -123,7 +123,7 @@ function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string; to
     list: vi.fn(),
     getProfileToml: vi.fn().mockImplementation(async () => {
       const { parseProfileToml } = await import('../../utils/profileToml.js');
-      const profileTomlTemplate = (await import('../../application/impl/templates/profile.toml')).default;
+      const { profileTomlTemplate } = await import('../../utils/profileTomlGenerate.js');
       const parsed = parseProfileToml(profileTomlTemplate);
       // Fill REQUIRED scalar fields so assertReadyForTailor's loop passes.
       const populated = {

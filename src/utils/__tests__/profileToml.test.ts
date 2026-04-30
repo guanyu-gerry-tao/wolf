@@ -8,11 +8,11 @@ import {
   type ProfileToml,
 } from '../profileToml.js';
 import { PROFILE_FIELDS, WOLF_BUILTIN_STORIES, WOLF_BUILTIN_STORY_IDS } from '../profileFields.js';
-import profileTemplate from '../../application/impl/templates/profile.toml';
+import { profileTomlTemplate as profileTemplate } from '../profileTomlGenerate.js';
 
 // `profile.toml` is the central data shape for v2 workspaces. The schema
 // lives in `profileToml.ts`, the template lives in
-// `src/application/impl/templates/profile.toml`, and the field metadata
+// the generated `profileTomlTemplate` (src/utils/profileTomlGenerate.ts), and the field metadata
 // for `wolf profile fields` lives in `profileFields.ts`. These tests pin
 // those three artifacts in alignment so a drift in any one fails CI loud
 // rather than surfacing as a runtime parse failure on a user's machine.
@@ -79,8 +79,8 @@ describe('parseProfileToml()', () => {
     expect(parsed.identity.country_currently_in.trim()).toBe('United States');
     expect(parsed.demographics.veteran_status.trim()).toBe('I am not a protected veteran');
     expect(parsed.demographics.first_gen_college.trim()).toBe('No');
-    expect(parsed.clearance.has_active.trim()).toBe('No');
-    expect(parsed.clearance.willing_to_obtain.trim()).toBe('Yes');
+    // β.10f: clearance collapsed from 4 pseudo-enum fields to 1 freeform
+    // `preferences` field. No defaults seeded — users write their own prose.
     expect(parsed.form_answers.salary_expectation.trim().length).toBeGreaterThan(0);
     expect(parsed.form_answers.how_did_you_hear.trim()).toBe('LinkedIn');
     expect(parsed.form_answers.when_can_you_start.trim()).toBe('Available immediately');

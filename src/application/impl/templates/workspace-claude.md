@@ -101,14 +101,6 @@ identity / contact fields are filled — want to do that now or later?"
 If `__WOLF_BIN__ doctor` reports READY, skip this section entirely. Don't
 re-onboard the user. Move on to whatever they actually asked.
 
-### v1 → v2 migration
-
-If the user has an old workspace from before the TOML refactor (i.e. the
-profile dir has `profile.md` / `resume_pool.md` / `standard_questions.md`
-files instead of `profile.toml`), run `__WOLF_BIN__ migrate` first. It backs
-up the originals to `.wolf/backups/v1/` and converts everything to the new
-single-file shape.
-
 ## What wolf does
 
 wolf is a CLI tool that:
@@ -122,7 +114,7 @@ wolf is a CLI tool that:
 
 | Command | Status |
 |---|---|
-| `__WOLF_BIN__ init` / `add` / `tailor` / `status` / `doctor` / `migrate` / `job list` / `profile` / `context` / `config` / `env` / `mcp serve` | available |
+| `__WOLF_BIN__ init` / `add` / `tailor` / `status` / `doctor` / `migrate` / `job` (`list` / `show` / `get` / `set` / `fields`) / `profile` / `context` / `config` / `env` / `mcp serve` | available |
 | `__WOLF_BIN__ hunt` / `score` | NOT YET IMPLEMENTED — M2 |
 | `__WOLF_BIN__ fill` | NOT YET IMPLEMENTED — M4 |
 | `__WOLF_BIN__ reach` | NOT YET IMPLEMENTED — M5 |
@@ -146,6 +138,11 @@ wants the underlying behaviour today, use the available substitute:
 | `__WOLF_BIN__ hunt` | NOT YET (M2) — auto-fetch job listings from online sources |
 | `__WOLF_BIN__ score` | NOT YET (M2) — score pending jobs against the profile |
 | `__WOLF_BIN__ status` | List all tracked jobs with status and scores |
+| `__WOLF_BIN__ job list` | Filtered job list with `--search`, `--status`, `--min-score`, etc. |
+| `__WOLF_BIN__ job show <id>` | Print every column of a job + JD prose |
+| `__WOLF_BIN__ job get <id> <field>` | Read one field (pipe-friendly) |
+| `__WOLF_BIN__ job set <id> <field> <value>` | Update one field (use `--from-file` for `description_md` or long values) |
+| `__WOLF_BIN__ job fields` | List editable job fields with help / types / enum values |
 
 ### Tailor pipeline (3-agent flow with checkpoints)
 | Command | What it does |
@@ -253,11 +250,6 @@ data/
     └── <company>_<companyIdShort>/
         └── info.md                       ← free-form notes about the employer
 ```
-
-**JD prose lives in SQLite** as of v2 (the `jobs.description_md` column),
-not in a separate `jd.md` file. `wolf job list` / `tailor` / etc. read it
-straight from the DB. Tailor's per-job artifact dir still exists for the
-generated PDFs and intermediate HTML.
 
 **All `.md` and `.html` files under `src/` are editable checkpoints.** If the
 resume is off but the cover letter is fine, edit `tailoring-brief.md` (or

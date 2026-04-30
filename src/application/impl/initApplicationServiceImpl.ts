@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import claudeTemplate from './templates/workspace-claude.md';
-import profileTomlTemplate from './templates/profile.toml';
+import { profileTomlTemplate } from '../../utils/profileTomlGenerate.js';
 import attachmentsReadmeTemplate from './templates/attachments-readme.md';
 import { saveConfig } from '../../utils/config.js';
 import { currentBinaryName } from '../../utils/instance.js';

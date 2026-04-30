@@ -9,7 +9,7 @@ import {
   TomlEditError,
 } from '../tomlEdit.js';
 import { parseProfileToml } from '../profileToml.js';
-import profileTemplate from '../../application/impl/templates/profile.toml';
+import { profileTomlTemplate as profileTemplate } from '../profileTomlGenerate.js';
 
 // Surgical TOML edit drives every `wolf profile set / add / remove`. The
 // reviewer flagged regex robustness as a real concern (C1) — these tests

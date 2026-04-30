@@ -6,7 +6,7 @@ import {
   renderResumePoolMarkdown,
   renderStandardQuestionsMarkdown,
 } from '../../utils/profileTomlRender.js';
-import profileTomlTemplate from '../../application/impl/templates/profile.toml';
+import { profileTomlTemplate } from '../../utils/profileTomlGenerate.js';
 
 // Minimal stub TOML that satisfies the v2 schema. Tests that need richer
 // profile content should instantiate their own repo subclass or build a

@@ -7,7 +7,7 @@ import updateNotifier from 'update-notifier';
 import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from './commands/tailor.js';
 import { status, formatStatus } from './commands/status.js';
 import { doctor, formatDoctor } from './commands/doctor.js';
-import { runJobListCli } from './commands/job/index.js';
+import { runJobListCli, jobShow, jobGet, jobSet, jobFields } from './commands/job/index.js';
 import { init } from './commands/init.js';
 import { add } from './commands/add.js';
 import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
@@ -306,6 +306,49 @@ jobCmd
       Boolean(opts.json),
     );
   });
+// `wolf job show <id>` — print every column + JD prose.
+jobCmd
+  .command('show')
+  .description('Print all fields of a job by id, plus its JD prose.')
+  .argument('<id>', 'Job id (uuid)')
+  .option('--json', 'Machine-readable output')
+  .action(async (id: string, opts: { json?: boolean }) => {
+    await jobShow(id, opts);
+  });
+
+// `wolf job get <id> <field>` — pipe-friendly single-field read.
+jobCmd
+  .command('get')
+  .description('Read one field of a job by id.')
+  .argument('<id>', 'Job id (uuid)')
+  .argument('<field>', 'Field name (e.g. status, score, description_md)')
+  .action(async (id: string, field: string) => {
+    await jobGet(id, field);
+  });
+
+// `wolf job set <id> <field> [value]` — surgical update; --from-file for prose.
+jobCmd
+  .command('set')
+  .description('Update one field of a job. `--from-file` reads multiline values from disk.')
+  .argument('<id>', 'Job id (uuid)')
+  .argument('<field>', 'Field name (e.g. status, score, description_md)')
+  .argument('[value]', 'Value (use --from-file for long prose or shell-quoting-hostile values)')
+  .option('--from-file <path>', 'Read the value from a file instead of the CLI arg')
+  .action(async (id: string, field: string, value: string | undefined, opts: { fromFile?: string }) => {
+    await jobSet(id, field, value, opts);
+  });
+
+// `wolf job fields [name]` — schema reference for humans / AI.
+jobCmd
+  .command('fields')
+  .description('Print the field reference. Pass [name] to detail one field.')
+  .argument('[name]', 'Optional field name; prints just that field if given')
+  .option('--required', 'Only list REQUIRED fields')
+  .option('--json', 'Machine-readable output')
+  .action(async (name: string | undefined, opts: { required?: boolean; json?: boolean }) => {
+    await jobFields(name, opts);
+  });
+
 program.addCommand(jobCmd);
 
 const configCmd = new Command('config').description('Get or set wolf.toml fields by dot-path key');
