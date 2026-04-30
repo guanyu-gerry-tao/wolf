@@ -14,7 +14,7 @@ import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
 import { configGet, configSet } from './commands/config.js';
 import {
   profileList, profileCreate, profileUse, profileDelete,
-  profileShow, profileGet, profileSet, profileAdd, profileAddStory, profileRemove, profileFields,
+  profileShow, profileGet, profileSet, profileAdd, profileAddQuestion, profileRemove, profileFields,
 } from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
 import { context } from './commands/context.js';
@@ -421,7 +421,7 @@ profileCmd
     answerFromFile?: string;
   }) => {
     if (type === 'question') {
-      await profileAddStory({
+      await profileAddQuestion({
         prompt: opts.prompt,
         answer: opts.answer,
         promptFromFile: opts.promptFromFile,

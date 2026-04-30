@@ -23,11 +23,11 @@ import type {
  * - `search` — drives a search-time agent (browsing jobs in the user's
  *   browser). Sees ONLY job_preferences + clearance + a coarse
  *   experience snapshot + user notes. No identity / contact / address /
- *   demographics / stories / form answers. The header tells the agent
+ *   demographics / questions. The header tells the agent
  *   to honour hard-rejects, sponsorship limits, salary floors.
  *
  * - `tailor` — drives the resume / cover-letter writer. Sees identity +
- *   contact + job_preferences + full experience + skills + stories. NOT
+ *   contact + job_preferences + full experience + skills + questions. NOT
  *   used by `wolf tailor` itself (that command builds its own prompt
  *   internally), but available for any wrapper / orchestrator that
  *   wants to drive tailor through chat.
@@ -149,7 +149,7 @@ function renderTailorContext(toml: ProfileToml): string {
 
   lines.push('# Wolf tailor context');
   lines.push('');
-  lines.push("Identity / preferences / experience / stories the resume + cover-letter");
+  lines.push("Identity / preferences / experience / Q&A the resume + cover-letter");
   lines.push('writers can pull from. Section headings mirror the v1 .md shape so AI');
   lines.push('prompts that expected `## Email\\nvalue` still work.');
   lines.push('');
@@ -169,22 +169,24 @@ function renderTailorContext(toml: ProfileToml): string {
     lines.push('');
   }
 
-  // Stories — only filled ones; mirror old standard_questions.md story section.
-  const storyLines: string[] = [];
+  // β.10g: unified Q&A pool — short ATS verbatim answers + behavioral STAR
+  // stories live in the same `[[question]]` array; renderer treats them
+  // uniformly. Only filled answers surface in tailor context.
+  const qaLines: string[] = [];
   for (const s of toml.question) {
     if (!isFilled(s.answer)) continue;
-    storyLines.push(`### ${s.prompt.trim()}`);
-    storyLines.push(s.answer.trim());
+    qaLines.push(`### ${s.prompt.trim()}`);
+    qaLines.push(s.answer.trim());
     if (isFilled(s.subnote)) {
-      storyLines.push('');
-      storyLines.push(`> Notes: ${oneLine(s.subnote)}`);
+      qaLines.push('');
+      qaLines.push(`> Notes: ${oneLine(s.subnote)}`);
     }
-    storyLines.push('');
+    qaLines.push('');
   }
-  if (storyLines.length > 0) {
-    lines.push('# Stories');
+  if (qaLines.length > 0) {
+    lines.push('# Q&A');
     lines.push('');
-    lines.push(...storyLines);
+    lines.push(...qaLines);
   }
 
   return lines.join('\n').replace(/\n+$/, '') + '\n';

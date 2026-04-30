@@ -6,9 +6,11 @@ import type { ProfileToml } from '../utils/profileToml.js';
  * directory holding:
  *   - profile.toml   — single-file structured profile (identity, contact,
  *                      address, links, job_preferences, demographics,
- *                      clearance, form_answers, documents, skills,
+ *                      clearance, documents, skills,
  *                      [[experience]], [[project]], [[education]],
- *                      [[question]], various optional resume sections)
+ *                      [[question]], various optional resume sections).
+ *                      β.10g merged the former [form_answers] table into
+ *                      [[question]] as builtin entries.
  *   - attachments/   — files referenced by documents.* (transcript, etc.)
  *
  * The legacy v1 markdown trio (profile.md / resume_pool.md /
@@ -45,7 +47,7 @@ export interface ProfileRepository {
    *  markdown. Used by tailor's analyst pool input. */
   getResumePool(name: string): Promise<string>;
 
-  /** Renders form answers + behavioural stories + document pointers as
+  /** Renders the unified [[question]] Q&A pool + document pointers as
    *  markdown. Used by fill (M4) and any prompt builder needing the
    *  application-time Q&A surface. */
   getStandardQuestions(name: string): Promise<string>;

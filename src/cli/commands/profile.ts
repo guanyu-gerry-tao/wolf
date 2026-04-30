@@ -141,7 +141,7 @@ export async function profileAdd(
  * `--prompt-from-file` / `--answer-from-file` read from disk for long
  * content or values containing `"""` (which break TOML termination).
  */
-export async function profileAddStory(
+export async function profileAddQuestion(
   opts: {
     prompt?: string;
     answer?: string;
@@ -171,7 +171,7 @@ export async function profileAddStory(
     answer = opts.answer;
   }
 
-  const r = await ctx.profileApp.addStory({
+  const r = await ctx.profileApp.addQuestion({
     prompt,
     answer,
     id: opts.id,

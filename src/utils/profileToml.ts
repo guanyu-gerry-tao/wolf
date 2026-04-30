@@ -250,6 +250,21 @@ export type QuestionEntry = z.infer<typeof QuestionEntrySchema>;
  */
 export function parseProfileToml(text: string): ProfileToml {
   const obj = parseTomlText(text);
+
+  // β.10g hard-cut guard: if the input still has `[[story]]` (the pre-β.10g
+  // shape) instead of `[[question]]`, fail loud rather than silently
+  // letting zod's `.default([])` swallow the user's STAR answers. Pre-1.0
+  // policy is "re-init", but data loss without warning is unacceptable —
+  // the message tells the user exactly what's wrong and how to recover.
+  if (Array.isArray((obj as Record<string, unknown>).story)) {
+    throw new Error(
+      'profile.toml uses the pre-β.10g [[story]] array; it was renamed to [[question]] ' +
+      'when form_answers absorbed into the same Q&A pool. Wolf is pre-1.0 with no automated ' +
+      'migration: copy your `[[story]]` blocks into `[[question]]` (rename `star_story` → ' +
+      '`answer`) by hand, or back up your data and re-run `wolf init` to start fresh.',
+    );
+  }
+
   const parsed = ProfileTomlSchema.parse(obj);
   return injectMissingBuiltinQuestions(parsed);
 }

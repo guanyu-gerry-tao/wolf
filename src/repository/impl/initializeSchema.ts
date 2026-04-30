@@ -42,7 +42,7 @@ export function initializeSchema(db: DrizzleDb): void {
       source                      TEXT    NOT NULL,
       location                    TEXT    NOT NULL,
       remote                      INTEGER NOT NULL,
-      salary_low                  TEXT,
+      salary_low                  REAL,
       salary_high                 REAL,
       work_authorization_required TEXT    NOT NULL,
       clearance_required          INTEGER NOT NULL,

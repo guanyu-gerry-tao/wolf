@@ -108,6 +108,23 @@ describe('parseProfileToml()', () => {
     // Float — z.number().int() rejects.
     expect(() => parseProfileToml('schemaVersion = 1.5')).toThrow();
   });
+
+  // β.10g hard-cut guard: a pre-β.10g TOML carrying `[[story]]` must fail
+  // loud, NOT silently drop the user's STAR answers. zod's `.default([])`
+  // on `question` plus smol-toml's permissive parsing would otherwise
+  // make `[[story]]` blocks invisible to consumers.
+  it('rejects pre-β.10g [[story]] arrays loudly (data-loss guard)', () => {
+    const legacyToml = [
+      'schemaVersion = 2',
+      '',
+      '[[story]]',
+      'id = "tell_me_about_failure"',
+      'prompt = """Tell me about failure"""',
+      'star_story = """Once I shipped a flag-less feature"""',
+    ].join('\n');
+    expect(() => parseProfileToml(legacyToml)).toThrow(/\[\[story\]\]/);
+    expect(() => parseProfileToml(legacyToml)).toThrow(/\[\[question\]\]/);
+  });
 });
 
 describe('injectMissingBuiltinQuestions()', () => {

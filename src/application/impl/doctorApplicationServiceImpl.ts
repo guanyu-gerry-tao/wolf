@@ -20,10 +20,11 @@ import type {
 // material to work with without forcing the user to be exhaustive on day one.
 const RESUME_MIN_ENTRIES = 5;
 
-// Stories threshold — how many builtin behavioral prompts the user must have
-// answered before tailor / fill consider the workspace ready. fill (M4) can
-// still pause-and-ask for any missing field at apply time, so this is a
-// "you've started populating questions" check, not "every story filled".
+// Questions threshold — how many builtin Q&A prompts the user must have
+// answered before tailor / fill consider the workspace ready. fill (M4)
+// can still pause-and-ask for any missing field at apply time, so this is
+// a "you've started populating questions" check, not "every question
+// filled".
 const QUESTIONS_MIN_ANSWERED = 3;
 
 /**
@@ -44,7 +45,7 @@ export class DoctorApplicationServiceImpl implements DoctorApplicationService {
 
     const profileCheck = checkProfileFields(toml);
     const poolCheck = checkResumeContent(toml);
-    const sqCheck = checkStoriesAndFormAnswers(toml);
+    const sqCheck = checkQuestions(toml);
 
     // Runtime preflight checks — fail fast on these and tailor will error
     // before any AI call. Reported alongside the profile checks so the user
@@ -156,10 +157,10 @@ function checkResumeContent(toml: ProfileToml): FileCheck {
 }
 
 // ---------------------------------------------------------------------------
-// Stories + form answers — count filled builtin questions
+// Questions — count filled builtin Q&A entries (β.10g unified pool)
 // ---------------------------------------------------------------------------
 
-function checkStoriesAndFormAnswers(toml: ProfileToml): FileCheck {
+function checkQuestions(toml: ProfileToml): FileCheck {
   const builtinIds = new Set(WOLF_BUILTIN_QUESTIONS.map((s) => s.id));
   const answeredBuiltins = toml.question.filter(
     (s) => builtinIds.has(s.id) && isFilled(s.answer),

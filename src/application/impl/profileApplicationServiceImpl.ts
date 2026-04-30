@@ -357,7 +357,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
   }
 
   /** @inheritdoc */
-  async addStory(opts: {
+  async addQuestion(opts: {
     prompt: string;
     answer?: string;
     id?: string;
@@ -393,7 +393,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     }
 
     // Build the [[question]] block with prompt + (optional) answer.
-    const block = buildStoryBlock(id, opts.prompt, opts.answer ?? '');
+    const block = buildQuestionBlock(id, opts.prompt, opts.answer ?? '');
     const after = appendArrayMember(before, block);
     await fs.writeFile(tomlPath, after, 'utf-8');
 
@@ -489,7 +489,7 @@ function buildEmptyArrayBlock(arrayName: 'experience' | 'project' | 'education',
  *  prompt is the question text; answer may be pre-filled or empty.
  *  Multiline triple-quote shape matches what surgical edits expect for
  *  later updates. */
-function buildStoryBlock(id: string, prompt: string, answer: string): string {
+function buildQuestionBlock(id: string, prompt: string, answer: string): string {
   // Reject `"""` in either value — would break TOML termination. Same
   // contract as setMultilineString in tomlEdit.
   if (prompt.includes('"""') || answer.includes('"""')) {

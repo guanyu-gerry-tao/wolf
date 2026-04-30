@@ -4,7 +4,7 @@ import {
   type JobListOptions,
   type JobListResult,
 } from '../../utils/types/commands.js';
-import { ALL_JOB_STATUSES, type Job, type JobQuery, type JobUpdate, type Salary } from '../../utils/types/job.js';
+import { ALL_JOB_STATUSES, type Job, type JobQuery, type JobUpdate } from '../../utils/types/job.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { CompanyRepository } from '../../repository/companyRepository.js';
 import type {
@@ -214,18 +214,6 @@ function coerceFieldValue(meta: JobFieldMeta, raw: string): unknown {
         );
       }
       return raw;
-    }
-
-    case 'salary': {
-      // Salary = number | "unpaid" | null.
-      const trimmed = raw.trim();
-      if (trimmed.length === 0) return null;
-      if (trimmed === 'unpaid') return 'unpaid' as Salary;
-      const n = Number(trimmed);
-      if (!Number.isFinite(n)) {
-        throw new Error(`Field "${meta.name}" must be a number, "unpaid", or blank (got "${raw}").`);
-      }
-      return n;
     }
 
     case 'nullableString': {

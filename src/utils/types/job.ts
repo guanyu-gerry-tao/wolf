@@ -54,14 +54,19 @@ export type JobError =
   | "reach_send_error";           // Gmail API failed to send email
 
 /**
- * Annual compensation in USD, or "unpaid" for internships/volunteer roles.
- * Using a union type forces explicit handling of the unpaid case.
+ * Annual compensation in USD.
  *
  * β.10j: split into `salaryLow` + `salaryHigh` on Job. JD often advertises
- * a range ("$120k–$180k"); we store both endpoints. `salaryLow` carries
- * the unpaid sentinel; `salaryHigh` is always numeric or null.
+ * a range ("$120k–$180k"); we store both endpoints.
+ *
+ * β.10k: unpaid sentinel removed. We use plain `number` everywhere with two
+ * conventions:
+ *   - `0`    → explicitly unpaid (internship / volunteer / equity-only).
+ *   - `null` → unknown / not listed by the JD.
+ * Callers MUST distinguish — a 0 minimum is a real signal, "unknown"
+ * means the JD didn't say. Single-point comp ("$150k flat") → low=high.
  */
-export type Salary = number | "unpaid";
+export type Salary = number;
 
 /** Where wolf found the job. Set by each provider — not an exhaustive enum. */
 export type JobSource =
@@ -83,13 +88,19 @@ export interface Job {
   source: JobSource;
   location: string; // specific office location for this role
   remote: boolean;
-  // β.10j: split salary into low/high. If the JD lists a range "$120k–
-  // $180k" → salaryLow=120000, salaryHigh=180000. Single value "$150k" →
-  // salaryLow=salaryHigh=150000 (or salaryLow=150000, salaryHigh=null —
-  // both are valid; AI fillers should treat both as "single point").
-  // Unpaid internship → salaryLow="unpaid", salaryHigh=null.
-  // Unknown / not listed → salaryLow=null, salaryHigh=null.
-  salaryLow: Salary | null;
+  // β.10j/k: salary range. Both fields are plain numbers in USD.
+  //   "$120k–$180k"            → salaryLow=120000, salaryHigh=180000
+  //   "$150k flat"             → salaryLow=salaryHigh=150000
+  //   Unpaid intern (no comp)  → salaryLow=0,      salaryHigh=0
+  //   Unpaid base + $30k bonus → salaryLow=0,      salaryHigh=30000
+  //   Not listed in JD         → salaryLow=null,   salaryHigh=null
+  // Two distinct conventions:
+  //   `0`    = explicit "unpaid" (real signal — user knowingly takes it).
+  //   `null` = unknown (JD didn't say).
+  // The pair (low, high) carries no implicit constraint — `low=0 high=N`
+  // is valid (e.g. unpaid base with bonus ceiling). Coercion does NOT
+  // validate the pair; the AI / scorer interprets shape.
+  salaryLow: number | null;
   salaryHigh: number | null;
   workAuthorizationRequired: Sponsorship; // e.g. "no sponsorship", "US citizens only"
   clearanceRequired: boolean;
@@ -156,7 +167,7 @@ export interface JobUpdate {
   source?: JobSource;
   location?: string;
   remote?: boolean;
-  salaryLow?: Salary | null;
+  salaryLow?: number | null;
   salaryHigh?: number | null;
   workAuthorizationRequired?: Sponsorship;
   clearanceRequired?: boolean;

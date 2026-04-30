@@ -212,6 +212,38 @@ describe('JobApplicationService.setField', () => {
     expect(jobRepo.update).toHaveBeenCalledWith('job-1', { score: null });
   });
 
+  // β.10k: salary low/high split, unpaid sentinel removed.
+  // 0 = explicit unpaid (real signal); null = unknown (JD didn't say).
+  // The pair carries no constraint — `low=0` + `high=N` is valid (e.g.
+  // unpaid base + bonus ceiling). Verify both round-trip and that the
+  // string "unpaid" is rejected (no longer a magic sentinel).
+  it('round-trips salaryLow=0 + salaryHigh=number (unpaid base + bonus)', async () => {
+    const { jobRepo, companyRepo } = makeRepos([makeJob()]);
+    const svc = new JobApplicationServiceImpl(jobRepo, companyRepo);
+
+    // Persist 0 as the explicit "unpaid" signal — must be a real 0,
+    // not coerced to null.
+    const lowResult = await svc.setField('job-1', 'salaryLow', '0');
+    expect(lowResult.newValue).toBe('0');
+    expect(jobRepo.update).toHaveBeenCalledWith('job-1', { salaryLow: 0 });
+
+    // High allowed even when low=0 — covers JDs like "unpaid base + $30k bonus".
+    const highResult = await svc.setField('job-1', 'salaryHigh', '30000');
+    expect(highResult.newValue).toBe('30000');
+    expect(jobRepo.update).toHaveBeenLastCalledWith('job-1', { salaryHigh: 30000 });
+
+    // Read-back round-trip: getField returns the persisted scalar
+    // stringified ('0', not '' — `0 !== null`).
+    expect(await svc.getField('job-1', 'salaryLow')).toBe('0');
+    expect(await svc.getField('job-1', 'salaryHigh')).toBe('30000');
+  });
+
+  it('rejects "unpaid" string for salaryLow (sentinel removed in β.10k)', async () => {
+    const { jobRepo, companyRepo } = makeRepos([makeJob()]);
+    const svc = new JobApplicationServiceImpl(jobRepo, companyRepo);
+    await expect(svc.setField('job-1', 'salaryLow', 'unpaid')).rejects.toThrow(/must be a number/);
+  });
+
   // System-managed fields (id, createdAt) are protected from writes.
   it('refuses to set system-managed fields', async () => {
     const { jobRepo, companyRepo } = makeRepos([makeJob()]);

@@ -32,10 +32,9 @@ import { ALL_JOB_STATUSES } from './types/job.js';
 export type JobFieldType =
   | 'string'             // non-empty single-line string
   | 'multilineString'    // long-form prose (description_md, scoreJustification)
-  | 'number'             // numeric, e.g. score 0..1
+  | 'number'             // numeric, e.g. score 0..1, salaryLow / salaryHigh
   | 'boolean'            // 'true'/'false', 'yes'/'no', '1'/'0'
   | 'enum'               // one of `enumValues`
-  | 'salary'             // number | "unpaid" | null
   | 'nullableString'     // string OR empty/'null' for null
   | 'nullableEnum';      // enum OR empty/'null' for null
 
@@ -84,11 +83,12 @@ export const JOB_FIELDS: ReadonlyArray<JobFieldMeta> = [
   { name: 'remote',                      type: 'boolean',          required: true,  help: 'Whether the role is remote.' },
 
   // ---- optional pay / requirements
-  // β.10j: salary split into low/high. JD listing "$120k–$180k" →
-  // salaryLow=120000, salaryHigh=180000. Unpaid → salaryLow="unpaid",
-  // salaryHigh=null. Unknown → both null.
-  { name: 'salaryLow',                   type: 'salary',           required: false, help: 'Lower bound of annual USD (number) or "unpaid" for unpaid roles; blank = unknown.' },
-  { name: 'salaryHigh',                  type: 'number',           required: false, help: 'Upper bound of annual USD; blank if single-point or unknown.' },
+  // β.10j/k: salary range, both plain numbers in USD.
+  //   IMPORTANT: 0 = explicitly unpaid (real signal); blank = unknown.
+  //   The pair carries no constraint — `low=0` + `high=30000` is valid
+  //   (unpaid base + bonus ceiling). Coercion does not validate the pair.
+  { name: 'salaryLow',                   type: 'number',           required: false, help: 'Lower bound of annual USD. Use 0 for unpaid (explicit). Blank = unknown / not listed by JD.' },
+  { name: 'salaryHigh',                  type: 'number',           required: false, help: 'Upper bound of annual USD. Blank if single-point comp or unknown. Allowed even when salaryLow is 0 (e.g. unpaid base + bonus).' },
   { name: 'workAuthorizationRequired',   type: 'enum',             required: true,  help: 'Sponsorship stance per JD.', enumValues: SPONSORSHIP_VALUES },
   { name: 'clearanceRequired',           type: 'boolean',          required: true,  help: 'Whether the role requires a security clearance.' },
 

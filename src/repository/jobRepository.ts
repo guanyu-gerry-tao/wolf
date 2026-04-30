@@ -57,9 +57,15 @@ export interface JobRepository {
    * the actual path is always derivable from `getWorkspaceDir(id)` plus a
    * fixed filename, so persisting it was redundant.
    *
-   * Returns the path even if the file does not yet exist; callers that need
-   * "is this produced?" should read the corresponding `hasX` flag on the
-   * Job row instead of stat-ing the path.
+   * Returns the path even if the file does not yet exist. Callers should
+   * read the corresponding `hasX` flag on the Job row to decide whether
+   * the artifact has been produced; this method does NOT stat the disk.
+   *
+   * **Stale-flag note**: `hasX = true` means "wolf produced this artifact",
+   * not "the file currently exists on disk". A user who manually deletes
+   * the rendered PDF leaves the flag set; consumers reading the path
+   * should handle ENOENT gracefully (re-run the relevant pipeline step
+   * rather than hard-fail).
    */
   getArtifactPath(id: string, kind: ArtifactKind): Promise<string>;
 }

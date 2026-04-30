@@ -13,7 +13,7 @@ export interface ProfileSetResult {
   newValue: string;
 }
 
-/** Result of `addEntry` / `addStory`. */
+/** Result of `addEntry` / `addQuestion`. */
 export interface ProfileAddEntryResult {
   arrayName: 'experience' | 'project' | 'education' | 'question';
   id: string;
@@ -143,7 +143,7 @@ export interface ProfileApplicationService {
    * stories carry `required = true`). The id can collide with a builtin
    * id; in that case wolf appends `-2` / `-3` rather than overwriting.
    */
-  addStory(opts: {
+  addQuestion(opts: {
     prompt: string;
     answer?: string;
     id?: string;
