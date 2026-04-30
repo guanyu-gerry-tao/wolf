@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { parse as parseTomlText } from 'smol-toml';
-import { WOLF_BUILTIN_STORIES } from './profileFields.js';
+import { WOLF_BUILTIN_QUESTIONS } from './profileFields.js';
 
 /**
  * Parser, validator, and shape for `profile.toml` (the v2 single-file profile).
@@ -28,8 +28,8 @@ import { WOLF_BUILTIN_STORIES } from './profileFields.js';
  *
  * # Lazy inject for builtin stories
  *
- * `[[story]]` entries shipped before the binary added new builtins are
- * missing those builtins. `injectMissingBuiltinStories` runs after parse
+ * `[[question]]` entries shipped before the binary added new builtins are
+ * missing those builtins. `injectMissingBuiltinQuestions` runs after parse
  * to top up the array. This avoids a `schema_version` bump every time
  * wolf adds a builtin prompt.
  */
@@ -119,16 +119,6 @@ const ClearanceSchema = z.object({
   note: MultilineString,
 }).default({} as never);
 
-const FormAnswersSchema = z.object({
-  authorized_to_work: MultilineString,
-  require_sponsorship: MultilineString,
-  willing_to_relocate: MultilineString,
-  salary_expectation: MultilineString,
-  how_did_you_hear: MultilineString,
-  when_can_you_start: MultilineString,
-  note: MultilineString,
-}).default({} as never);
-
 const DocumentsSchema = z.object({
   transcript: MultilineString,
   unofficial_transcript: MultilineString,
@@ -193,13 +183,13 @@ const EducationEntrySchema = z.object({
   subnote: MultilineString,
 });
 
-const StoryEntrySchema = z.object({
+const QuestionEntrySchema = z.object({
   id: z.string().min(1),
   prompt: MultilineString,
   // wolf-managed flag; user shouldn't touch on builtins. Default false so
   // a malformed entry doesn't get auto-promoted to required-status.
   required: z.boolean().default(false),
-  star_story: MultilineString,
+  answer: MultilineString,
   subnote: MultilineString,
 });
 
@@ -219,7 +209,6 @@ export const ProfileTomlSchema = z.object({
   job_preferences: JobPreferencesSchema,
   demographics: DemographicsSchema,
   clearance: ClearanceSchema,
-  form_answers: FormAnswersSchema,
   documents: DocumentsSchema,
   skills: SkillsSchema,
 
@@ -237,14 +226,14 @@ export const ProfileTomlSchema = z.object({
   experience: z.array(ExperienceEntrySchema).default([]),
   project: z.array(ProjectEntrySchema).default([]),
   education: z.array(EducationEntrySchema).default([]),
-  story: z.array(StoryEntrySchema).default([]),
+  question: z.array(QuestionEntrySchema).default([]),
 });
 
 export type ProfileToml = z.infer<typeof ProfileTomlSchema>;
 export type ExperienceEntry = z.infer<typeof ExperienceEntrySchema>;
 export type ProjectEntry = z.infer<typeof ProjectEntrySchema>;
 export type EducationEntry = z.infer<typeof EducationEntrySchema>;
-export type StoryEntry = z.infer<typeof StoryEntrySchema>;
+export type QuestionEntry = z.infer<typeof QuestionEntrySchema>;
 
 // ---------------------------------------------------------------------------
 // Parse + lazy-inject pipeline
@@ -252,8 +241,8 @@ export type StoryEntry = z.infer<typeof StoryEntrySchema>;
 
 /**
  * Parses a TOML string into a typed `ProfileToml`. Applies zod defaults
- * for any missing baseline fields, then runs `injectMissingBuiltinStories`
- * to top up the [[story]] array with any builtins added since the file
+ * for any missing baseline fields, then runs `injectMissingBuiltinQuestions`
+ * to top up the [[question]] array with any builtins added since the file
  * was written.
  *
  * @throws on malformed TOML or schema-level type mismatches (e.g. an
@@ -262,35 +251,35 @@ export type StoryEntry = z.infer<typeof StoryEntrySchema>;
 export function parseProfileToml(text: string): ProfileToml {
   const obj = parseTomlText(text);
   const parsed = ProfileTomlSchema.parse(obj);
-  return injectMissingBuiltinStories(parsed);
+  return injectMissingBuiltinQuestions(parsed);
 }
 
 /**
- * Top-up: if any wolf-builtin story id from `WOLF_BUILTIN_STORIES` is
- * missing from `parsed.story`, append a stub. Preserves existing entries
- * (including custom ones) verbatim. Order: existing entries stay in their
- * original positions; missing builtins are appended in their wolf-defined
- * order.
+ * Top-up: if any wolf-builtin question id from `WOLF_BUILTIN_QUESTIONS` is
+ * missing from `parsed.question`, append a stub seeded with `defaultAnswer`
+ * if any (otherwise blank). Preserves existing entries (including custom
+ * ones) verbatim. Order: existing entries stay in their original positions;
+ * missing builtins are appended in their wolf-defined order.
  *
  * Why this exists: wolf releases can add new builtin prompts without a
  * `schemaVersion` bump (small, additive change). On first read after the
  * upgrade, missing builtins are surfaced. The next disk write (via
  * `wolf profile set` or migration) persists the topped-up shape.
  */
-export function injectMissingBuiltinStories(parsed: ProfileToml): ProfileToml {
-  const presentIds = new Set(parsed.story.map((s) => s.id));
-  const missing = WOLF_BUILTIN_STORIES.filter((b) => !presentIds.has(b.id));
+export function injectMissingBuiltinQuestions(parsed: ProfileToml): ProfileToml {
+  const presentIds = new Set(parsed.question.map((q) => q.id));
+  const missing = WOLF_BUILTIN_QUESTIONS.filter((b) => !presentIds.has(b.id));
   if (missing.length === 0) return parsed;
 
-  const appended: StoryEntry[] = missing.map((b) => ({
+  const appended: QuestionEntry[] = missing.map((b) => ({
     id: b.id,
     prompt: b.prompt,
     required: b.required,
-    star_story: '',
+    answer: b.defaultAnswer ?? '',
     subnote: '',
   }));
 
-  return { ...parsed, story: [...parsed.story, ...appended] };
+  return { ...parsed, question: [...parsed.question, ...appended] };
 }
 
 /**
@@ -311,7 +300,7 @@ export function isFilled(value: string): boolean {
  *   - `<table>.<field>`             scalar table member (e.g. `contact.email`)
  *   - `<type>.<id>.<field>`         array-of-table member by id
  *                                   (e.g. `experience.amazon-2024.bullets`,
- *                                    `story.tell_me_about_failure.star_story`)
+ *                                    `question.tell_me_about_failure.answer`)
  *
  * Returns `undefined` for unknown paths or missing array members.
  */

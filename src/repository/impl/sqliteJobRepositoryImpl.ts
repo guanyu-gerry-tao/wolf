@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { and, eq, gte, inArray, isNotNull, like, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, like, lte, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { JobRepository } from '../jobRepository.js';
+import type { ArtifactKind, JobRepository } from '../jobRepository.js';
 import type { CompanyRepository } from '../companyRepository.js';
 import type { Job, JobQuery, JobStatus, JobUpdate } from '../../utils/types/job.js';
 import { ALL_JOB_STATUSES } from '../../utils/types/job.js';
@@ -118,7 +118,7 @@ export class SqliteJobRepositoryImpl implements JobRepository {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(jobs)
-      .where(isNotNull(jobs.tailoredResumePdfPath));
+      .where(eq(jobs.hasTailoredResume, true));
     return Number(row?.count ?? 0);
   }
 
@@ -182,6 +182,20 @@ export class SqliteJobRepositoryImpl implements JobRepository {
     // produced 0 rows updated, which is fine — the tailor flow does its
     // own existence check via get()).
     void result;
+  }
+
+  async getArtifactPath(id: string, kind: ArtifactKind): Promise<string> {
+    // β.10h: convention paths under the per-job workspace dir. The booleans
+    // (hasTailoredResume etc.) on the Job row tell callers whether the
+    // artifact has been produced; the path is always derivable.
+    const dir = await this.getWorkspaceDir(id);
+    switch (kind) {
+      case 'resume_pdf':         return path.join(dir, 'resume.pdf');
+      case 'cover_letter_html':  return path.join(dir, 'src', 'cover_letter.html');
+      case 'cover_letter_pdf':   return path.join(dir, 'cover_letter.pdf');
+      case 'screenshot_dir':     return path.join(dir, 'screenshots');
+      case 'outreach_draft':     return path.join(dir, 'outreach.eml');
+    }
   }
 }
 
@@ -298,11 +312,10 @@ function rowToJob(row: JobRow): Job {
     status: row.status,
     error: row.error,
     appliedProfileId: row.appliedProfileId,
-    tailoredResumePdfPath: row.tailoredResumePdfPath,
-    coverLetterHtmlPath: row.coverLetterHtmlPath,
-    coverLetterPdfPath: row.coverLetterPdfPath,
-    screenshotPath: row.screenshotPath,
-    outreachDraftPath: row.outreachDraftPath,
+    hasTailoredResume: row.hasTailoredResume,
+    hasTailoredCoverLetter: row.hasTailoredCoverLetter,
+    hasScreenshots: row.hasScreenshots,
+    hasOutreachDraft: row.hasOutreachDraft,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -325,11 +338,10 @@ function jobToRow(job: Job): typeof jobs.$inferInsert {
     status: job.status,
     error: job.error ?? undefined,
     appliedProfileId: job.appliedProfileId ?? undefined,
-    tailoredResumePdfPath: job.tailoredResumePdfPath ?? undefined,
-    coverLetterHtmlPath: job.coverLetterHtmlPath ?? undefined,
-    coverLetterPdfPath: job.coverLetterPdfPath ?? undefined,
-    screenshotPath: job.screenshotPath ?? undefined,
-    outreachDraftPath: job.outreachDraftPath ?? undefined,
+    hasTailoredResume: job.hasTailoredResume,
+    hasTailoredCoverLetter: job.hasTailoredCoverLetter,
+    hasScreenshots: job.hasScreenshots,
+    hasOutreachDraft: job.hasOutreachDraft,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };

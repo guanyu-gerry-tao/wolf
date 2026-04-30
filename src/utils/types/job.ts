@@ -90,11 +90,13 @@ export interface Job {
   status: JobStatus;
   error: JobError | null;          // set when status is "error"; null otherwise
   appliedProfileId: string | null; // which profile was used; null if not yet applied
-  tailoredResumePdfPath: string | null; // path to the tailored resume PDF
-  coverLetterHtmlPath: string | null; // path to the cover letter HTML file generated
-  coverLetterPdfPath: string | null; // path to the PDF generated
-  screenshotPath: string | null; // path to the screenshot folders when applying via browser
-  outreachDraftPath: string | null; // path to the outreach email draft (.eml)
+  // β.10h: replaced 5 nullable path strings with 4 booleans. Artifact files
+  // live at convention paths under data/jobs/<jobDirName>/ — resolve via
+  // JobRepository.getArtifactPath(id, kind) when a path is needed.
+  hasTailoredResume: boolean;       // tailor produced resume.pdf
+  hasTailoredCoverLetter: boolean;  // tailor produced cover_letter.html + cover_letter.pdf
+  hasScreenshots: boolean;          // fill recorded screenshots/ directory
+  hasOutreachDraft: boolean;        // reach drafted outreach.eml
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -153,9 +155,8 @@ export interface JobUpdate {
   appliedProfileId?: string | null;
   score?: number | null;
   scoreJustification?: string | null;
-  tailoredResumePdfPath?: string | null;
-  coverLetterHtmlPath?: string | null;
-  coverLetterPdfPath?: string | null;
-  screenshotPath?: string | null;
-  outreachDraftPath?: string | null;
+  hasTailoredResume?: boolean;
+  hasTailoredCoverLetter?: boolean;
+  hasScreenshots?: boolean;
+  hasOutreachDraft?: boolean;
 }

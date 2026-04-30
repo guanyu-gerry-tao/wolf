@@ -81,8 +81,8 @@ describe('init()', () => {
       expect(profileToml).toContain('[identity]');
       expect(profileToml).toContain('[job_preferences]');
       expect(profileToml).toContain('[demographics]');
-      expect(profileToml).toContain('[form_answers]');
-      expect(profileToml).toContain('[[story]]');
+      expect(profileToml).toContain('[[question]]');
+      expect(profileToml).toContain('[[question]]');
       // Old md files should NOT be written by v2 init.
       await expect(fs.access(path.join(profileDir, 'profile.md'))).rejects.toThrow();
       await expect(fs.access(path.join(profileDir, 'resume_pool.md'))).rejects.toThrow();
@@ -176,8 +176,8 @@ describe('init()', () => {
       const profileDir = path.join(dir, 'profiles', 'default');
       const profileToml = await fs.readFile(path.join(profileDir, 'profile.toml'), 'utf-8');
       expect(profileToml).toContain('[identity]');
-      expect(profileToml).toContain('[form_answers]');
-      expect(profileToml).toContain('[[story]]');
+      expect(profileToml).toContain('[[question]]');
+      expect(profileToml).toContain('[[question]]');
 
       await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
       await expect(fs.access(path.join(profileDir, 'attachments'))).resolves.toBeUndefined();

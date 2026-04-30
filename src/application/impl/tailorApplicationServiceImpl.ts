@@ -118,18 +118,17 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       coverLetterPromise,
     ]);
 
-    // Pre-compute the paths we'll hand to both the DB update and the result
-    // so the two sites can't drift.
+    // β.10h: artifact paths are convention-derived (see JobRepository.
+    // getArtifactPath). We persist booleans on the Job row to mark which
+    // pipeline steps have produced their outputs; the return value still
+    // carries the actual paths so the CLI can echo them.
     const tailoredResumePdfPath = resumeStep.pdfPath;
     const coverLetterHtmlPath = clStep?.htmlPath ?? null;
     const coverLetterPdfPath = clStep?.pdfPath ?? null;
 
-    // Persist the generated paths on the Job row so downstream commands
-    // (wolf job list, wolf fill, wolf reach) can find the artifacts.
     await this.jobRepository.update(ctx.job.id, {
-      tailoredResumePdfPath,
-      coverLetterHtmlPath,
-      coverLetterPdfPath,
+      hasTailoredResume: true,
+      hasTailoredCoverLetter: clStep !== null,
     });
 
     log.info('tailor.pipeline.done', {
@@ -163,7 +162,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
     const step = await this.runResume(ctx, brief);
-    await this.jobRepository.update(ctx.job.id, { tailoredResumePdfPath: step.pdfPath });
+    // β.10h: paths are convention-derived; persist a boolean flag instead.
+    await this.jobRepository.update(ctx.job.id, { hasTailoredResume: true });
     return step;
   }
 
@@ -173,10 +173,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
     const step = await this.runCoverLetter(ctx, brief);
-    await this.jobRepository.update(ctx.job.id, {
-      coverLetterHtmlPath: step.htmlPath,
-      coverLetterPdfPath:  step.pdfPath,
-    });
+    // β.10h: paths are convention-derived; persist a single boolean flag.
+    await this.jobRepository.update(ctx.job.id, { hasTailoredCoverLetter: true });
     return step;
   }
 

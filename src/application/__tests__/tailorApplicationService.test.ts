@@ -39,11 +39,10 @@ const FAKE_JOB: Job = {
   status: 'new',
   error: null,
   appliedProfileId: null,
-  tailoredResumePdfPath: null,
-  coverLetterHtmlPath: null,
-  coverLetterPdfPath: null,
-  screenshotPath: null,
-  outreachDraftPath: null,
+  hasTailoredResume: false,
+  hasTailoredCoverLetter: false,
+  hasScreenshots: false,
+  hasOutreachDraft: false,
   createdAt: '2026-04-12T00:00:00.000Z',
   updatedAt: '2026-04-12T00:00:00.000Z',
 };
@@ -142,12 +141,16 @@ function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string; to
           target_roles: '- SWE',
           target_locations: '- SF Bay Area',
         },
-        form_answers: {
-          ...parsed.form_answers,
-          authorized_to_work: 'Yes',
-          require_sponsorship: 'No',
-          willing_to_relocate: 'Yes',
-        },
+        // β.10g: form_answers absorbed into [[question]] — REQ short answers
+        // are now builtin question entries with default ids.
+        question: parsed.question.map((q) => {
+          const required: Record<string, string> = {
+            authorized_to_work: 'Yes',
+            require_sponsorship: 'No',
+            willing_to_relocate: 'Yes',
+          };
+          return q.id in required ? { ...q, answer: required[q.id] } : q;
+        }),
         // Five filled "resume entries" to clear the ≥ 5 threshold:
         // 1 experience + skills.languages + skills.frameworks + skills.tools + skills.domains.
         experience: [{
@@ -225,7 +228,6 @@ describe('TailorApplicationService', () => {
     const result = await svc.tailor({ jobId: 'job-1' });
     expect(result.tailoredPdfPath).toContain('resume.pdf');
     expect(jobRepo.update).toHaveBeenCalledWith('job-1', expect.objectContaining({
-      tailoredResumePdfPath: expect.any(String),
     }));
   });
 

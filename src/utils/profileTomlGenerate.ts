@@ -1,8 +1,8 @@
-import { PROFILE_FIELDS, WOLF_BUILTIN_STORIES, type FieldMeta } from './profileFields.js';
+import { PROFILE_FIELDS, WOLF_BUILTIN_QUESTIONS, type FieldMeta } from './profileFields.js';
 
 /**
  * Generates the bundled `profile.toml` template string from PROFILE_FIELDS
- * + WOLF_BUILTIN_STORIES + a small hardcoded section table.
+ * + WOLF_BUILTIN_QUESTIONS + a small hardcoded section table.
  *
  * # Why generate at runtime instead of shipping a static file
  *
@@ -16,7 +16,7 @@ import { PROFILE_FIELDS, WOLF_BUILTIN_STORIES, type FieldMeta } from './profileF
  *
  * Per-field `comment` is single-line and lives on the field. Per-section
  * dividers and large prose blocks (the file header, demographics EEO
- * preamble, experience / project / education examples, story prelude)
+ * preamble, experience / project / education examples, question prelude)
  * are deliberately hardcoded here — they're not field-shaped, and putting
  * them on PROFILE_FIELDS would muddy the spec.
  *
@@ -24,7 +24,7 @@ import { PROFILE_FIELDS, WOLF_BUILTIN_STORIES, type FieldMeta } from './profileF
  *
  * - Parses cleanly via `parseProfileToml`.
  * - Every PROFILE_FIELDS path appears exactly once at `<table>.<field>`.
- * - Every WOLF_BUILTIN_STORIES entry produces a `[[story]]` block.
+ * - Every WOLF_BUILTIN_QUESTIONS entry produces a `[[question]]` block.
  * - `schemaVersion = 2` line is present.
  */
 
@@ -58,7 +58,6 @@ const SECTIONS: ReadonlyArray<SectionMeta> = [
       'literal — wolf fill writes that exact text into ATS forms.',
   },
   { table: 'clearance',    title: 'Clearance' },
-  { table: 'form_answers', title: 'Form answers — verbatim values wolf fill writes into ATS forms' },
   { table: 'documents',    title: 'Documents — file names inside attachments/' },
   { table: 'skills',       title: 'Skills' },
 ];
@@ -120,17 +119,19 @@ function renderTable(table: string): string {
   return lines.join('\n').trimEnd();
 }
 
-/** Emit one [[story]] block for a wolf-builtin prompt. */
-function renderBuiltinStoryBlock(s: { id: string; prompt: string; required: boolean }): string {
+/** Emit one [[question]] block for a wolf-builtin prompt. Seeds `answer`
+ *  with `defaultAnswer` if any (for short verbatim Q&A absorbed from the
+ *  former [form_answers] table), otherwise blank. */
+function renderBuiltinQuestionBlock(q: { id: string; prompt: string; required: boolean; defaultAnswer?: string }): string {
   return [
-    '[[story]]',
-    `id = "${s.id}"`,
+    '[[question]]',
+    `id = "${q.id}"`,
     'prompt = """',
-    s.prompt,
+    q.prompt,
     '"""',
-    `required = ${s.required ? 'true' : 'false'}`,
-    'star_story = """',
-    '',
+    `required = ${q.required ? 'true' : 'false'}`,
+    'answer = """',
+    q.defaultAnswer ?? '',
     '"""',
     'subnote = """',
     '',
@@ -228,18 +229,29 @@ const EDUCATION_EXAMPLE = `# ===================================================
 #
 # """`;
 
-const STORIES_PRELUDE = `# ===========================================================================
-# Stories — behavioral interview answers (${WOLF_BUILTIN_STORIES.length} builtin prompts seeded below)
+const QUESTIONS_PRELUDE = `# ===========================================================================
+# Questions — Q&A pool consumed by fill / tailor / reach (${WOLF_BUILTIN_QUESTIONS.length} builtin prompts seeded below)
 # ===========================================================================
 #
-# wolf seeds ${WOLF_BUILTIN_STORIES.length} common interview prompts. Fill in \`star_story\` for each one
-# you have an answer for; leave blank to skip. wolf doctor flags REQUIRED
-# stories (\`required = true\`) if their \`star_story\` is empty.
+# Two flavours of builtin question:
+#   1. ATS short verbatim Q&A (work auth / sponsorship / relocation /
+#      salary / "how did you hear" / "when can you start") — some seeded
+#      with sensible defaults you can override.
+#   2. Behavioral / opinion long answers (STAR-format stories about
+#      failures, conflicts, leadership, etc.) — write your own.
 #
-# These prompts are wolf-defined: don't change \`prompt\`, \`required\`, or
-# \`id\` — those are read-only. You CAN change \`star_story\` and \`subnote\`.
-# When wolf adds new builtins in a future release, missing ones are
-# auto-injected on the next read.`;
+# Both flavours live in the same \`[[question]]\` array; downstream consumers
+# (wolf fill / tailor / reach) semantic-match the form's question text or
+# the JD's requirement against \`prompt\`, then pull \`answer\` verbatim.
+#
+# Fill in \`answer\` for each one you have an answer for; leave blank to
+# skip. wolf doctor flags REQUIRED questions (\`required = true\`) if
+# \`answer\` is empty.
+#
+# Wolf-builtin prompts are wolf-defined: don't change \`prompt\`,
+# \`required\`, or \`id\` — those are read-only. You CAN change \`answer\`
+# and \`subnote\`. When wolf adds new builtins in a future release,
+# missing ones are auto-injected on the next read.`;
 
 const OPTIONAL_RESUME_DIVIDER = `# ===========================================================================
 # Optional resume sections — fill what you have.
@@ -265,10 +277,10 @@ function generateProfileToml(): string {
   blocks.push(PROJECT_EXAMPLE);
   blocks.push(EDUCATION_EXAMPLE);
 
-  // Builtin stories.
-  blocks.push(STORIES_PRELUDE);
-  for (const s of WOLF_BUILTIN_STORIES) {
-    blocks.push(renderBuiltinStoryBlock(s));
+  // Builtin questions (former form_answers + behavioral stories merged).
+  blocks.push(QUESTIONS_PRELUDE);
+  for (const q of WOLF_BUILTIN_QUESTIONS) {
+    blocks.push(renderBuiltinQuestionBlock(q));
   }
 
   // Two blank lines between major blocks for readability; trailing newline.
@@ -277,7 +289,7 @@ function generateProfileToml(): string {
 
 /**
  * The bundled profile.toml content. Generated once at module load and
- * frozen — pure function of PROFILE_FIELDS + WOLF_BUILTIN_STORIES so
+ * frozen — pure function of PROFILE_FIELDS + WOLF_BUILTIN_QUESTIONS so
  * deterministic across runs.
  */
 export const profileTomlTemplate: string = generateProfileToml();

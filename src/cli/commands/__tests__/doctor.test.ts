@@ -37,12 +37,6 @@ function makeCtx(opts: {
       target_roles: '- SWE',
       target_locations: '- SF Bay Area',
     },
-    form_answers: {
-      ...base.form_answers,
-      authorized_to_work: 'Yes',
-      require_sponsorship: 'No',
-      willing_to_relocate: 'Yes',
-    },
     // Five filled "resume entries" so checkResumeContent passes:
     // 1 experience + 4 skills buckets.
     experience: [{
@@ -62,12 +56,19 @@ function makeCtx(opts: {
       domains: 'Backend',
       free_text: '',
     },
-    // Three answered builtin stories so checkStoriesAndFormAnswers passes.
-    story: base.story.map((s) => {
-      if (['tell_me_about_yourself', 'tell_me_about_failure', 'biggest_strength'].includes(s.id)) {
-        return { ...s, star_story: 'A real STAR answer.' };
+    // Builtin questions: pre-seed REQ short answers (former form_answers)
+    // and three behavioral STAR stories so doctor's question check passes.
+    question: base.question.map((q) => {
+      const reqShortAnswer: Record<string, string> = {
+        authorized_to_work: 'Yes',
+        require_sponsorship: 'No',
+        willing_to_relocate: 'Yes',
+      };
+      if (q.id in reqShortAnswer) return { ...q, answer: reqShortAnswer[q.id] };
+      if (['tell_me_about_yourself', 'tell_me_about_failure', 'biggest_strength'].includes(q.id)) {
+        return { ...q, answer: 'A real STAR answer.' };
       }
-      return s;
+      return q;
     }),
   };
 
@@ -101,7 +102,7 @@ describe('doctor()', () => {
     // assert per-file readiness directly so this isn't environment-coupled.
     const profileCheck = report.checks.find(c => c.file === 'profile.toml')!;
     const poolCheck = report.checks.find(c => c.file === 'resume content')!;
-    const sqCheck = report.checks.find(c => c.file === 'stories')!;
+    const sqCheck = report.checks.find(c => c.file === 'questions')!;
     expect(profileCheck.ready).toBe(true);
     expect(poolCheck.ready).toBe(true);
     expect(sqCheck.ready).toBe(true);
@@ -150,13 +151,13 @@ describe('doctor()', () => {
     const ctx = makeCtx({
       tomlOverrides: (base) => ({
         ...base,
-        story: base.story.map(s => ({ ...s, star_story: '' })),  // empty all
+        question: base.question.map(s => ({ ...s, answer: '' })),  // empty all
       }),
     });
     const report = await doctor({}, ctx);
-    const sqCheck = report.checks.find(c => c.file === 'stories')!;
+    const sqCheck = report.checks.find(c => c.file === 'questions')!;
     expect(sqCheck.ready).toBe(false);
-    expect(sqCheck.missing[0]).toMatch(/0 \/ 17 builtin stories answered/);
+    expect(sqCheck.missing[0]).toMatch(/0 \/ 23 builtin questions answered/);
   });
 
   // Empty (whitespace-only) values count as not-filled — same as totally
@@ -200,7 +201,7 @@ describe('formatDoctor()', () => {
       checks: [
         { file: 'profile.toml', ready: true, missing: [], hint: 'all good' },
         { file: 'resume content', ready: true, missing: [], hint: 'all good' },
-        { file: 'stories', ready: true, missing: [], hint: 'all good' },
+        { file: 'questions', ready: true, missing: [], hint: 'all good' },
       ],
     });
     expect(text).toMatch(/Status: READY/);
@@ -216,7 +217,7 @@ describe('formatDoctor()', () => {
       checks: [
         { file: 'profile.toml', ready: false, missing: ['contact.phone', 'contact.email'], hint: 'fill these' },
         { file: 'resume content', ready: true, missing: [], hint: 'OK' },
-        { file: 'stories', ready: true, missing: [], hint: 'OK' },
+        { file: 'questions', ready: true, missing: [], hint: 'OK' },
       ],
     });
     expect(text).toMatch(/Status: NOT READY/);

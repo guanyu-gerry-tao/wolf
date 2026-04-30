@@ -226,18 +226,18 @@ describe('setMultilineStringInArrayMember()', () => {
   });
 
   // Story array — most likely target for `wolf profile set` since stories
-  // are seeded at init. Editing star_story by builtin id.
-  it('edits a builtin story.star_story by id', () => {
+  // are seeded at init. Editing answer by builtin id.
+  it('edits a builtin story.answer by id', () => {
     const after = setMultilineStringInArrayMember(
       profileTemplate,
-      'story',
+      'question',
       'tell_me_about_failure',
-      'star_story',
+      'answer',
       'I shipped a feature without a flag and caused a 3-hour outage.',
     );
     const parsed = parseProfileToml(after);
-    const story = parsed.story.find((s) => s.id === 'tell_me_about_failure');
-    expect(story!.star_story.trim()).toContain('shipped a feature without a flag');
+    const story = parsed.question.find((s) => s.id === 'tell_me_about_failure');
+    expect(story!.answer.trim()).toContain('shipped a feature without a flag');
   });
 
   // The `id` field itself must NOT be settable — renaming via wolf profile
@@ -266,21 +266,21 @@ describe('setMultilineStringInArrayMember()', () => {
 describe('setBoolean / setBooleanInArrayMember', () => {
   // Top-level boolean: the schemaVersion field is numeric, but if we ever
   // add a boolean to a top-level table this is the path. For now, the
-  // primary use is `[[story]] required = false` flips. Test array path.
+  // primary use is `[[question]] required = false` flips. Test array path.
   it('flips a boolean field on an array member', () => {
     // story.management_style.required is `false` in the template.
     const after = setBooleanInArrayMember(
       profileTemplate,
-      'story',
+      'question',
       'management_style',
       'required',
       true,
     );
     const parsed = parseProfileToml(after);
-    const story = parsed.story.find((s) => s.id === 'management_style');
+    const story = parsed.question.find((s) => s.id === 'management_style');
     expect(story!.required).toBe(true);
     // Adjacent stories untouched.
-    const failure = parsed.story.find((s) => s.id === 'tell_me_about_failure');
+    const failure = parsed.question.find((s) => s.id === 'tell_me_about_failure');
     expect(failure!.required).toBe(true);
   });
 
@@ -422,13 +422,13 @@ describe('removeArrayMember()', () => {
   // accepts any id; the CLI command layer is where "you can't delete a
   // builtin" gets enforced. Test the raw function still works mechanically.
   it('mechanically removes any matching id (CLI layer enforces builtin protection)', () => {
-    const after = removeArrayMember(profileTemplate, 'story', 'tell_me_about_failure');
+    const after = removeArrayMember(profileTemplate, 'question', 'tell_me_about_failure');
     const parsed = parseProfileToml(after);
     // Lazy-inject re-adds the missing builtin on parse — verify by
-    // checking the parsed story exists (re-injected) but its star_story
+    // checking the parsed story exists (re-injected) but its answer
     // is empty (just-injected stub state).
-    const story = parsed.story.find((s) => s.id === 'tell_me_about_failure');
+    const story = parsed.question.find((s) => s.id === 'tell_me_about_failure');
     expect(story).toBeDefined();
-    expect(story!.star_story.trim()).toBe('');
+    expect(story!.answer.trim()).toBe('');
   });
 });

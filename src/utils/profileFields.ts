@@ -26,7 +26,7 @@
  * - Top-level scalar:                   `<table>.<field>`
  * - Array-of-table member's field:      `<type>.<id>.<field>`
  *                                       (e.g. `experience.amazon-2024.bullets`,
- *                                        `story.tell_me_about_failure.star_story`)
+ *                                        `story.tell_me_about_failure.answer`)
  *
  * # Fields NOT enumerated here
  *
@@ -34,7 +34,7 @@
  * education.<id>.*, story.<id>.*) are NOT in this list — there's no
  * sensible "path" to enumerate when we don't know the ids ahead of time.
  * Their per-field metadata, when needed, lives next to the array
- * generator (e.g. WOLF_BUILTIN_STORIES below for stories).
+ * generator (e.g. WOLF_BUILTIN_QUESTIONS below for stories).
  */
 
 /** Which renderer in `profileTomlRender.ts` owns this field's loop emission.
@@ -207,36 +207,23 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
     heading: 'Clearance preferences', section: 'profile_md', inSearchContext: true },
   { path: 'clearance.note',                      required: false, type: 'multilineString', help: '' },
 
-  // ---- form_answers (verbatim values for ATS forms)
-  { path: 'form_answers.authorized_to_work',     required: true,  type: 'multilineString', help: 'Verbatim form answer (e.g. "Yes, I am authorized to work in the United States.").',
-    comment: 'REQUIRED — verbatim form answer (e.g. "Yes, I am authorized to work in the United States."). Strategic preference (which jobs to apply to) lives in [job_preferences].sponsorship_*.',
-    heading: 'Form answer — Are you authorized to work?', section: 'standard_questions' },
-  { path: 'form_answers.require_sponsorship',    required: true,  type: 'multilineString', help: 'Verbatim form answer.',
-    comment: 'REQUIRED — verbatim form answer.',
-    heading: 'Form answer — Do you require sponsorship?', section: 'standard_questions' },
-  { path: 'form_answers.willing_to_relocate',    required: true,  type: 'multilineString', help: 'Verbatim form answer.',
-    comment: 'REQUIRED — verbatim form answer.',
-    heading: 'Form answer — Are you willing to relocate?', section: 'standard_questions' },
-  { path: 'form_answers.salary_expectation',     required: false, type: 'multilineString', help: 'Default in template; edit if you want a different stance.',
-    comment: 'OPTIONAL — default below; edit if you want a different stance.',
-    defaultValue: 'Open to discuss based on the full compensation package and role scope.',
-    heading: "What's your salary expectation?", section: 'standard_questions' },
-  { path: 'form_answers.how_did_you_hear',       required: false, type: 'multilineString', help: 'Default "LinkedIn"; edit per usual answer.',
-    defaultValue: 'LinkedIn',
-    heading: 'How did you hear about us?', section: 'standard_questions' },
-  { path: 'form_answers.when_can_you_start',     required: false, type: 'multilineString', help: 'Default "Available immediately".',
-    defaultValue: 'Available immediately',
-    heading: 'When can you start?', section: 'standard_questions' },
-  { path: 'form_answers.note',                   required: false, type: 'multilineString', help: '' },
+  // β.10g: form_answers table removed; its 6 fields became builtin entries
+  // in the unified `[[question]]` array (see WOLF_BUILTIN_QUESTIONS below).
+  // Same Q&A semantics as behavioral questions — wolf seeds the prompt, user
+  // writes the answer, fill / tailor / reach all consume from one pool.
 
-  // ---- documents
-  { path: 'documents.transcript',                required: false, type: 'multilineString', help: 'Bare filename inside attachments/; blank if none.',
+  // ---- documents (filenames inside attachments/; extension required)
+  { path: 'documents.transcript',                required: false, type: 'multilineString', help: 'Bare filename inside attachments/, including extension (e.g. "transcript.pdf"). Blank if none.',
+    comment: 'OPTIONAL — bare filename inside attachments/, including extension (e.g. "transcript.pdf"). Wolf does NOT auto-append .pdf — write the full filename as it sits on disk.',
     heading: 'Transcript', section: 'standard_questions' },
-  { path: 'documents.unofficial_transcript',     required: false, type: 'multilineString', help: 'Bare filename inside attachments/.',
+  { path: 'documents.unofficial_transcript',     required: false, type: 'multilineString', help: 'Bare filename inside attachments/, including extension (e.g. "unofficial_transcript.pdf").',
+    comment: 'OPTIONAL — bare filename inside attachments/, including extension. Same rules as transcript.',
     heading: 'Unofficial transcript', section: 'standard_questions' },
-  { path: 'documents.reference_letter',          required: false, type: 'multilineString', help: 'Bare filename inside attachments/.',
+  { path: 'documents.reference_letter',          required: false, type: 'multilineString', help: 'Bare filename inside attachments/, including extension (e.g. "reference_letter.pdf").',
+    comment: 'OPTIONAL — bare filename inside attachments/, including extension.',
     heading: 'Reference letter', section: 'standard_questions' },
-  { path: 'documents.portfolio_sample',          required: false, type: 'multilineString', help: 'Bare filename inside attachments/.',
+  { path: 'documents.portfolio_sample',          required: false, type: 'multilineString', help: 'Bare filename inside attachments/, including extension (e.g. "portfolio.pdf" or "portfolio.zip").',
+    comment: 'OPTIONAL — bare filename inside attachments/, including extension.',
     heading: 'Portfolio sample', section: 'standard_questions' },
   { path: 'documents.note',                      required: false, type: 'multilineString', help: '' },
 
@@ -292,39 +279,69 @@ export const REQUIRED_PROFILE_FIELDS: ReadonlyArray<FieldMeta> = PROFILE_FIELDS.
 );
 
 // ===========================================================================
-// Wolf-builtin behavioral story prompts
+// Wolf-builtin questions — generic Q&A pool consumed by fill / tailor / reach
 // ===========================================================================
 //
-// `WOLF_BUILTIN_STORIES` is the registry of behavioral interview prompts
-// wolf seeds into every freshly-initialized profile.toml. Stories whose
-// `id` appears in this list are **wolf-builtin** — `wolf profile remove
-// story <id>` refuses to delete them (clear `star_story` to skip),
-// `wolf profile set story.<id>.prompt` and `.required` refuse to edit
-// them (those fields are wolf-defined). Stories with ids NOT in this set
-// are user-custom and get standard add/remove/set semantics.
+// `WOLF_BUILTIN_QUESTIONS` is the registry of question prompts wolf seeds
+// into every freshly-initialized profile.toml. Questions whose `id` appears
+// in this list are **wolf-builtin** — `wolf profile remove question <id>`
+// refuses to delete them (clear `answer` to skip), `wolf profile set
+// question.<id>.prompt` and `.required` refuse to edit them. Questions with
+// ids NOT in this set are user-custom and get standard add/remove/set
+// semantics.
+//
+// # Two flavours of builtin question
+//
+// 1. **Short verbatim Q&A** — former `[form_answers]` table. ATS form
+//    questions whose answer is the same across applications: work auth,
+//    sponsorship requirement, willingness to relocate, salary expectation,
+//    "how did you hear", "when can you start". Some carry a `defaultAnswer`
+//    so the seeded entry isn't blank.
+//
+// 2. **Behavioral / opinion long answers** — STAR-format stories about
+//    failures, conflicts, leadership. Long-form prose. No defaults; the
+//    user fills these as they prepare for interviews.
+//
+// Both flavours live in the same `[[question]]` array because their
+// downstream consumers are identical (semantic match on `prompt`, pull
+// `answer` verbatim). The split is just user-mental-model.
 //
 // # Lazy inject
 //
 // When wolf reads profile.toml and finds a builtin id missing from the
-// `[[story]]` array (older binary didn't seed it), `injectMissingBuiltinStories`
-// in profileToml.ts appends a stub entry on next write. New builtins do
-// NOT require a schema_version bump.
+// `[[question]]` array (older binary didn't seed it), `injectMissingBuiltinQuestions`
+// in profileToml.ts appends a stub entry — seeded with `defaultAnswer` if
+// any, blank otherwise. New builtins do NOT require a schema_version bump.
 //
 // # Why this lives in profileFields.ts (not its own file)
 //
-// Stories share the array-of-tables shape with experience / project /
+// Questions share the array-of-tables shape with experience / project /
 // education; the only structural difference is that wolf has a registry
-// of "managed entries" for stories and not for the others. That registry
-// is metadata about the profile schema — same kind as PROFILE_FIELDS —
-// so it lives here.
+// of "managed entries" for questions and not for the others. That registry
+// is metadata about the profile schema — same kind as PROFILE_FIELDS — so
+// it lives here.
 
-export interface BuiltinStory {
+export interface BuiltinQuestion {
   id: string;
   prompt: string;
   required: boolean;
+  /** Optional pre-seeded answer. Used for short verbatim Q&A absorbed from
+   *  the old `[form_answers]` table — e.g. `how_did_you_hear` defaults to
+   *  "LinkedIn". Behavioral stories have no default (user fills the STAR
+   *  answer themselves). */
+  defaultAnswer?: string;
 }
 
-export const WOLF_BUILTIN_STORIES: ReadonlyArray<BuiltinStory> = [
+export const WOLF_BUILTIN_QUESTIONS: ReadonlyArray<BuiltinQuestion> = [
+  // ---- ATS short Q&A (former [form_answers])
+  { id: 'authorized_to_work',              prompt: 'Are you legally authorized to work in the country of this job?',          required: true  },
+  { id: 'require_sponsorship',             prompt: 'Will you now or in the future require sponsorship for employment?',       required: true  },
+  { id: 'willing_to_relocate',             prompt: 'Are you willing to relocate for this role?',                               required: true  },
+  { id: 'salary_expectation',              prompt: "What's your salary expectation?",                                          required: false, defaultAnswer: 'Open to discuss based on the full compensation package and role scope.' },
+  { id: 'how_did_you_hear',                prompt: 'How did you hear about us?',                                               required: false, defaultAnswer: 'LinkedIn' },
+  { id: 'when_can_you_start',              prompt: 'When can you start?',                                                      required: false, defaultAnswer: 'Available immediately' },
+
+  // ---- Behavioral / opinion long answers (former WOLF_BUILTIN_QUESTIONS)
   { id: 'tell_me_about_yourself',          prompt: 'Tell me about yourself',                                                  required: true  },
   { id: 'tell_me_about_failure',           prompt: 'Tell me about a time you failed',                                         required: true  },
   { id: 'tell_me_about_conflict',          prompt: 'Tell me about a time you faced conflict',                                 required: true  },
@@ -345,7 +362,7 @@ export const WOLF_BUILTIN_STORIES: ReadonlyArray<BuiltinStory> = [
 ];
 
 /** Fast lookup: is this id a wolf-builtin? Used by command handlers to
- *  reject `wolf profile remove story <id>` / `set story.<id>.prompt` etc. */
-export const WOLF_BUILTIN_STORY_IDS: ReadonlySet<string> = new Set(
-  WOLF_BUILTIN_STORIES.map((s) => s.id),
+ *  reject `wolf profile remove question <id>` / `set question.<id>.prompt`. */
+export const WOLF_BUILTIN_QUESTION_IDS: ReadonlySet<string> = new Set(
+  WOLF_BUILTIN_QUESTIONS.map((q) => q.id),
 );

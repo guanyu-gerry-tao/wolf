@@ -174,10 +174,10 @@ function renderTailorContext(toml: ProfileToml): string {
 
   // Stories — only filled ones; mirror old standard_questions.md story section.
   const storyLines: string[] = [];
-  for (const s of toml.story) {
-    if (!isFilled(s.star_story)) continue;
+  for (const s of toml.question) {
+    if (!isFilled(s.answer)) continue;
     storyLines.push(`### ${s.prompt.trim()}`);
-    storyLines.push(s.star_story.trim());
+    storyLines.push(s.answer.trim());
     if (isFilled(s.subnote)) {
       storyLines.push('');
       storyLines.push(`> Notes: ${oneLine(s.subnote)}`);
@@ -232,7 +232,7 @@ function collectNotes(toml: ProfileToml): CollectedNote[] {
   for (const e of toml.education) {
     if (isFilled(e.subnote)) out.push({ source: `education.${e.id}.subnote`, text: e.subnote });
   }
-  for (const s of toml.story) {
+  for (const s of toml.question) {
     if (isFilled(s.subnote)) out.push({ source: `story.${s.id}.subnote`, text: s.subnote });
   }
   return out;

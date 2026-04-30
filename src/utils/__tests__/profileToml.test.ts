@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseProfileToml,
-  injectMissingBuiltinStories,
+  injectMissingBuiltinQuestions,
   isFilled,
   getByPath,
   ProfileTomlSchema,
   type ProfileToml,
 } from '../profileToml.js';
-import { PROFILE_FIELDS, WOLF_BUILTIN_STORIES, WOLF_BUILTIN_STORY_IDS } from '../profileFields.js';
+import { PROFILE_FIELDS, WOLF_BUILTIN_QUESTIONS, WOLF_BUILTIN_QUESTION_IDS } from '../profileFields.js';
 import { profileTomlTemplate as profileTemplate } from '../profileTomlGenerate.js';
 
 // `profile.toml` is the central data shape for v2 workspaces. The schema
@@ -32,28 +32,28 @@ describe('parseProfileToml()', () => {
   });
 
   // Every wolf-builtin story id must be seeded in the template (init time
-  // injection). injectMissingBuiltinStories handles the case where wolf
+  // injection). injectMissingBuiltinQuestions handles the case where wolf
   // adds a builtin LATER, but at template-write time the schema-aligned
   // bundle must already contain them all.
   it('seeds all 17 wolf-builtin story prompts in the template', () => {
     const parsed = parseProfileToml(profileTemplate);
-    const seedIds = new Set(parsed.story.map((s) => s.id));
-    for (const builtin of WOLF_BUILTIN_STORIES) {
+    const seedIds = new Set(parsed.question.map((s) => s.id));
+    for (const builtin of WOLF_BUILTIN_QUESTIONS) {
       expect(seedIds.has(builtin.id)).toBe(true);
     }
     // Round-trip the count too — if the template gained an extra story
     // (e.g. accidentally pasted twice), this catches it before β2 lands.
-    expect(parsed.story.length).toBe(WOLF_BUILTIN_STORIES.length);
+    expect(parsed.question.length).toBe(WOLF_BUILTIN_QUESTIONS.length);
   });
 
   // Required-flag defaults in the template must match wolf's source-of-truth.
   // If they ever disagree, doctor's "REQUIRED stories missing" output and
   // the template's pre-filled `required = true|false` lie to the user
   // about which prompts they really need to answer.
-  it('story.required defaults match WOLF_BUILTIN_STORIES source-of-truth', () => {
+  it('story.required defaults match WOLF_BUILTIN_QUESTIONS source-of-truth', () => {
     const parsed = parseProfileToml(profileTemplate);
-    const byId = new Map(parsed.story.map((s) => [s.id, s]));
-    for (const builtin of WOLF_BUILTIN_STORIES) {
+    const byId = new Map(parsed.question.map((s) => [s.id, s]));
+    for (const builtin of WOLF_BUILTIN_QUESTIONS) {
       const story = byId.get(builtin.id);
       expect(story).toBeDefined();
       expect(story!.required).toBe(builtin.required);
@@ -81,9 +81,12 @@ describe('parseProfileToml()', () => {
     expect(parsed.demographics.first_gen_college.trim()).toBe('No');
     // β.10f: clearance collapsed from 4 pseudo-enum fields to 1 freeform
     // `preferences` field. No defaults seeded — users write their own prose.
-    expect(parsed.form_answers.salary_expectation.trim().length).toBeGreaterThan(0);
-    expect(parsed.form_answers.how_did_you_hear.trim()).toBe('LinkedIn');
-    expect(parsed.form_answers.when_can_you_start.trim()).toBe('Available immediately');
+    // β.10g: form_answers absorbed into [[question]] array; defaults now seeded
+    // via WOLF_BUILTIN_QUESTIONS.defaultAnswer at template generation.
+    const byId = new Map(parsed.question.map((q) => [q.id, q]));
+    expect(byId.get('salary_expectation')!.answer.trim().length).toBeGreaterThan(0);
+    expect(byId.get('how_did_you_hear')!.answer.trim()).toBe('LinkedIn');
+    expect(byId.get('when_can_you_start')!.answer.trim()).toBe('Available immediately');
     expect(parsed.job_preferences.remote_preference.trim()).toBe('no preference');
   });
 
@@ -105,7 +108,7 @@ describe('parseProfileToml()', () => {
   });
 });
 
-describe('injectMissingBuiltinStories()', () => {
+describe('injectMissingBuiltinQuestions()', () => {
   // Helper: build a minimal valid ProfileToml programmatically.
   function emptyProfile(): ProfileToml {
     return ProfileTomlSchema.parse({ schemaVersion: 2 });
@@ -115,37 +118,37 @@ describe('injectMissingBuiltinStories()', () => {
   // so all 17 builtins are appended.
   it('adds all builtins when the story array is empty', () => {
     const profile = emptyProfile();
-    const topped = injectMissingBuiltinStories(profile);
-    expect(topped.story.length).toBe(WOLF_BUILTIN_STORIES.length);
-    const ids = topped.story.map((s) => s.id);
-    for (const builtin of WOLF_BUILTIN_STORIES) {
+    const topped = injectMissingBuiltinQuestions(profile);
+    expect(topped.question.length).toBe(WOLF_BUILTIN_QUESTIONS.length);
+    const ids = topped.question.map((s) => s.id);
+    for (const builtin of WOLF_BUILTIN_QUESTIONS) {
       expect(ids).toContain(builtin.id);
     }
   });
 
   // The lazy-inject case after a wolf upgrade: existing builtins are
-  // preserved verbatim (including any user-filled star_story), only the
+  // preserved verbatim (including any user-filled answer), only the
   // missing ones are appended.
   it('preserves existing builtin entries and appends only missing ones', () => {
-    const filled = WOLF_BUILTIN_STORIES.slice(0, 3); // first three only
+    const filled = WOLF_BUILTIN_QUESTIONS.slice(0, 3); // first three only
     const profile: ProfileToml = {
       ...emptyProfile(),
-      story: filled.map((b) => ({
+      question: filled.map((b) => ({
         id: b.id,
         prompt: b.prompt,
         required: b.required,
-        star_story: 'user wrote this',
+        answer: 'user wrote this',
         subnote: 'and this',
       })),
     };
-    const topped = injectMissingBuiltinStories(profile);
-    expect(topped.story.length).toBe(WOLF_BUILTIN_STORIES.length);
+    const topped = injectMissingBuiltinQuestions(profile);
+    expect(topped.question.length).toBe(WOLF_BUILTIN_QUESTIONS.length);
     // Existing user content survives.
-    expect(topped.story[0].star_story).toBe('user wrote this');
-    expect(topped.story[1].subnote).toBe('and this');
+    expect(topped.question[0].answer).toBe('user wrote this');
+    expect(topped.question[1].subnote).toBe('and this');
     // Missing builtins were appended at the end.
-    const tailIds = topped.story.slice(filled.length).map((s) => s.id);
-    expect(tailIds).toEqual(WOLF_BUILTIN_STORIES.slice(filled.length).map((b) => b.id));
+    const tailIds = topped.question.slice(filled.length).map((s) => s.id);
+    expect(tailIds).toEqual(WOLF_BUILTIN_QUESTIONS.slice(filled.length).map((b) => b.id));
   });
 
   // Custom (non-builtin) stories pass through untouched. β doesn't yet
@@ -154,21 +157,21 @@ describe('injectMissingBuiltinStories()', () => {
   it('preserves user-custom (non-builtin) story entries', () => {
     const profile: ProfileToml = {
       ...emptyProfile(),
-      story: [{
+      question: [{
         id: 'why-interested-in-our-company',
         prompt: 'Why interested?',
         required: false,
-        star_story: 'because reasons',
+        answer: 'because reasons',
         subnote: '',
       }],
     };
-    const topped = injectMissingBuiltinStories(profile);
+    const topped = injectMissingBuiltinQuestions(profile);
     // Custom story stays at index 0.
-    expect(topped.story[0].id).toBe('why-interested-in-our-company');
+    expect(topped.question[0].id).toBe('why-interested-in-our-company');
     // All 17 builtins are appended after.
-    expect(topped.story.length).toBe(WOLF_BUILTIN_STORIES.length + 1);
-    for (const builtin of WOLF_BUILTIN_STORIES) {
-      expect(WOLF_BUILTIN_STORY_IDS.has(builtin.id)).toBe(true);
+    expect(topped.question.length).toBe(WOLF_BUILTIN_QUESTIONS.length + 1);
+    for (const builtin of WOLF_BUILTIN_QUESTIONS) {
+      expect(WOLF_BUILTIN_QUESTION_IDS.has(builtin.id)).toBe(true);
     }
   });
 
@@ -176,10 +179,10 @@ describe('injectMissingBuiltinStories()', () => {
   // Idempotent: calling parseProfileToml twice on the same input should
   // give the same shape.
   it('is a no-op when all builtins are present', () => {
-    const profile = injectMissingBuiltinStories(emptyProfile());
-    const reInjected = injectMissingBuiltinStories(profile);
-    expect(reInjected.story.length).toBe(profile.story.length);
-    expect(reInjected.story.map((s) => s.id)).toEqual(profile.story.map((s) => s.id));
+    const profile = injectMissingBuiltinQuestions(emptyProfile());
+    const reInjected = injectMissingBuiltinQuestions(profile);
+    expect(reInjected.question.length).toBe(profile.question.length);
+    expect(reInjected.question.map((s) => s.id)).toEqual(profile.question.map((s) => s.id));
   });
 });
 
@@ -214,14 +217,14 @@ describe('getByPath()', () => {
     // `"United States\n"`. We surface the value verbatim (consumers trim
     // when they need a clean scalar; the trailing \n itself is harmless).
     expect(getByPath(profile, 'identity.country_currently_in')).toBe('United States\n');
-    expect(getByPath(profile, 'form_answers.how_did_you_hear')).toBe('LinkedIn\n');
+    expect(getByPath(profile, 'question.how_did_you_hear.answer')).toBe('LinkedIn\n');
   });
 
   // Three-segment paths address array-of-table members by id. Used by
-  // `wolf profile get story.tell_me_about_failure.star_story` etc.
+  // `wolf profile get story.tell_me_about_failure.answer` etc.
   it('returns array-member fields by id', () => {
     const profile = parseProfileToml(profileTemplate);
-    const v = getByPath(profile, 'story.tell_me_about_failure.prompt');
+    const v = getByPath(profile, 'question.tell_me_about_failure.prompt');
     expect(typeof v).toBe('string');
     expect((v as string).trim()).toBe('Tell me about a time you failed');
   });
@@ -229,8 +232,8 @@ describe('getByPath()', () => {
   // Boolean fields (story.required) come through as booleans.
   it('returns boolean values as booleans', () => {
     const profile = parseProfileToml(profileTemplate);
-    expect(getByPath(profile, 'story.tell_me_about_failure.required')).toBe(true);
-    expect(getByPath(profile, 'story.why_leaving_current_role.required')).toBe(false);
+    expect(getByPath(profile, 'question.tell_me_about_failure.required')).toBe(true);
+    expect(getByPath(profile, 'question.why_leaving_current_role.required')).toBe(false);
   });
 
   // Unknown paths return undefined — `wolf profile get` translates that
@@ -239,7 +242,7 @@ describe('getByPath()', () => {
     const profile = parseProfileToml(profileTemplate);
     expect(getByPath(profile, 'identity.no_such_field')).toBeUndefined();
     expect(getByPath(profile, 'no_such_table.foo')).toBeUndefined();
-    expect(getByPath(profile, 'story.no_such_id.prompt')).toBeUndefined();
+    expect(getByPath(profile, 'question.no_such_id.prompt')).toBeUndefined();
     expect(getByPath(profile, 'experience.amazon-2024.bullets')).toBeUndefined(); // none in template
     expect(getByPath(profile, 'too.many.dots.here')).toBeUndefined();
     expect(getByPath(profile, 'no_dots')).toBeUndefined();

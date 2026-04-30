@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 import { getEnvValue, currentBinaryName } from '../../utils/instance.js';
 import {
   REQUIRED_PROFILE_FIELDS,
-  WOLF_BUILTIN_STORIES,
+  WOLF_BUILTIN_QUESTIONS,
   type FieldMeta,
 } from '../../utils/profileFields.js';
 import { isFilled, getByPath, type ProfileToml } from '../../utils/profileToml.js';
@@ -23,15 +23,15 @@ const RESUME_MIN_ENTRIES = 5;
 // Stories threshold — how many builtin behavioral prompts the user must have
 // answered before tailor / fill consider the workspace ready. fill (M4) can
 // still pause-and-ask for any missing field at apply time, so this is a
-// "you've started populating stories" check, not "every story filled".
-const STORIES_MIN_ANSWERED = 3;
+// "you've started populating questions" check, not "every story filled".
+const QUESTIONS_MIN_ANSWERED = 3;
 
 /**
  * `DoctorApplicationService` impl. Reads the default profile through
  * `ProfileRepository.getProfileToml`, runs four pure check functions
- * (profile / resume pool / stories + form_answers / runtime), and aggregates
+ * (profile / resume pool / questions + form_answers / runtime), and aggregates
  * them into a `DoctorReport`. Every check pulls from the same source-of-truth
- * tables (`PROFILE_FIELDS` and `WOLF_BUILTIN_STORIES`) so doctor's view of
+ * tables (`PROFILE_FIELDS` and `WOLF_BUILTIN_QUESTIONS`) so doctor's view of
  * "ready" stays in lockstep with `wolf profile fields`.
  */
 export class DoctorApplicationServiceImpl implements DoctorApplicationService {
@@ -156,22 +156,22 @@ function checkResumeContent(toml: ProfileToml): FileCheck {
 }
 
 // ---------------------------------------------------------------------------
-// Stories + form answers — count filled builtin stories
+// Stories + form answers — count filled builtin questions
 // ---------------------------------------------------------------------------
 
 function checkStoriesAndFormAnswers(toml: ProfileToml): FileCheck {
-  const builtinIds = new Set(WOLF_BUILTIN_STORIES.map((s) => s.id));
-  const answeredBuiltins = toml.story.filter(
-    (s) => builtinIds.has(s.id) && isFilled(s.star_story),
+  const builtinIds = new Set(WOLF_BUILTIN_QUESTIONS.map((s) => s.id));
+  const answeredBuiltins = toml.question.filter(
+    (s) => builtinIds.has(s.id) && isFilled(s.answer),
   ).length;
-  const total = WOLF_BUILTIN_STORIES.length;
-  const ready = answeredBuiltins >= STORIES_MIN_ANSWERED;
+  const total = WOLF_BUILTIN_QUESTIONS.length;
+  const ready = answeredBuiltins >= QUESTIONS_MIN_ANSWERED;
   return {
-    file: 'stories',
+    file: 'questions',
     ready,
-    missing: ready ? [] : [`only ${answeredBuiltins} / ${total} builtin stories answered (need ≥ ${STORIES_MIN_ANSWERED})`],
+    missing: ready ? [] : [`only ${answeredBuiltins} / ${total} builtin questions answered (need ≥ ${QUESTIONS_MIN_ANSWERED})`],
     hint: ready
-      ? `${answeredBuiltins} / ${total} builtin stories answered — fill more as you go`
-      : `answer at least ${STORIES_MIN_ANSWERED} builtin prompts via \`${currentBinaryName()} profile set story.<id>.star_story <value>\``,
+      ? `${answeredBuiltins} / ${total} builtin questions answered — fill more as you go`
+      : `answer at least ${QUESTIONS_MIN_ANSWERED} builtin prompts via \`${currentBinaryName()} profile set question.<id>.answer <value>\``,
   };
 }

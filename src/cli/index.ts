@@ -390,7 +390,7 @@ profileCmd
   .action(async () => { await profileShow(); });
 profileCmd
   .command('get <key>')
-  .description('Read a single field by dot-path (e.g. contact.email, story.tell_me_about_failure.star_story)')
+  .description('Read a single field by dot-path (e.g. contact.email, question.tell_me_about_failure.answer)')
   .action(async (key: string) => { await profileGet(key); });
 profileCmd
   .command('set <key> [value]')
@@ -402,16 +402,16 @@ profileCmd
 profileCmd
   .command('add <type>')
   .description(
-    'Add a new entry. <type> = experience / project / education / story. ' +
+    'Add a new entry. <type> = experience / project / education / question. ' +
     'For experience/project/education use --slug-from "<text>" for AI-friendly id generation. ' +
-    'For story use --prompt "<question>" and optionally --answer "<text>".',
+    'For question use --prompt "<question>" and optionally --answer "<text>".',
   )
   .option('--id <id>', 'Explicit id (slug-style)')
   .option('--slug-from <text>', '(experience/project/education) Free-form description; wolf slugifies into an id')
-  .option('--prompt <text>', '(story only) The question text — also the source of the slug-id')
-  .option('--answer <text>', '(story only) Pre-fill the star_story answer')
-  .option('--prompt-from-file <path>', '(story only) Read --prompt from a file')
-  .option('--answer-from-file <path>', '(story only) Read --answer from a file')
+  .option('--prompt <text>', '(question only) The question text — also the source of the slug-id')
+  .option('--answer <text>', '(question only) Pre-fill the answer answer')
+  .option('--prompt-from-file <path>', '(question only) Read --prompt from a file')
+  .option('--answer-from-file <path>', '(question only) Read --answer from a file')
   .action(async (type: string, opts: {
     id?: string;
     slugFrom?: string;
@@ -420,7 +420,7 @@ profileCmd
     promptFromFile?: string;
     answerFromFile?: string;
   }) => {
-    if (type === 'story') {
+    if (type === 'question') {
       await profileAddStory({
         prompt: opts.prompt,
         answer: opts.answer,
@@ -431,17 +431,17 @@ profileCmd
       return;
     }
     if (type !== 'experience' && type !== 'project' && type !== 'education') {
-      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / story.`);
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / question.`);
     }
     await profileAdd(type, { id: opts.id, slugFrom: opts.slugFrom });
   });
 profileCmd
   .command('remove <type> <id>')
-  .description('Remove a resume entry by id. Builtin stories cannot be removed (clear star_story instead).')
+  .description('Remove a resume entry by id. Builtin questions cannot be removed (clear answer instead).')
   .option('-y, --yes', 'Confirm removal (typo guard)')
   .action(async (type: string, id: string, opts: { yes?: boolean }) => {
-    if (type !== 'experience' && type !== 'project' && type !== 'education' && type !== 'story') {
-      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / story.`);
+    if (type !== 'experience' && type !== 'project' && type !== 'education' && type !== 'question') {
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / question.`);
     }
     await profileRemove(type, id, opts);
   });

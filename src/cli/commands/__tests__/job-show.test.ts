@@ -27,11 +27,10 @@ function makeJob(overrides: Partial<Job> = {}): Job {
     status: 'new',
     error: null,
     appliedProfileId: null,
-    tailoredResumePdfPath: null,
-    coverLetterHtmlPath: null,
-    coverLetterPdfPath: null,
-    screenshotPath: null,
-    outreachDraftPath: null,
+    hasTailoredResume: false,
+    hasTailoredCoverLetter: false,
+    hasScreenshots: false,
+    hasOutreachDraft: false,
     createdAt: '2026-04-18T00:00:00.000Z',
     updatedAt: '2026-04-18T00:00:00.000Z',
     ...overrides,
@@ -89,6 +88,7 @@ function makeRepos(initial: Job[]): {
     writeJdText: vi.fn(async (id: string, txt: string) => {
       jdStore.set(id, txt);
     }),
+    getArtifactPath: vi.fn(async (id: string, kind: string) => `/tmp/${id}/${kind}`),
   };
   const companyRepo: CompanyRepository = {
     get: vi.fn(async (id: string) => (id === 'company-1' ? makeCompany() : null)),

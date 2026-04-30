@@ -97,12 +97,12 @@ export const JOB_FIELDS: ReadonlyArray<JobFieldMeta> = [
   { name: 'error',                       type: 'nullableEnum',     required: false, help: 'Set when status is "error"; otherwise blank.', enumValues: ERROR_VALUES },
   { name: 'appliedProfileId',            type: 'nullableString',   required: false, help: 'Profile dirname used to apply; blank = not yet applied.' },
 
-  // ---- artifact paths (set by tailor / fill / reach)
-  { name: 'tailoredResumePdfPath',       type: 'nullableString',   required: false, help: 'Path to the tailored resume PDF.' },
-  { name: 'coverLetterHtmlPath',         type: 'nullableString',   required: false, help: 'Path to the generated cover letter HTML.' },
-  { name: 'coverLetterPdfPath',          type: 'nullableString',   required: false, help: 'Path to the cover letter PDF.' },
-  { name: 'screenshotPath',              type: 'nullableString',   required: false, help: 'Path to the per-application screenshot folder.' },
-  { name: 'outreachDraftPath',           type: 'nullableString',   required: false, help: 'Path to the outreach email draft (.eml).' },
+  // ---- artifact existence flags (set by tailor / fill / reach; paths
+  //      themselves are convention-derived via JobRepository.getArtifactPath)
+  { name: 'hasTailoredResume',           type: 'boolean',          required: false, help: 'Whether tailor has produced resume.pdf. Default false; set true by tailor.' },
+  { name: 'hasTailoredCoverLetter',      type: 'boolean',          required: false, help: 'Whether tailor has produced cover_letter.html + cover_letter.pdf.' },
+  { name: 'hasScreenshots',              type: 'boolean',          required: false, help: 'Whether fill has recorded the screenshots/ directory.' },
+  { name: 'hasOutreachDraft',            type: 'boolean',          required: false, help: 'Whether reach has drafted outreach.eml.' },
 
   // ---- JD prose (lives in jobs.description_md SQLite column)
   { name: 'description_md',              type: 'multilineString',  required: false, help: 'Full JD prose. Use --from-file for long content.' },

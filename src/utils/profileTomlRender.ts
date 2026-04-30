@@ -26,7 +26,7 @@ import { PROFILE_FIELDS, type FieldMeta } from './profileFields.js';
  *   ...). `renderSkillsBody` does this — the categories carry real
  *   resume-rendering semantics (separate lines per bucket).
  * - **Per-entry array-of-table content** (experience / project / education
- *   / story) — these aren't fields with paths in PROFILE_FIELDS; they
+ *   / question) — these aren't fields with paths in PROFILE_FIELDS; they
  *   loop over `toml.experience` etc. directly.
  * - **Resume layout note** (`resume.section_order`) — printed as a
  *   `> blockquote` header on resume_pool, not an `## H2`.
@@ -261,47 +261,32 @@ function renderSkillsBody(toml: ProfileToml): string {
 }
 
 // ---------------------------------------------------------------------------
-// renderStandardQuestionsMarkdown — [form_answers] + [[story]] + [documents].
+// renderStandardQuestionsMarkdown — [[question]] (former form_answers + stories) + [documents].
 // ---------------------------------------------------------------------------
-
-/** Top-level table → H1 heading for standard_questions, in render order.
- *  Stories sit between Short Answers and Documents and are emitted by a
- *  dedicated loop (per-entry, not per-field). */
-const STANDARD_QUESTIONS_GROUPS: ReadonlyArray<{ table: string; h1: string }> = [
-  { table: 'form_answers',  h1: 'Short Answers' },
-  { table: 'documents',     h1: 'Documents' },
-];
 
 export function renderStandardQuestionsMarkdown(toml: ProfileToml): string {
   const out: string[] = [];
 
-  // # Short Answers (form_answers) — driven off PROFILE_FIELDS.
-  const sa: string[] = [];
-  emitFieldsForTable(toml, sa, 'form_answers', 'standard_questions');
-  pushH1Block(out, 'Short Answers', sa);
-
-  // # Stories — one ## per filled story; not field-shaped (per-entry array).
-  const storiesBlock: string[] = [];
-  for (const story of toml.story) {
-    if (!isFilled(story.star_story)) continue;
-    storiesBlock.push(`## ${story.prompt.trim()}`);
-    storiesBlock.push(story.star_story.trim());
-    if (isFilled(story.subnote)) {
-      storiesBlock.push('');
-      storiesBlock.push(`> Notes: ${story.subnote.trim().replace(/\n/g, ' ')}`);
+  // # Q&A — one ## per filled question. Mixed bag: short ATS answers
+  // (work auth, sponsorship, "how did you hear") + behavioral STAR
+  // stories. Both flavours render the same way.
+  const qaBlock: string[] = [];
+  for (const q of toml.question) {
+    if (!isFilled(q.answer)) continue;
+    qaBlock.push(`## ${q.prompt.trim()}`);
+    qaBlock.push(q.answer.trim());
+    if (isFilled(q.subnote)) {
+      qaBlock.push('');
+      qaBlock.push(`> Notes: ${q.subnote.trim().replace(/\n/g, ' ')}`);
     }
-    storiesBlock.push('');
+    qaBlock.push('');
   }
-  pushH1Block(out, 'Stories', storiesBlock);
+  pushH1Block(out, 'Q&A', qaBlock);
 
   // # Documents — driven off PROFILE_FIELDS.
   const docs: string[] = [];
   emitFieldsForTable(toml, docs, 'documents', 'standard_questions');
   pushH1Block(out, 'Documents', docs);
-
-  // Touch the unused groups variable so the table-list stays in sync with
-  // the explicit emit calls above (acts as a sanity reference).
-  void STANDARD_QUESTIONS_GROUPS;
 
   return out.join('\n').trimEnd() + '\n';
 }

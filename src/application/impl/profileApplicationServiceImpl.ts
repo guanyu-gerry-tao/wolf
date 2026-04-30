@@ -7,7 +7,7 @@ import { WorkspaceNotInitializedError } from '../../utils/errors/workspaceNotIni
 import {
   PROFILE_FIELDS,
   PROFILE_FIELDS_BY_PATH,
-  WOLF_BUILTIN_STORY_IDS,
+  WOLF_BUILTIN_QUESTION_IDS,
   type FieldMeta,
 } from '../../utils/profileFields.js';
 import { parseProfileToml, getByPath } from '../../utils/profileToml.js';
@@ -251,26 +251,26 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     } else if (parts.length === 3) {
       // Array-of-table: <type>.<id>.<field>. Validate type + builtin protection.
       const [arrayName, id, field] = parts;
-      const ALLOWED_ARRAYS = new Set(['experience', 'project', 'education', 'story']);
+      const ALLOWED_ARRAYS = new Set(['experience', 'project', 'education', 'question']);
       if (!ALLOWED_ARRAYS.has(arrayName)) {
         throw new Error(
-          `Unknown array '${arrayName}'. Allowed: experience / project / education / story.`,
+          `Unknown array '${arrayName}'. Allowed: experience / project / education / question.`,
         );
       }
-      // Builtin story protection.
-      if (arrayName === 'story' && WOLF_BUILTIN_STORY_IDS.has(id)) {
+      // Builtin question protection.
+      if (arrayName === 'question' && WOLF_BUILTIN_QUESTION_IDS.has(id)) {
         if (field === 'prompt') {
           throw new Error(
-            `Cannot change prompt of wolf-builtin story '${id}'. ` +
+            `Cannot change prompt of wolf-builtin question '${id}'. ` +
             `Builtins are read-only on this field.`,
           );
         }
         if (field === 'required') {
           throw new Error(
-            `Cannot change required-flag of wolf-builtin story '${id}'.`,
+            `Cannot change required-flag of wolf-builtin question '${id}'.`,
           );
         }
-        // star_story / subnote are fine to edit on builtins.
+        // answer / subnote are fine to edit on builtins.
       }
     } else {
       throw new Error(
@@ -381,7 +381,7 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
     // De-dupe against existing entries (including any wolf-builtin id —
     // we don't overwrite a builtin if user picks the same slug).
     const parsed = parseProfileToml(before);
-    const existingIds = new Set(parsed.story.map((s) => s.id));
+    const existingIds = new Set(parsed.question.map((s) => s.id));
     let id = proposedId;
     let attempt = 2;
     while (existingIds.has(id)) {
@@ -392,24 +392,24 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
       }
     }
 
-    // Build the [[story]] block with prompt + (optional) star_story.
+    // Build the [[question]] block with prompt + (optional) answer.
     const block = buildStoryBlock(id, opts.prompt, opts.answer ?? '');
     const after = appendArrayMember(before, block);
     await fs.writeFile(tomlPath, after, 'utf-8');
 
-    return { arrayName: 'story', id };
+    return { arrayName: 'question', id };
   }
 
   /** @inheritdoc */
   async removeEntry(
-    arrayName: 'experience' | 'project' | 'education' | 'story',
+    arrayName: 'experience' | 'project' | 'education' | 'question',
     id: string,
     opts: { yes?: boolean; profileName?: string } = {},
   ): Promise<void> {
-    if (arrayName === 'story' && WOLF_BUILTIN_STORY_IDS.has(id)) {
+    if (arrayName === 'question' && WOLF_BUILTIN_QUESTION_IDS.has(id)) {
       throw new Error(
-        `Cannot remove wolf-builtin story '${id}'. ` +
-        `Clear its star_story to "skip" instead: \`${currentBinaryName()} profile set story.${id}.star_story ""\``,
+        `Cannot remove wolf-builtin question '${id}'. ` +
+        `Clear its answer to "skip" instead: \`${currentBinaryName()} profile set question.${id}.answer ""\``,
       );
     }
     if (!opts.yes) {
@@ -485,8 +485,8 @@ function buildEmptyArrayBlock(arrayName: 'experience' | 'project' | 'education',
   return lines.join('\n');
 }
 
-/** Returns a `[[story]]` block for a user-custom story (required = false).
- *  prompt is the question text; star_story may be pre-filled or empty.
+/** Returns a `[[question]]` block for a user-custom question (required = false).
+ *  prompt is the question text; answer may be pre-filled or empty.
  *  Multiline triple-quote shape matches what surgical edits expect for
  *  later updates. */
 function buildStoryBlock(id: string, prompt: string, answer: string): string {
@@ -499,13 +499,13 @@ function buildStoryBlock(id: string, prompt: string, answer: string): string {
     );
   }
   return [
-    '[[story]]',
+    '[[question]]',
     `id = "${id}"`,
     'prompt = """',
     prompt,
     '"""',
     'required = false',
-    'star_story = """',
+    'answer = """',
     answer,
     '"""',
     'subnote = """',

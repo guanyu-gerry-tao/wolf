@@ -15,7 +15,7 @@ export interface ProfileSetResult {
 
 /** Result of `addEntry` / `addStory`. */
 export interface ProfileAddEntryResult {
-  arrayName: 'experience' | 'project' | 'education' | 'story';
+  arrayName: 'experience' | 'project' | 'education' | 'question';
   id: string;
 }
 
@@ -127,16 +127,16 @@ export interface ProfileApplicationService {
   ): Promise<ProfileAddEntryResult>;
 
   /**
-   * Appends a user-custom `[[story]]` entry. Different signature from
+   * Appends a user-custom `[[question]]` entry. Different signature from
    * `addEntry` because stories carry the question text in a `prompt`
    * field rather than deriving id-only from a slug.
    *
    * - `opts.prompt` (REQUIRED): the question text. Becomes both the
    *   `prompt` field AND the source of the slugified id (unless
    *   `opts.id` is given explicitly).
-   * - `opts.answer` (OPTIONAL): pre-fills `star_story`. If omitted,
+   * - `opts.answer` (OPTIONAL): pre-fills `answer`. If omitted,
    *   the user can fill it later via `wolf profile set
-   *   story.<id>.star_story <text>`.
+   *   question.<id>.answer <text>`.
    * - `opts.id` (OPTIONAL): override the generated slug.
    *
    * Custom stories always get `required = false` (only wolf-builtin
@@ -152,11 +152,11 @@ export interface ProfileApplicationService {
 
   /**
    * Removes a `[[<arrayName>]]` entry by id. Refuses to delete a
-   * wolf-builtin story (clear `star_story` to skip instead). Requires
+   * wolf-builtin story (clear `answer` to skip instead). Requires
    * `opts.yes` so a typo in id can't silently drop the wrong entry.
    */
   removeEntry(
-    arrayName: 'experience' | 'project' | 'education' | 'story',
+    arrayName: 'experience' | 'project' | 'education' | 'question',
     id: string,
     opts?: { yes?: boolean; profileName?: string },
   ): Promise<void>;

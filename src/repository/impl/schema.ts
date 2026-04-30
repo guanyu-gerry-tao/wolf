@@ -57,11 +57,14 @@ export const jobs = sqliteTable('jobs', {
   status: text('status').$type<JobStatus>().notNull(),
   error: text('error').$type<JobError>(),
   appliedProfileId: text('applied_profile_id'),
-  tailoredResumePdfPath: text('tailored_resume_pdf_path'),
-  coverLetterHtmlPath: text('cover_letter_html_path'),
-  coverLetterPdfPath: text('cover_letter_pdf_path'),
-  screenshotPath: text('screenshot_path'),
-  outreachDraftPath: text('outreach_draft_path'),
+  // β.10h: artifact paths replaced with booleans. Files live at convention
+  // paths under `data/jobs/<jobDirName>/` (resolved via JobRepository
+  // helpers); these flags say whether a given pipeline step has produced
+  // its artifact. Cheaper to query, doesn't drift if the workspace moves.
+  hasTailoredResume: integer('has_tailored_resume', { mode: 'boolean' }).notNull().default(false),
+  hasTailoredCoverLetter: integer('has_tailored_cover_letter', { mode: 'boolean' }).notNull().default(false),
+  hasScreenshots: integer('has_screenshots', { mode: 'boolean' }).notNull().default(false),
+  hasOutreachDraft: integer('has_outreach_draft', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

@@ -134,8 +134,8 @@ export async function profileAdd(
 }
 
 /**
- * Adds a user-custom `[[story]]` entry. Different signature from the other
- * `add` types because stories carry a prompt (the question text) plus an
+ * Adds a user-custom `[[question]]` entry. Different signature from the other
+ * `add` types because questions carry a prompt (the question text) plus an
  * optional pre-filled answer.
  *
  * `--prompt-from-file` / `--answer-from-file` read from disk for long
@@ -159,7 +159,7 @@ export async function profileAddStory(
     prompt = opts.prompt;
   } else {
     throw new Error(
-      `\`${currentBinaryName()} profile add story\` requires --prompt "<question>" or --prompt-from-file <path>.`,
+      `\`${currentBinaryName()} profile add question\` requires --prompt "<question>" or --prompt-from-file <path>.`,
     );
   }
 
@@ -178,16 +178,16 @@ export async function profileAddStory(
   });
   console.log(`Added ${r.arrayName}.${r.id}`);
   if (answer === undefined || answer.trim().length === 0) {
-    console.log(`  fill the answer with \`${currentBinaryName()} profile set ${r.arrayName}.${r.id}.star_story <text>\``);
+    console.log(`  fill the answer with \`${currentBinaryName()} profile set ${r.arrayName}.${r.id}.answer <text>\``);
   }
 }
 
 /**
  * Removes an array-of-table entry by id. `--yes` is required (typo guard).
- * Builtin stories cannot be removed (clear `star_story` instead).
+ * Builtin questions cannot be removed (clear `answer` instead).
  */
 export async function profileRemove(
-  arrayName: 'experience' | 'project' | 'education' | 'story',
+  arrayName: 'experience' | 'project' | 'education' | 'question',
   id: string,
   opts: { yes?: boolean } = {},
   ctx: AppContext = createAppContext(),

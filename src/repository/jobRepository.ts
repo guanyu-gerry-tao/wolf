@@ -50,4 +50,24 @@ export interface JobRepository {
 
   /** Write the job description to `<workspaceDir>/jd.md`, creating the dir if needed. */
   writeJdText(id: string, jdText: string): Promise<void>;
+
+  /**
+   * Resolve the convention path for one of the per-job artifacts. β.10h
+   * replaced the 5 nullable path columns with 4 booleans + this helper —
+   * the actual path is always derivable from `getWorkspaceDir(id)` plus a
+   * fixed filename, so persisting it was redundant.
+   *
+   * Returns the path even if the file does not yet exist; callers that need
+   * "is this produced?" should read the corresponding `hasX` flag on the
+   * Job row instead of stat-ing the path.
+   */
+  getArtifactPath(id: string, kind: ArtifactKind): Promise<string>;
 }
+
+/** One of the per-job artifact kinds wolf knows how to locate by convention. */
+export type ArtifactKind =
+  | 'resume_pdf'         // <workspaceDir>/resume.pdf
+  | 'cover_letter_html'  // <workspaceDir>/src/cover_letter.html
+  | 'cover_letter_pdf'   // <workspaceDir>/cover_letter.pdf
+  | 'screenshot_dir'     // <workspaceDir>/screenshots/
+  | 'outreach_draft';    // <workspaceDir>/outreach.eml

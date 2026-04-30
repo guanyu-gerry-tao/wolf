@@ -8,7 +8,7 @@ import type { ProfileToml } from '../utils/profileToml.js';
  *                      address, links, job_preferences, demographics,
  *                      clearance, form_answers, documents, skills,
  *                      [[experience]], [[project]], [[education]],
- *                      [[story]], various optional resume sections)
+ *                      [[question]], various optional resume sections)
  *   - attachments/   — files referenced by documents.* (transcript, etc.)
  *
  * The legacy v1 markdown trio (profile.md / resume_pool.md /
