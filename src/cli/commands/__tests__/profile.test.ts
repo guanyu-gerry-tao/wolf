@@ -22,18 +22,19 @@ let tmpDir: string;
 let logSpy: ReturnType<typeof vi.spyOn>;
 const originalEnv = { ...process.env };
 
-// Helper: lay down a fresh profile directory at profiles/<name>/ with the four
-// MD files and an attachments dir, mimicking what `wolf init` would create.
-// Tests can override the file contents via `overrides`.
+// Helper: lay down a fresh v2 profile directory at profiles/<name>/ with a
+// minimal valid profile.toml and an attachments dir, mimicking what
+// `wolf init` would create. Tests can override profile.toml content via
+// `overrides.profileToml`.
 async function writeProfileDir(
   name: string,
-  overrides: Partial<{ profileMd: string; resumePool: string; standardQuestions: string }> = {},
+  overrides: Partial<{ profileToml: string }> = {},
 ): Promise<void> {
   const dir = path.join(tmpDir, 'profiles', name);
   await fs.mkdir(path.join(dir, 'attachments'), { recursive: true });
-  await fs.writeFile(path.join(dir, 'profile.md'), overrides.profileMd ?? `# ${name}\n`, 'utf-8');
-  await fs.writeFile(path.join(dir, 'resume_pool.md'), overrides.resumePool ?? '# Resume Pool\n', 'utf-8');
-  await fs.writeFile(path.join(dir, 'standard_questions.md'), overrides.standardQuestions ?? '# Standard Questions\n', 'utf-8');
+  // Minimal valid profile.toml: schemaVersion + a marker the test can detect.
+  const defaultToml = `schemaVersion = 2\n# profile: ${name}\n`;
+  await fs.writeFile(path.join(dir, 'profile.toml'), overrides.profileToml ?? defaultToml, 'utf-8');
   await fs.writeFile(path.join(dir, 'attachments', 'README.md'), '# attachments\n', 'utf-8');
 }
 
@@ -74,30 +75,27 @@ describe('profileList', () => {
 });
 
 describe('profileCreate', () => {
-  // Default: --from unset, clones from the default profile. Verifies the new
-  // profile directory and its MD files all land on disk.
+  // Default: --from unset, clones from the default profile. Verifies
+  // profile.toml + the attachments dir land on disk.
   it('clones from the default profile when --from is not given', async () => {
     await profileCreate('gc-persona');
     const cloned = path.join(tmpDir, 'profiles', 'gc-persona');
-    for (const file of ['profile.md', 'resume_pool.md', 'standard_questions.md']) {
-      const exists = await fs.access(path.join(cloned, file)).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
-    }
+    const tomlExists = await fs.access(path.join(cloned, 'profile.toml')).then(() => true).catch(() => false);
+    expect(tomlExists).toBe(true);
     // attachments dir + README come along too.
     const att = await fs.access(path.join(cloned, 'attachments', 'README.md')).then(() => true).catch(() => false);
     expect(att).toBe(true);
   });
 
-  // Source MD content is preserved verbatim — clone is a deep copy of the
-  // four files, no rewriting.
-  it('preserves source MD content in the clone', async () => {
+  // Source TOML content is preserved verbatim — clone is a deep copy.
+  it('preserves source profile.toml content in the clone', async () => {
     // Customize source content so we can detect the copy.
-    await writeProfileDir('default', { profileMd: '# default\n\n## marker\nclone-source\n' });
+    await writeProfileDir('default', { profileToml: 'schemaVersion = 2\n# clone-source-marker\n' });
     await profileCreate('jane', { from: 'default' });
-    const janeProfile = await fs.readFile(
-      path.join(tmpDir, 'profiles', 'jane', 'profile.md'), 'utf-8',
+    const janeToml = await fs.readFile(
+      path.join(tmpDir, 'profiles', 'jane', 'profile.toml'), 'utf-8',
     );
-    expect(janeProfile).toContain('clone-source');
+    expect(janeToml).toContain('clone-source-marker');
   });
 
   // Invalid names would create unusable or unsafe paths; the command rejects

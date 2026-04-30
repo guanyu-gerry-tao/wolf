@@ -56,10 +56,10 @@ describe('init()', () => {
     }
   });
 
-  // Happy path: fresh workspace — init writes the four template MD files,
+  // Happy path: fresh workspace — init writes the v2 profile.toml,
   // a wolf.toml pointing at the default profile dir, and the standard sidecar
   // files (.gitignore, CLAUDE.md, AGENTS.md). No data prompts run.
-  it('creates wolf.toml, the three profile MDs, and the attachments dir in a fresh directory', async () => {
+  it('creates wolf.toml, profile.toml, and the attachments dir in a fresh directory', async () => {
     const dir = makeTempDir();
     await fs.mkdir(dir, { recursive: true });
 
@@ -70,20 +70,23 @@ describe('init()', () => {
       expect(config.default).toBe('default');
       expect(config.tailor.model).toBe('anthropic/claude-sonnet-4-6');
       expect(config.fill.model).toBe('anthropic/claude-haiku-4-5-20251001');
+      // Fresh init writes schemaVersion = 2 (the current).
+      expect(config.schemaVersion).toBe(2);
 
-      // The three profile MD templates each get written.
+      // The v2 single profile.toml replaces the old md trio. It should contain
+      // the structural anchors we expect (table headers, builtin stories).
       const profileDir = path.join(dir, 'profiles', 'default');
-      const profileMd = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
-      expect(profileMd).toContain('# Identity');
-      expect(profileMd).toContain('# Job Preferences');
-      expect(profileMd).toContain('# Demographics');
-
-      const standardQuestions = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
-      expect(standardQuestions).toContain('# Short Answers');
-      expect(standardQuestions).toContain('# Documents');
-
-      const resumePool = await fs.readFile(path.join(profileDir, 'resume_pool.md'), 'utf-8');
-      expect(resumePool).toContain('# Resume Pool');
+      const profileToml = await fs.readFile(path.join(profileDir, 'profile.toml'), 'utf-8');
+      expect(profileToml).toContain('schemaVersion = 2');
+      expect(profileToml).toContain('[identity]');
+      expect(profileToml).toContain('[job_preferences]');
+      expect(profileToml).toContain('[demographics]');
+      expect(profileToml).toContain('[form_answers]');
+      expect(profileToml).toContain('[[story]]');
+      // Old md files should NOT be written by v2 init.
+      await expect(fs.access(path.join(profileDir, 'profile.md'))).rejects.toThrow();
+      await expect(fs.access(path.join(profileDir, 'resume_pool.md'))).rejects.toThrow();
+      await expect(fs.access(path.join(profileDir, 'standard_questions.md'))).rejects.toThrow();
 
       // attachments/ exists and contains the explanatory README.
       const attachmentsReadme = await fs.readFile(
@@ -110,26 +113,24 @@ describe('init()', () => {
     });
   });
 
-  // Idempotent re-run: existing profile MDs must not be overwritten.
-  it('does not overwrite profile MDs on re-run', async () => {
+  // Idempotent re-run: an existing profile.toml must not be overwritten.
+  it('does not overwrite profile.toml on re-run', async () => {
     const dir = makeTempDir();
     await fs.mkdir(dir, { recursive: true });
 
-    // Pre-create profile files with known sentinel content before running init.
+    // Pre-create profile.toml with sentinel content before running init.
     const profileDir = path.join(dir, 'profiles', 'default');
     await fs.mkdir(profileDir, { recursive: true });
-    await fs.writeFile(path.join(profileDir, 'profile.md'), '# already-edited', 'utf-8');
-    await fs.writeFile(path.join(profileDir, 'resume_pool.md'), '# existing', 'utf-8');
-    await fs.writeFile(path.join(profileDir, 'standard_questions.md'), '# my answers', 'utf-8');
+    await fs.writeFile(
+      path.join(profileDir, 'profile.toml'),
+      'schemaVersion = 2\nsentinel = "already-edited"\n',
+      'utf-8',
+    );
 
     await runInitIn(dir, async () => {
-      // Profile files should retain their original content — init must skip writing them.
-      const profileContent = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
-      expect(profileContent).toBe('# already-edited');
-      const poolContent = await fs.readFile(path.join(profileDir, 'resume_pool.md'), 'utf-8');
-      expect(poolContent).toBe('# existing');
-      const sqContent = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
-      expect(sqContent).toBe('# my answers');
+      // profile.toml should retain its original content — init must skip writing it.
+      const tomlContent = await fs.readFile(path.join(profileDir, 'profile.toml'), 'utf-8');
+      expect(tomlContent).toContain('sentinel = "already-edited"');
     });
   });
 
@@ -171,16 +172,12 @@ describe('init()', () => {
       expect(config.default).toBe('default');
       expect(config.instance?.mode).toBeUndefined();
 
-      // The same template files appear under --empty.
+      // The same v2 profile.toml is written under --empty.
       const profileDir = path.join(dir, 'profiles', 'default');
-      const profileMd = await fs.readFile(path.join(profileDir, 'profile.md'), 'utf-8');
-      expect(profileMd).toContain('# Identity');
-
-      const standardQuestions = await fs.readFile(path.join(profileDir, 'standard_questions.md'), 'utf-8');
-      expect(standardQuestions).toContain('# Short Answers');
-
-      const resumePool = await fs.readFile(path.join(profileDir, 'resume_pool.md'), 'utf-8');
-      expect(resumePool).toContain('# Resume Pool');
+      const profileToml = await fs.readFile(path.join(profileDir, 'profile.toml'), 'utf-8');
+      expect(profileToml).toContain('[identity]');
+      expect(profileToml).toContain('[form_answers]');
+      expect(profileToml).toContain('[[story]]');
 
       await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
       await expect(fs.access(path.join(profileDir, 'attachments'))).resolves.toBeUndefined();

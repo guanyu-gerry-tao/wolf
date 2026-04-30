@@ -12,7 +12,10 @@ import { init } from './commands/init.js';
 import { add } from './commands/add.js';
 import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
 import { configGet, configSet } from './commands/config.js';
-import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
+import {
+  profileList, profileCreate, profileUse, profileDelete,
+  profileShow, profileGet, profileSet, profileAdd, profileRemove, profileFields,
+} from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild, currentBinaryName } from '../utils/instance.js';
@@ -304,9 +307,10 @@ configCmd
   .action(async (key: string, value: string) => { await configSet(key, value); });
 program.addCommand(configCmd);
 
-// Profile fields are stored as markdown — edit profiles/<name>/profile.md
-// directly with $EDITOR, no get/set CLI to keep the API surface small.
-const profileCmd = new Command('profile').description('Manage profile directories');
+// Profile data lives in profiles/<name>/profile.toml (v2). All writes
+// go through wolf commands so comments / formatting are preserved by the
+// surgical TOML editor (smol-toml's stringify() drops comments).
+const profileCmd = new Command('profile').description('Manage profile directories and fields');
 profileCmd
   .command('list')
   .description('List all profile directories (default marked with *)')
@@ -325,6 +329,50 @@ profileCmd
   .description('Delete profile directory (requires --yes)')
   .option('-y, --yes', 'Confirm deletion')
   .action(async (id: string, opts: { yes?: boolean }) => { await profileDelete(id, opts); });
+profileCmd
+  .command('show')
+  .description('Print profile.toml verbatim (raw, with comments). Use `wolf context --for=search` for AI-prompt context.')
+  .action(async () => { await profileShow(); });
+profileCmd
+  .command('get <key>')
+  .description('Read a single field by dot-path (e.g. contact.email, story.tell_me_about_failure.star_story)')
+  .action(async (key: string) => { await profileGet(key); });
+profileCmd
+  .command('set <key> [value]')
+  .description('Write a field; surgical edit preserves comments. Use --from-file for long values, multi-line content, or values starting with "-" (commander treats those as flags).')
+  .option('--from-file <path>', 'Read the value from a file instead of the CLI argument')
+  .action(async (key: string, value: string | undefined, opts: { fromFile?: string }) => {
+    await profileSet(key, value, opts);
+  });
+profileCmd
+  .command('add <type>')
+  .description('Add a new resume entry. <type> = experience / project / education. Use --slug-from "<text>" for AI-friendly id generation.')
+  .option('--id <id>', 'Explicit id (slug-style)')
+  .option('--slug-from <text>', 'Free-form description; wolf slugifies it into an id')
+  .action(async (type: string, opts: { id?: string; slugFrom?: string }) => {
+    if (type !== 'experience' && type !== 'project' && type !== 'education') {
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education.`);
+    }
+    await profileAdd(type, opts);
+  });
+profileCmd
+  .command('remove <type> <id>')
+  .description('Remove a resume entry by id. Builtin stories cannot be removed (clear star_story instead).')
+  .option('-y, --yes', 'Confirm removal (typo guard)')
+  .action(async (type: string, id: string, opts: { yes?: boolean }) => {
+    if (type !== 'experience' && type !== 'project' && type !== 'education' && type !== 'story') {
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / story.`);
+    }
+    await profileRemove(type, id, opts);
+  });
+profileCmd
+  .command('fields [path]')
+  .description('Print field reference for profile.toml. With [path], prints just that field. --required / --json supported.')
+  .option('--required', 'Only list REQUIRED fields')
+  .option('--json', 'Output JSON for AI / MCP consumers')
+  .action(async (pathArg: string | undefined, opts: { required?: boolean; json?: boolean }) => {
+    await profileFields(pathArg, opts);
+  });
 program.addCommand(profileCmd);
 
 const envCmd = new Command('env').description('Manage WOLF_ environment variables (API keys)');
