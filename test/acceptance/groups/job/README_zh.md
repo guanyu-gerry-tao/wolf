@@ -55,5 +55,6 @@ Case 可以用 `wolf add` 和 fixture JD seed job。执行 `wolf job show/get/se
 ## 报告要求
 
 报告必须包含命令行、退出码、stdout/stderr 日志路径、workspace 路径、返回的 `jobId`、
-字段写入前后值、校验错误摘要，以及 protected-path safety check，证明没有写入
-`~/wolf`、`~/wolf-dev` 或 repo-local `data/`。
+字段写入前后值、校验错误摘要，以及 protected-path safety check，证明没有运行时文件
+写入 `~/wolf`、`~/wolf-dev` 或 repo-local `data/`；忽略被 git 跟踪的占位文件
+`data/.gitkeep`。

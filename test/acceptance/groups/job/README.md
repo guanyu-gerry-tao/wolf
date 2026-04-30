@@ -57,5 +57,6 @@ Cases may seed jobs with `wolf add` and a fixture JD. Store the returned
 
 Reports must include command lines, exit codes, stdout/stderr log paths,
 workspace path, returned `jobId`, field values before/after writes, validation
-error excerpts, and a protected-path safety check showing no files were written
-under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+error excerpts, and a protected-path safety check showing no runtime files were
+written under `~/wolf`, `~/wolf-dev`, or repo-local `data/` (ignore the tracked
+`data/.gitkeep` placeholder).

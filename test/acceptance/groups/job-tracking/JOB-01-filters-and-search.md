@@ -58,10 +58,10 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run w
 - `--search Acme --status new` shows both Acme jobs.
 - Missing search prints `No jobs match.`
 - Dev banner appears on stderr for every wolf invocation.
-- No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files are written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Report Requirements
 
 Include setup commands, all list outputs, expected/actual visible job titles,
 exit codes, and safety checks.
-

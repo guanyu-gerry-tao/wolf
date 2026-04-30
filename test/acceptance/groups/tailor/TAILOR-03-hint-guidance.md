@@ -26,7 +26,7 @@ Use `WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-0
 
 ## Setup
 
-Use the same fixture profile, resume pool, and add-job setup as
+Use the same CLI-populated fixture profile, resume content, and add-job setup as
 [TAILOR-01](TAILOR-01-full-pipeline.md), but under the TAILOR-03 workspace.
 
 ## Steps
@@ -66,10 +66,10 @@ sections that depend on missing artifacts and mark them `N/A` in the report.
 - `tailoring-brief.md` exists.
 - Shared reviewer rubric returns `PASS` or `PASS_WITH_MINOR_IMPROVEMENTS` and
   both case-specific checks above pass.
-- No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files are written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Report Requirements
 
 Include command logs, `jobId`, hint path, brief path, short excerpts from both
 files, AI review findings, and safety checks.
-

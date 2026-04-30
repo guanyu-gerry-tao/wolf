@@ -68,4 +68,5 @@ You are the Wolf Smoke Test Orchestrator.
 
 - 每次 wolf 调用是否出现 dev banner
 - 每个 case 使用的精确 `WOLF_DEV_HOME` 路径
-- 安全检查：确认没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`
+- 安全检查：确认没有文件写入 `~/wolf`、`~/wolf-dev`，也没有运行时文件写入 repo 内
+  `data/`；被 git 跟踪的占位文件 `data/.gitkeep` 允许存在，不能因此判失败

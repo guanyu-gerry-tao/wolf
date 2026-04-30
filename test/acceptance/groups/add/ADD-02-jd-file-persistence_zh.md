@@ -1,8 +1,9 @@
-# ADD-02 - JD 文件持久化
+# ADD-02 - JD Description 持久化
 
 ## 目的
 
-验证 `wolf add` 会把 job description 写入磁盘上的 job workspace，而不只是写入 SQLite。
+验证 `wolf add` 会把 job description 写入 canonical job record，并通过受数据治理的
+`wolf job` 读取表面暴露出来。
 
 ## 覆盖
 
@@ -38,23 +39,32 @@ JD_TEXT="$(python3 test/fixtures/jd/scripts/sample_raw_jd.py "$JD_FIXTURE" --row
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/add-ADD-02 npm run wolf -- add --title "Data Scientist" --company "Fixture Company" --jd-text "$JD_TEXT"
 ```
 
-从 stdout 提取 `jobId`。然后检查 workspace：
+从 stdout 提取 `jobId`。然后检查 canonical job fields：
+
+```bash
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/add-ADD-02 npm run wolf -- job get <jobId> description_md
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/add-ADD-02 npm run wolf -- job show <jobId> --json
+```
+
+同时确认 workspace 不再依赖旧的 `data/jobs/**/jd.md` artifact：
 
 ```bash
 find /tmp/wolf-test/acceptance/<run-id>/workspaces/add-ADD-02/data/jobs -name jd.md -print
 ```
 
-打开 `find` 找到的唯一 `jd.md`。
-
 ## 通过标准
 
 - `init` 和 `add` 退出码都是 `0`。
 - `add` stdout 包含非空 `jobId`。
-- `data/jobs/` 下正好有一个 `jd.md`。
-- `jd.md` 包含 `Data Scientist`。
-- job workspace 目录名包含 company 和 title slug。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- `job get <jobId> description_md` 退出码 `0`，且包含 `Data Scientist`。
+- `job show <jobId> --json` 退出码 `0`，JSON payload 中包含同一份 description。
+- 旧的 `find ... -name jd.md` 检查不输出任何内容；JD 的 source of truth 是 job
+  record，不是 legacy markdown sidecar file。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 
-包含 fixture 路径、source row id、返回的 `jobId`、`jd.md` 路径、一小段 `jd.md` 摘录，以及 protected-path safety check。
+包含 fixture 路径、source row id、返回的 `jobId`、从 `wolf job get` 得到的一小段
+`description_md` 摘录、`job show --json` 证据、legacy `jd.md` absence check，以及
+protected-path safety check。

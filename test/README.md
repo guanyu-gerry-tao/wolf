@@ -73,7 +73,8 @@ Automated agents must never create, modify, or delete:
 
 - `~/wolf/`
 - `~/wolf-dev/`
-- repo-local `data/`
+- repo-local runtime files under `data/` (`data/.gitkeep` is the tracked
+  placeholder and does not count as a test write)
 - shell RC files such as `~/.zshrc`
 - any path outside `/tmp/wolf-test/`
 

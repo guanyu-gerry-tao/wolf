@@ -56,4 +56,5 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-<case-id>
 
 报告必须包含命令行、退出码、stdout/stderr 日志路径、workspace 路径、写入前后的
 `profile.toml` 关键片段、返回的 entry id、校验错误摘要，以及 protected-path
-safety check，证明没有写入 `~/wolf`、`~/wolf-dev` 或 repo-local `data/`。
+safety check，证明没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo-local
+`data/`；忽略被 git 跟踪的占位文件 `data/.gitkeep`。

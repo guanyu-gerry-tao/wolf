@@ -11,7 +11,7 @@ AI-powered job hunting CLI + MCP server. Finds roles, tailors resumes, fills for
 **Milestone 1 — Scaffolding & Skeleton** ✅ complete
 **Milestone 3 — Tailor** ✅ complete (HTML→PDF pipeline, 3-agent checkpoint flow, CLI tooling)
 
-Post-M3 enhancement batch done: E1 (willingToRelocate string), E2 (per-command model + combined provider/model format), E3 (wolf config/profile get/set + multi-profile management), E4 (prompts externalized to MD), E5/E6 (prompt polish), E7 (analyst + writers checkpoint architecture with hint.md), E8 (profile migrated from typed TOML → three-MD layout: `profile.md` + `resume_pool.md` + `standard_questions.md` + `attachments/`; GitHub Alert markers `> [!IMPORTANT]` / `> [!TIP]` for runtime-stripped guidance; `assertReadyForTailor` + `wolf doctor` content-shape validation).
+Post-M3 enhancement batch done: E1 (willingToRelocate string), E2 (per-command model + combined provider/model format), E3 (wolf config/profile get/set + multi-profile management), E4 (prompts externalized to MD), E5/E6 (prompt polish), E7 (analyst + writers checkpoint architecture with hint.md), E8 (profile governance consolidated into `profile.toml` with `wolf profile` show/get/set/fields/add/remove, unified builtin questions, `assertReadyForTailor`, and `wolf doctor` content-shape validation).
 
 **Next: Milestone 2 — Hunter** (application layer + hunt/score commands)
 
@@ -135,6 +135,13 @@ For MCP server usage, add these to the `env` section of `claude_desktop_config.j
 - Shared offline JD and resume inputs live under `test/fixtures/`; use the fixture scripts there instead of embedding large pasted text in acceptance docs.
 - CLI behavior added or changed → add or update the relevant smoke/acceptance group under `test/` in the same PR.
 - Automated smoke and acceptance tests must only use `/tmp/wolf-test/` workspaces via explicit `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`.
+- When running smoke or acceptance suites, the AI agent must act as the
+  orchestrator: split work by suite group, assign subagents to execute those
+  groups, and collect their reports into `test/runs/<run-id>/`.
+- Smoke subagents should use the cheapest capable model tier (Haiku-like or
+  GPT-mini-like). Acceptance subagents should use a mid-tier capable model
+  (Claude Sonnet-like or GPT-5.4-like), especially for API-backed or
+  AI-reviewed groups.
 - Test run reports live under `test/runs/<run-id>/`, with `test/runs/LATEST.md` pointing to the most recent run. The directory is kept with `.gitkeep`, but run contents are gitignored and must not be committed.
 - If the user asks to clear test tmp/temp files, interpret that as deleting runtime workspaces under `/tmp/wolf-test/` only. Do not delete `test/runs/` reports unless the user explicitly asks to clear reports too.
 
@@ -173,7 +180,8 @@ migration framework in the same PR**. Don't defer it.
 
 Surfaces that count as workspace state:
 - `wolf.toml` schema (renamed/removed fields, new required fields)
-- `profile.md` / `resume_pool.md` / `standard_questions.md` shape (REQUIRED H2 sections, structured field names)
+- `profiles/<name>/profile.toml` shape (required fields, array-of-table entry
+  layout, builtin question ids, structured field names)
 - SQLite schema (any non-additive change — column rename, drop, type change, table rename)
 - `data/jobs/<dir>/` artifact layout (filenames, directory structure)
 

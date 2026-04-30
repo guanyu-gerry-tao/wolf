@@ -49,9 +49,9 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run w
 - JSON 包含有三个 entries 的 `jobs` array。
 - JSON 包含 `totalMatching` 和 `limited` fields。
 - 每次 wolf 调用的 stderr 都出现 dev banner。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 
 包含 table output、footer line、parsed JSON summary、exit codes 和 safety checks。
-
