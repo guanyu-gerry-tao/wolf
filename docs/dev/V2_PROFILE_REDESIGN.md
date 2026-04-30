@@ -315,25 +315,75 @@ and functions.
 
 ### β.10 follow-ups
 
-- **β.10a** Merged `storyFields.ts` into `profileFields.ts` (per
-  reviewer; the "shape different" argument was sloppy — they are
-  shape-identical, the only difference is the wolf-managed builtin
-  registry, which is metadata that belongs with PROFILE_FIELDS).
+- **β.10a** Merged `storyFields.ts` into `profileFields.ts`.
 - **β.10b** `wolf profile add story --prompt --answer` unlocked
   user-custom behavioral prompts.
-- **β.10c** **v1 → v2 migration body stubbed.** Pre-1.0 with zero
-  real users — the 470-line mapping engine was burning on use cases
-  that don't yet exist. The runner framework stays; `v1ToV2.run` is
-  a no-op + log line. `extractH2.ts` also deleted (no callers left).
-  Re-implement when wolf has shipped a stable v1 and we want a v2
-  schema. Until then, dogfood users (just the author) re-init when
-  they have stale v1 data.
+- **β.10c** v1 → v2 migration body stubbed (pre-1.0, zero users; the
+  runner framework stays, the body is a no-op).
+- **β.10d** **PROFILE_FIELDS as template SoT.** Bundled `profile.toml`
+  template moved from a hand-written 700-line file to runtime-generated
+  string in `profileTomlGenerate.ts`. Per-field `comment` + `defaultValue`
+  on `FieldMeta` drive emit; the static template file is deleted.
+- **β.10e** **Renderer + search-context loop unification.** Added
+  `heading` / `section` / `inSearchContext` to `FieldMeta`.
+  `profileTomlRender.ts` and search-context rendering became data-driven
+  loops over PROFILE_FIELDS, replacing ~70 lines of hand-rolled
+  `pushFieldIfFilled` cliques.
+- **β.10f** **Pseudo-enum strings collapsed.** 5 `relocation_*` + 6
+  `sponsorship_*` + 4 `clearance.*` → 3 freeform fields.
+  `renderRelocationCombined` / `renderSponsorshipCombined` helpers
+  deleted. Audit: structured fields had no programmatic consumers.
+- **β.10g** **`[form_answers]` + `[[story]]` unified into `[[question]]`.**
+  6 form_answers became builtin entries in `WOLF_BUILTIN_QUESTIONS` (now
+  23 = 6 short ATS Q&A + 17 STAR). Field `star_story` → `answer`.
+  `BuiltinQuestion.defaultAnswer?` carries absorbed verbatim defaults.
+  CLI: `wolf profile add story` → `add question`. `parseProfileToml`
+  throws on legacy `[[story]]` to prevent silent data loss.
+- **β.10h** **Job artifact paths → conventions + booleans.** 5 nullable
+  string columns dropped → 4 booleans. New
+  `JobRepository.getArtifactPath(id, kind)` resolves paths from
+  convention. `hasX = true` means "wolf produced", not "file on disk".
+- **β.10i** **Skills 5→1 + notes inline.** `skills.*` 5 sub-fields →
+  `skills.text`. Every `<table>.note` renders inline at end of its H1
+  block; the separate `## User notes` extract is gone.
+- **β.10j** **Salary low/high + dynamic salary_expectation.**
+  `Job.salary` → `salaryLow` + `salaryHigh`. `salary_expectation` static
+  default removed; fill computes from JD range at runtime.
+- **β.10k** **Unpaid sentinel removed.** `Salary` → `number`. Convention:
+  `0` = explicit unpaid, `null` = unknown. `low=0 + high=N` valid.
+  Reviewer-flagged rename residue swept (`addStory` → `addQuestion`,
+  `buildStoryBlock` → `buildQuestionBlock`,
+  `checkStoriesAndFormAnswers` → `checkQuestions`, `# Stories` H1 →
+  `# Q&A`).
+
+### `wolf job` CLI surface (added with β.10h)
+
+- `wolf job show <id>` — full row + JD prose + company name
+- `wolf job get <id> <field>` — pipe-friendly read
+- `wolf job set <id> <field> <value>` — surgical update via
+  `JobRepository.update`; coerces per `JOB_FIELDS`
+- `wolf job fields [name]` — schema reference; `--required` / `--json`
+
+`JOB_FIELDS` mirrors `PROFILE_FIELDS`'s SoT pattern: 18 editable
+fields with `enum` / `boolean` / `number` / `nullableEnum` types and
+explicit help. System-managed fields (`id` / `companyId` / `createdAt`
+/ `updatedAt`) refused by `set`.
+
+### Field-level audit
+
+`docs/dev/FIELDS_AUDIT.md` snapshots every wolf-defined field as of
+β.10k. Includes profile flat tables, profile arrays (experience /
+project / education / question), the 23 builtin questions with default
+answers, 18 editable Job columns, and a §5 "review status" tracking
+each audit prompt's resolution.
 
 ## What's NOT done (β.10 + leftovers)
 
-- `wolf job set / get / show / fields` commands
-- Full structured jobs fields (posted_at / apply_by / salary_* /
-  employer_* etc — only description_md migrated so far)
-- Delete `src/application/impl/templates/{profile,resume_pool,standard_questions}.md`
-- Delete `src/utils/extractH2.ts` (only the migration uses it)
+- New profile / job CLI surface in acceptance test groups (only smoke
+  has init + list)
 - Multi-profile end-to-end tests
+- Reviewer items deferred from β.10k:
+  - Negative salary acceptance — could add `n >= 0` guard
+  - Reversed range (low > high) detection — doc-only for now
+  - `salary_expectation` runtime computation contract → DECISIONS.md
+    (will pin when M4 fill prompt lands)

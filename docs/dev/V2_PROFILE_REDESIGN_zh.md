@@ -275,16 +275,62 @@ ALTER TABLE jobs ADD COLUMN description_md TEXT NOT NULL DEFAULT '';
 
 ### β.10 系列后续
 
-- **β.10a** 合并 `storyFields.ts` 进 `profileFields.ts`（reviewer 建议；shape 不同的论据其实是 shape 相同 + 注册表不同）
-- **β.10b** `wolf profile add story --prompt --answer` 解锁用户加自定义题
-- **β.10c** **v1→v2 migration 整段 stub 化**——pre-1.0 + 零真实用户，470 行 mapping 代码空转。runner 框架还在；`v1ToV2.run` body 改成 no-op + log。`extractH2.ts` 也跟着删（已无 caller）。
-  - 真实用户出现 + 想升级 v2→v3 时再补回 mapping
-  - 现在 dogfood 用户（仅作者本人）有 v1 .md 文件就重新 init
+- **β.10a** 合并 `storyFields.ts` 进 `profileFields.ts`。
+- **β.10b** `wolf profile add story --prompt --answer` 解锁用户加自定义题。
+- **β.10c** v1→v2 migration body 整段 stub 化（pre-1.0 + 零用户；runner 框架保留，body 是 no-op）。
+- **β.10d** **PROFILE_FIELDS 升级为模板的单一真相。** bundled `profile.toml`
+  从手写 700 行变成 `profileTomlGenerate.ts` 运行时生成的字符串。`FieldMeta`
+  上的 `comment` + `defaultValue` 驱动渲染；静态模板文件删除。
+- **β.10e** **renderer + search-context loop 化。** `FieldMeta` 加
+  `heading` / `section` / `inSearchContext`。`profileTomlRender.ts` 三个函数
+  + search-context 渲染都改成基于 PROFILE_FIELDS 的 loop，替换约 70 行手写
+  `pushFieldIfFilled`。
+- **β.10f** **伪 enum 字符串塌缩。** 5 个 `relocation_*` + 6 个 `sponsorship_*`
+  + 4 个 `clearance.*` → 3 个 freeform 字段。`renderRelocationCombined` /
+  `renderSponsorshipCombined` 辅助函数删除。Audit 结论：结构化字段无任何
+  程序消费方。
+- **β.10g** **`[form_answers]` + `[[story]]` 合并成 `[[question]]`。**
+  6 个 form_answers 升级为 `WOLF_BUILTIN_QUESTIONS` 的 builtin 条目（现 23 条
+  = 6 短答 + 17 STAR）。字段 `star_story` → `answer`。
+  `BuiltinQuestion.defaultAnswer?` 携带预填默认值。CLI：`wolf profile add story`
+  → `add question`。`parseProfileToml` 检测到旧 `[[story]]` 时抛错，避免静默
+  数据丢失。
+- **β.10h** **Job 制品路径 → 约定 + 布尔。** 5 个可空字符串列删除 → 4 个布尔。
+  新增 `JobRepository.getArtifactPath(id, kind)` 按约定解出路径。
+  `hasX = true` 表示"wolf 产出过此制品"，不保证文件还在磁盘上。
+- **β.10i** **Skills 5→1 + 内联 note。** `skills.*` 5 子字段 → `skills.text`。
+  每个 `<table>.note` 在所属 H1 块末尾内联渲染；独立的 `## User notes` 提取块
+  删除。
+- **β.10j** **Salary 拆 low/high + 动态 salary_expectation。**
+  `Job.salary` → `salaryLow` + `salaryHigh`。`salary_expectation` 静态默认
+  删除，由 fill 在运行时根据 JD 区间计算。
+- **β.10k** **unpaid sentinel 移除。** `Salary` → `number`。约定：`0` = 显式
+  无薪、`null` = 未知。`low=0 + high=N` 合法。Reviewer 标记的命名残留一并清扫
+  （`addStory` → `addQuestion`、`buildStoryBlock` → `buildQuestionBlock`、
+  `checkStoriesAndFormAnswers` → `checkQuestions`、`# Stories` H1 → `# Q&A`）。
+
+### `wolf job` CLI 表面（与 β.10h 同步加入）
+
+- `wolf job show <id>` —— 全行 + JD 文本 + 公司名
+- `wolf job get <id> <field>` —— pipe 友好读
+- `wolf job set <id> <field> <value>` —— 走 `JobRepository.update` 单列 patch；按 `JOB_FIELDS` 强制类型
+- `wolf job fields [name]` —— schema 参考；`--required` / `--json`
+
+`JOB_FIELDS` 镜像 `PROFILE_FIELDS` 的单一真相：18 个可编辑字段，含
+`enum` / `boolean` / `number` / `nullableEnum` 类型 + 明确 help。系统管理字段
+（`id` / `companyId` / `createdAt` / `updatedAt`）`set` 拒绝。
+
+### 字段级 audit
+
+`docs/dev/FIELDS_AUDIT.md` 快照了 β.10k 时所有 wolf 定义字段。涵盖 profile 平表、
+profile 数组（experience / project / education / question）、23 个 builtin
+question 含默认答案、18 个 Job 可编辑列、§5 review status 跟踪每条 audit 的解决。
 
 ## 还没做（β.10 + 余项）
 
-- `wolf job set / get / show / fields` 命令
-- 全 jobs structured fields（posted_at / apply_by / salary_* / employer_* 等）
-- 删 src/application/impl/templates/{profile,resume_pool,standard_questions}.md 旧模板
-- 删 src/utils/extractH2.ts（migration 完用不到了）
+- 新的 profile / job CLI 表面在 acceptance test 组里没覆盖（仅 smoke 有 init + list）
 - 多 profile 端到端测试
+- Reviewer 标记 β.10k 留待后续：
+  - 负数薪资接受 —— 可加 `n >= 0` guard
+  - low > high 反向区间检测 —— 暂时只 doc 提及
+  - `salary_expectation` 运行时计算契约 → DECISIONS.md（M4 fill prompt 落地时再 pin）
