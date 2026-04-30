@@ -6,6 +6,7 @@ import attachmentsReadmeTemplate from './templates/attachments-readme.md';
 import { saveConfig } from '../../utils/config.js';
 import { currentBinaryName } from '../../utils/instance.js';
 import { CURRENT_SCHEMA_VERSION } from '../../runtime/migrations/index.js';
+import { ensureProfilePromptPack } from '../../utils/profilePromptPack.js';
 import type { AppConfig } from '../../utils/types/index.js';
 import type {
   InitApplicationService,
@@ -61,8 +62,8 @@ export class InitApplicationServiceImpl implements InitApplicationService {
   }
 }
 
-// Writes the v2 profile skeleton: a single profile.toml plus the
-// attachments/ subfolder. No file is overwritten if it already exists —
+// Writes the v2 profile skeleton: profile.toml, attachments/, and an empty
+// prompts/ strategy pack. No file is overwritten if it already exists —
 // re-running `wolf init` is safe. v1's profile.md / resume_pool.md /
 // standard_questions.md trio is no longer written; existing v1 workspaces
 // upgrade via `wolf migrate`.
@@ -72,6 +73,7 @@ async function writeProfileSkeleton(profileDir: string): Promise<void> {
   const attachmentsDir = path.join(profileDir, 'attachments');
   await fs.mkdir(attachmentsDir, { recursive: true });
   await writeIfAbsent(path.join(attachmentsDir, 'README.md'), attachmentsReadmeTemplate);
+  await ensureProfilePromptPack(profileDir);
 }
 
 async function writeIfAbsent(filePath: string, content: string): Promise<void> {

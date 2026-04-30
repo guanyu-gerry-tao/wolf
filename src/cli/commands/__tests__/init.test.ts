@@ -94,6 +94,15 @@ describe('init()', () => {
       );
       expect(attachmentsReadme).toContain('attachments/');
 
+      // prompts/ is a strategy-only customization surface. Strategy files
+      // start empty so init does not inject any user-positioning policy.
+      const promptsReadme = await fs.readFile(path.join(profileDir, 'prompts', 'README.md'), 'utf-8');
+      expect(promptsReadme).toContain('strategy prompts');
+      for (const filename of ['tailoring-strategy.md', 'resume-strategy.md', 'cover-letter-strategy.md', 'fill-strategy.md']) {
+        const content = await fs.readFile(path.join(profileDir, 'prompts', filename), 'utf-8');
+        expect(content).toBe('');
+      }
+
       // .gitignore should exclude both data/ and profiles/ to protect PII.
       const gitignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf-8');
       expect(gitignore).toContain('data/');
@@ -181,6 +190,7 @@ describe('init()', () => {
 
       await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
       await expect(fs.access(path.join(profileDir, 'attachments'))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(profileDir, 'prompts', 'README.md'))).resolves.toBeUndefined();
 
       // Crucially: no prompt of any kind in --empty mode.
       expect(input).not.toHaveBeenCalled();

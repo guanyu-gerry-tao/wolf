@@ -240,3 +240,45 @@ export async function profileFields(
     }
   }
 }
+
+/**
+ * Prints the active profile's prompt-pack directory. Useful for AI agents
+ * that need the editable strategy surface without guessing workspace paths.
+ */
+export async function profilePromptsPath(ctx: AppContext = createAppContext()): Promise<void> {
+  const result = await ctx.profileApp.prompts();
+  console.log(result.dir);
+}
+
+/**
+ * Lists the stable prompt-pack filenames and whether each file is present.
+ * Strategy files may be empty — empty means wolf uses built-in defaults.
+ */
+export async function profilePromptsList(
+  opts: { json?: boolean } = {},
+  ctx: AppContext = createAppContext(),
+): Promise<void> {
+  const result = await ctx.profileApp.prompts();
+  if (opts.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  console.log(`Profile: ${result.profileName}`);
+  console.log(`Prompt pack: ${result.dir}`);
+  for (const file of result.files) {
+    const state = file.exists ? (file.empty ? 'empty' : 'custom') : 'missing';
+    console.log(`  ${file.filename.padEnd(24)} ${file.kind.padEnd(8)} ${state}`);
+  }
+}
+
+/**
+ * Recreates any missing prompt-pack skeleton files without overwriting edits.
+ */
+export async function profilePromptsRepair(ctx: AppContext = createAppContext()): Promise<void> {
+  const result = await ctx.profileApp.repairPrompts();
+  console.log(`Prompt pack: ${result.dir}`);
+  console.log(`created: ${result.created.length}`);
+  for (const filePath of result.created) console.log(`  + ${filePath}`);
+  console.log(`preserved: ${result.preserved.length}`);
+}
