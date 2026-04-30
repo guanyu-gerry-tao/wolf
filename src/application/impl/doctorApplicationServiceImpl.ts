@@ -3,9 +3,9 @@ import { chromium } from 'playwright';
 import { getEnvValue, currentBinaryName } from '../../utils/instance.js';
 import {
   REQUIRED_PROFILE_FIELDS,
+  WOLF_BUILTIN_STORIES,
   type FieldMeta,
 } from '../../utils/profileFields.js';
-import { WOLF_BUILTIN_STORIES } from '../../utils/storyFields.js';
 import { isFilled, getByPath, type ProfileToml } from '../../utils/profileToml.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type {

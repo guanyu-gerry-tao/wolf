@@ -7,8 +7,7 @@ import {
   ProfileTomlSchema,
   type ProfileToml,
 } from '../profileToml.js';
-import { WOLF_BUILTIN_STORIES, WOLF_BUILTIN_STORY_IDS } from '../storyFields.js';
-import { PROFILE_FIELDS } from '../profileFields.js';
+import { PROFILE_FIELDS, WOLF_BUILTIN_STORIES, WOLF_BUILTIN_STORY_IDS } from '../profileFields.js';
 import profileTemplate from '../../application/impl/templates/profile.toml';
 
 // `profile.toml` is the central data shape for v2 workspaces. The schema

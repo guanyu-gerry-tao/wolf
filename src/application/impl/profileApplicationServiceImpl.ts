@@ -7,9 +7,9 @@ import { WorkspaceNotInitializedError } from '../../utils/errors/workspaceNotIni
 import {
   PROFILE_FIELDS,
   PROFILE_FIELDS_BY_PATH,
+  WOLF_BUILTIN_STORY_IDS,
   type FieldMeta,
 } from '../../utils/profileFields.js';
-import { WOLF_BUILTIN_STORY_IDS } from '../../utils/storyFields.js';
 import { parseProfileToml, getByPath } from '../../utils/profileToml.js';
 import {
   setMultilineString,

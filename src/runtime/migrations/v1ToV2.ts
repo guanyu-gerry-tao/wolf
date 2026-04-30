@@ -8,7 +8,7 @@ import {
   setMultilineStringInArrayMember,
   appendArrayMember,
 } from '../../utils/tomlEdit.js';
-import { WOLF_BUILTIN_STORIES, WOLF_BUILTIN_STORY_IDS } from '../../utils/storyFields.js';
+import { WOLF_BUILTIN_STORIES, WOLF_BUILTIN_STORY_IDS } from '../../utils/profileFields.js';
 import profileTomlTemplate from '../../application/impl/templates/profile.toml';
 import { log } from '../../utils/logger.js';
 import type { Migration } from './index.js';

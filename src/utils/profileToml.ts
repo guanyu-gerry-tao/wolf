@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { parse as parseTomlText } from 'smol-toml';
-import { WOLF_BUILTIN_STORIES } from './storyFields.js';
+import { WOLF_BUILTIN_STORIES } from './profileFields.js';
 
 /**
  * Parser, validator, and shape for `profile.toml` (the v2 single-file profile).

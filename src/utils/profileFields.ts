@@ -170,3 +170,62 @@ export const PROFILE_FIELDS_BY_PATH: ReadonlyMap<string, FieldMeta> = new Map(
 export const REQUIRED_PROFILE_FIELDS: ReadonlyArray<FieldMeta> = PROFILE_FIELDS.filter(
   (f) => f.required,
 );
+
+// ===========================================================================
+// Wolf-builtin behavioral story prompts
+// ===========================================================================
+//
+// `WOLF_BUILTIN_STORIES` is the registry of behavioral interview prompts
+// wolf seeds into every freshly-initialized profile.toml. Stories whose
+// `id` appears in this list are **wolf-builtin** — `wolf profile remove
+// story <id>` refuses to delete them (clear `star_story` to skip),
+// `wolf profile set story.<id>.prompt` and `.required` refuse to edit
+// them (those fields are wolf-defined). Stories with ids NOT in this set
+// are user-custom and get standard add/remove/set semantics.
+//
+// # Lazy inject
+//
+// When wolf reads profile.toml and finds a builtin id missing from the
+// `[[story]]` array (older binary didn't seed it), `injectMissingBuiltinStories`
+// in profileToml.ts appends a stub entry on next write. New builtins do
+// NOT require a schema_version bump.
+//
+// # Why this lives in profileFields.ts (not its own file)
+//
+// Stories share the array-of-tables shape with experience / project /
+// education; the only structural difference is that wolf has a registry
+// of "managed entries" for stories and not for the others. That registry
+// is metadata about the profile schema — same kind as PROFILE_FIELDS —
+// so it lives here.
+
+export interface BuiltinStory {
+  id: string;
+  prompt: string;
+  required: boolean;
+}
+
+export const WOLF_BUILTIN_STORIES: ReadonlyArray<BuiltinStory> = [
+  { id: 'tell_me_about_yourself',          prompt: 'Tell me about yourself',                                                  required: true  },
+  { id: 'tell_me_about_failure',           prompt: 'Tell me about a time you failed',                                         required: true  },
+  { id: 'tell_me_about_conflict',          prompt: 'Tell me about a time you faced conflict',                                 required: true  },
+  { id: 'biggest_strength',                prompt: 'Biggest strength',                                                        required: true  },
+  { id: 'biggest_weakness',                prompt: "Biggest weakness (with what you're doing about it)",                      required: true  },
+  { id: 'five_year_goal',                  prompt: 'Where do you see yourself in 5 years?',                                   required: true  },
+  { id: 'why_leaving_current_role',        prompt: 'Why are you leaving your current role?',                                  required: false },
+  { id: 'handle_stress_failure',           prompt: 'How do you handle stress / failure?',                                     required: true  },
+  { id: 'what_motivates',                  prompt: 'What motivates you?',                                                     required: true  },
+  { id: 'led_team_or_project',             prompt: 'Describe a time you led a team or project',                               required: true  },
+  { id: 'handled_disagreed_feedback',      prompt: 'Describe a time you handled feedback you disagreed with',                 required: true  },
+  { id: 'management_style',                prompt: 'What is your management style?',                                          required: false },
+  { id: 'proudest_project',                prompt: "Tell me about a project you're proud of",                                 required: true  },
+  { id: 'view_company_framework',          prompt: 'How do you view our company? — your framework',                          required: true  },
+  { id: 'view_product_framework',          prompt: 'How do you view our product? — your framework',                          required: true  },
+  { id: 'suggestions_company_framework',   prompt: 'What suggestions do you have for our company? — your framework',         required: true  },
+  { id: 'suggestions_product_framework',   prompt: 'What suggestions do you have for our product? — your framework',         required: true  },
+];
+
+/** Fast lookup: is this id a wolf-builtin? Used by command handlers to
+ *  reject `wolf profile remove story <id>` / `set story.<id>.prompt` etc. */
+export const WOLF_BUILTIN_STORY_IDS: ReadonlySet<string> = new Set(
+  WOLF_BUILTIN_STORIES.map((s) => s.id),
+);

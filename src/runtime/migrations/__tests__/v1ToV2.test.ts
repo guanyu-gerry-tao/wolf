@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { v1ToV2 } from '../v1ToV2.js';
 import { parseProfileToml, isFilled } from '../../../utils/profileToml.js';
-import { WOLF_BUILTIN_STORIES } from '../../../utils/storyFields.js';
+import { WOLF_BUILTIN_STORIES } from '../../../utils/profileFields.js';
 
 // v1 → v2 is the most user-visible piece of the workspace schema upgrade:
 // it converts the three .md files to a single profile.toml, preserves the
