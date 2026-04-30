@@ -17,6 +17,7 @@ import {
   profileShow, profileGet, profileSet, profileAdd, profileRemove, profileFields,
 } from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
+import { context } from './commands/context.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild, currentBinaryName } from '../utils/instance.js';
 import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
@@ -236,6 +237,17 @@ program
   .option('--dry-run', 'Print the migration plan without applying any change')
   .action(async (opts) => {
     await migrate({ dryRun: opts.dryRun });
+  });
+
+program
+  .command('context')
+  .description('Print AI-prompt-friendly context for a scenario (search-time agent / tailor wrapper)')
+  .requiredOption('--for <scenario>', 'Scenario: search | tailor')
+  .action(async (opts: { for: string }) => {
+    if (opts.for !== 'search' && opts.for !== 'tailor') {
+      throw new Error(`Unknown --for value "${opts.for}". Allowed: search / tailor.`);
+    }
+    await context(opts.for);
   });
 
 // Commander's collector for repeatable flags. Each occurrence of --search
