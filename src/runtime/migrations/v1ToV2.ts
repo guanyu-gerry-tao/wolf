@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readFile, writeFile, mkdir, readdir, stat, unlink } from 'node:fs/promises';
+import BetterSqlite3 from 'better-sqlite3';
 import { stripComments } from '../../utils/stripComments.js';
 import { extractH2Content } from '../../utils/extractH2.js';
 import {
@@ -50,20 +51,27 @@ import type { Migration } from './index.js';
 export const v1ToV2: Migration = {
   fromVersion: 1,
   toVersion: 2,
-  description: 'Convert profile.md / resume_pool.md / standard_questions.md → profile.toml; ' +
-               'preserve answers; back up old files to .wolf/backups/v1/.',
+  description: 'Profile: 3 .md files → profile.toml. Jobs: jd.md disk files → ' +
+               'description_md SQLite column. Backups under .wolf/backups/v1/.',
   run: async (workspaceDir: string) => {
+    // 1. Profile-side migration (per profile dir).
     const profilesDir = path.join(workspaceDir, 'profiles');
     const profileNames = await listProfileDirs(profilesDir);
-    if (profileNames.length === 0) {
+    if (profileNames.length > 0) {
+      for (const name of profileNames) {
+        log.info('migrate.v1tov2.profile.start', { profile: name });
+        await migrateOneProfile(workspaceDir, name);
+        log.info('migrate.v1tov2.profile.done', { profile: name });
+      }
+    } else {
       log.info('migrate.v1tov2.no_profiles_found', { workspaceDir });
-      return;
     }
-    for (const name of profileNames) {
-      log.info('migrate.v1tov2.profile.start', { profile: name });
-      await migrateOneProfile(workspaceDir, name);
-      log.info('migrate.v1tov2.profile.done', { profile: name });
-    }
+
+    // 2. Jobs-side migration: ALTER TABLE adds `description_md` (handled
+    // idempotently in initializeSchema; here we just iterate every existing
+    // job dir and fill the column from the on-disk jd.md, then archive the
+    // file). Skips silently if the workspace has no SQLite db yet.
+    await migrateJobsJdToColumn(workspaceDir);
   },
 };
 
@@ -458,3 +466,97 @@ function listAllH2s(md: string): string[] {
  *  time (any new builtin needs an entry in STANDARD_QUESTIONS_STORY_MAP
  *  too, otherwise migration would orphan its old answers). */
 export const _migrationBuiltinSentinel = WOLF_BUILTIN_STORIES;
+
+// ---------------------------------------------------------------------------
+// jobs jd.md → description_md column
+// ---------------------------------------------------------------------------
+
+/**
+ * For every per-job directory under `data/jobs/<dir>/`, reads the legacy
+ * `jd.md` file (if present), backs it up to `.wolf/backups/v1/jobs/`,
+ * writes its content into the `description_md` column for the matching
+ * SQLite job row, and deletes the original file. Skips silently if the
+ * workspace has no `data/wolf.sqlite` yet (fresh init, no jobs added).
+ *
+ * The ALTER TABLE that adds the column is handled in `initializeSchema`
+ * (idempotent via try/catch on the duplicate-column error). This function
+ * only handles data migration.
+ *
+ * Job rows are matched to their on-disk dir via the dir-name suffix:
+ * `data/jobs/<company>_<title>_<jobIdShort>/`. We walk the dirs, parse
+ * the trailing 8-char id-prefix, and look up the matching job row by
+ * `id LIKE '<prefix>%'`. If a dir has no matching DB row (orphan), we
+ * leave its jd.md alone and log a warning so the user can investigate.
+ */
+async function migrateJobsJdToColumn(workspaceDir: string): Promise<void> {
+  const sqlitePath = path.join(workspaceDir, 'data', 'wolf.sqlite');
+  if (!(await fileExists(sqlitePath))) {
+    log.info('migrate.v1tov2.jobs.no_db_found', { workspaceDir });
+    return;
+  }
+  const jobsDir = path.join(workspaceDir, 'data', 'jobs');
+  if (!(await fileExists(jobsDir))) {
+    log.info('migrate.v1tov2.jobs.no_jobs_dir', { workspaceDir });
+    return;
+  }
+
+  const dirEntries = await readdir(jobsDir, { withFileTypes: true });
+  const jobDirs = dirEntries.filter((e) => e.isDirectory()).map((e) => e.name);
+
+  const backupRoot = path.join(workspaceDir, '.wolf', 'backups', 'v1', 'jobs');
+  await mkdir(backupRoot, { recursive: true });
+
+  // Open the SQLite file directly here. The migration framework runs with a
+  // workspaceDir argument, not a Drizzle context, so we don't have the
+  // app-context's connection. better-sqlite3 is a sync API which keeps the
+  // migration code simple (and there's only one in flight at a time).
+  const db = new BetterSqlite3(sqlitePath);
+  // Make sure the column exists (initializeSchema's idempotent ALTER also
+  // runs this; safe to attempt twice).
+  try {
+    db.prepare(`ALTER TABLE jobs ADD COLUMN description_md TEXT NOT NULL DEFAULT ''`).run();
+  } catch {
+    /* column already present */
+  }
+
+  const findByIdPrefix = db.prepare<[string], { id: string }>(
+    `SELECT id FROM jobs WHERE id LIKE ? || '%' LIMIT 1`,
+  );
+  const updateDescription = db.prepare<[string, string, string]>(
+    `UPDATE jobs SET description_md = ?, updated_at = ? WHERE id = ?`,
+  );
+
+  try {
+    for (const dirName of jobDirs) {
+      const dirPath = path.join(jobsDir, dirName);
+      const jdMdPath = path.join(dirPath, 'jd.md');
+      if (!(await fileExists(jdMdPath))) continue;
+
+      const jdText = await readFile(jdMdPath, 'utf-8');
+      // Extract the id prefix from the dir name suffix
+      // (`<company>_<title>_<idPrefix>`). Older code used 8 chars.
+      const idPrefixMatch = dirName.match(/_([a-f0-9]{8})$/i);
+      if (!idPrefixMatch) {
+        log.warn('migrate.v1tov2.jobs.dir_id_unparseable', { dirName });
+        continue;
+      }
+      const idPrefix = idPrefixMatch[1];
+      const row = findByIdPrefix.get(idPrefix);
+      if (!row) {
+        log.warn('migrate.v1tov2.jobs.orphan_dir', {
+          dirName,
+          hint: 'no matching jobs.id row; jd.md left in place',
+        });
+        continue;
+      }
+
+      // Backup → write column → unlink original.
+      await writeFile(path.join(backupRoot, `${row.id}.jd.md`), jdText, 'utf-8');
+      updateDescription.run(jdText, new Date().toISOString(), row.id);
+      await unlink(jdMdPath);
+      log.info('migrate.v1tov2.jobs.row.done', { jobId: row.id, dirName });
+    }
+  } finally {
+    db.close();
+  }
+}

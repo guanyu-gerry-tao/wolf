@@ -30,6 +30,9 @@ export function initializeSchema(db: DrizzleDb): void {
   // ---------------------------------------------------------------------------
   // jobs
   // ---------------------------------------------------------------------------
+  // v2 added `description_md` so the JD prose lives in SQLite alongside the
+  // structured metadata (no more `data/jobs/<dir>/jd.md`). Existing v1 SQLite
+  // files get the column added by the v1→v2 migration via ALTER TABLE.
   db.run(sql`
     CREATE TABLE IF NOT EXISTS jobs (
       id                          TEXT    NOT NULL PRIMARY KEY,
@@ -42,6 +45,7 @@ export function initializeSchema(db: DrizzleDb): void {
       salary                      TEXT,
       work_authorization_required TEXT    NOT NULL,
       clearance_required          INTEGER NOT NULL,
+      description_md              TEXT    NOT NULL DEFAULT '',
       score                       REAL,
       score_justification         TEXT,
       status                      TEXT    NOT NULL,
@@ -56,6 +60,16 @@ export function initializeSchema(db: DrizzleDb): void {
       updated_at                  TEXT    NOT NULL
     )
   `);
+
+  // ALTER TABLE for upgrades: adds `description_md` to existing jobs tables
+  // that pre-date v2. Wrapped in try/catch because SQLite throws if the
+  // column already exists, and there's no IF NOT EXISTS variant for ADD
+  // COLUMN. Idempotent at the runtime level.
+  try {
+    db.run(sql`ALTER TABLE jobs ADD COLUMN description_md TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    /* column already present — nothing to do */
+  }
 
   // ---------------------------------------------------------------------------
   // batches

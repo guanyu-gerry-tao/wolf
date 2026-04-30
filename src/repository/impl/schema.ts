@@ -48,6 +48,10 @@ export const jobs = sqliteTable('jobs', {
   salary: text('salary', { mode: 'json' }).$type<Salary>(),
   workAuthorizationRequired: text('work_authorization_required').$type<Sponsorship>().notNull(),
   clearanceRequired: integer('clearance_required', { mode: 'boolean' }).notNull(),
+  // v2: JD prose lives in this column instead of `data/jobs/<dir>/jd.md`.
+  // Default '' makes the column safe on legacy v1 rows that haven't run
+  // migration yet — they read empty until v1→v2 populates them from disk.
+  descriptionMd: text('description_md').notNull().default(''),
   score: real('score'),
   scoreJustification: text('score_justification'),
   status: text('status').$type<JobStatus>().notNull(),

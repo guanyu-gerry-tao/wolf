@@ -155,14 +155,33 @@ export class SqliteJobRepositoryImpl implements JobRepository {
   }
 
   async readJdText(id: string): Promise<string> {
-    const dir = await this.getWorkspaceDir(id);
-    return readFile(path.join(dir, 'jd.md'), 'utf-8');
+    // v2: JD prose lives in the `description_md` column. Old `data/jobs/
+    // <dir>/jd.md` files are migrated by v1ToV2 and deleted; we never
+    // touch them at runtime any more.
+    const rows = await this.db
+      .select({ descriptionMd: jobs.descriptionMd })
+      .from(jobs)
+      .where(eq(jobs.id, id))
+      .limit(1);
+    if (rows.length === 0) throw new Error(`Job not found: ${id}`);
+    return rows[0].descriptionMd;
   }
 
   async writeJdText(id: string, jdText: string): Promise<void> {
+    // Ensure the per-job artifact dir exists (tailor's resume.pdf /
+    // cover_letter.pdf still land there). The dir is no longer used for
+    // jd.md, but tailor / fill writers expect it.
     const dir = await this.getWorkspaceDir(id);
     await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, 'jd.md'), jdText, 'utf-8');
+    const result = await this.db
+      .update(jobs)
+      .set({ descriptionMd: jdText, updatedAt: new Date().toISOString() })
+      .where(eq(jobs.id, id));
+    // Drizzle's better-sqlite3 driver returns a `RunResult`-shaped object;
+    // we don't strictly need to inspect it (a missing job would have
+    // produced 0 rows updated, which is fine — the tailor flow does its
+    // own existence check via get()).
+    void result;
   }
 }
 
