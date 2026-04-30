@@ -5,52 +5,82 @@ This directory is a **wolf workspace** — an AI-powered job hunting environment
 
 ## First-time setup — DO THIS BEFORE ANYTHING ELSE
 
-If `__WOLF_BIN__ init` was just run, the three profile markdown files are in
-**template state**: section structure is there but actual content is empty
-(or filled with `> [!IMPORTANT]` / `> [!TIP]` callouts that get stripped
-before the AI sees the file). Tailor / fill / reach will refuse to run on
-empty templates — see [src/application/impl/tailorApplicationServiceImpl.ts]
-`assertReadyForTailor` for the gate.
+If `__WOLF_BIN__ init` was just run, the user's profile is in **template state**:
+the file structure is there but every field is empty (or carries a sensible
+default like `country_currently_in = "United States"`). Tailor / fill / reach
+will refuse to run on an empty profile — `__WOLF_BIN__ doctor` is the gate.
 
-When the user opens this workspace and asks anything (or implicitly when
-the first wolf command is about to be run), **proactively check** whether
-the profile is filled, and **walk the user through it** if not.
+When the user opens this workspace and asks anything (or implicitly when the
+first wolf command is about to be run), **proactively check** whether the
+profile is filled, and **walk the user through it** if not.
 
 ### Detection
 
 Run from the workspace root:
 
 ```bash
-grep -l "\[!IMPORTANT\]" profiles/*/profile.md profiles/*/standard_questions.md profiles/*/resume_pool.md 2>/dev/null
+__WOLF_BIN__ doctor
 ```
 
-If any file matches, REQUIRED sections are still empty. The user has not
-finished onboarding.
+`doctor` is the source of truth. It reports each REQUIRED field whose value
+is empty (after trimming whitespace). If profile.toml shows `not ready`, the
+user has not finished onboarding.
+
+### Walkthrough — the three-state answering rule (CRITICAL)
+
+Every field can be in one of three states. Map every user response carefully:
+
+1. **User gives an answer** → `__WOLF_BIN__ profile set <key> <value>`. The
+   field is filled. Both doctor and the AI prompt builders see it.
+
+2. **User skips / says "doesn't matter" / "I don't care" / stays silent** →
+   leave the field empty. Do NOT `wolf profile set` it to `"N/A"`,
+   `"(skipped)"`, `"-"`, `"Decline to answer"`, or any placeholder. Empty
+   fields are hidden from the AI prompt entirely; doctor flags them only
+   if REQUIRED.
+
+3. **User explicitly refuses** ("Decline to answer", "Prefer not to say",
+   "N/A — I won't answer this", etc.) → `__WOLF_BIN__ profile set <key>
+   "<exact phrase>"`. wolf treats this as a real answer; ATS forms will
+   fill that exact text. This is meaningfully different from state 2:
+   state 2 = "I don't have an opinion, ask me later"; state 3 = "I have
+   decided to refuse, fill the form with this literal text".
+
+If you cannot tell whether the user means state 2 or state 3, ASK:
+"Skip this for now (we can revisit later), or mark it as 'Decline to
+answer' (forms will fill that exact text)?"
+
+Never invent content. If the user gives no info, leave the field empty.
 
 ### Walkthrough order
 
-Walk the user through, one file at a time, in this order:
+1. **REQUIRED scalar fields first.** Run `__WOLF_BIN__ profile fields
+   --required` to see the full list. Walk through them one at a time:
+   identity / contact / address / target roles + locations / form-answer
+   work-auth phrasing. Use `__WOLF_BIN__ profile set <key> <value>` for each.
 
-1. **`profiles/default/profile.md`** — identity facts (name, contact, address,
-   demographics, work auth preference, etc.). For each `## H2` whose body
-   only contains `> [!IMPORTANT]` callouts (or is blank), ask the user the
-   question, capture their answer, and replace the callout block with the
-   answer. Skip H2s that already have non-callout content (defaults, or
-   already-edited sections). Keep going until `grep "\[!IMPORTANT\]"
-   profile.md` returns nothing.
+2. **Resume content second.** Add real entries:
+   - `__WOLF_BIN__ profile add experience --slug-from "Amazon SWE Intern 2024"`
+     creates an empty entry; wolf assigns id `amazon-swe-intern-2024` (or
+     similar). Then fill its fields:
+     `__WOLF_BIN__ profile set experience.amazon-swe-intern-2024.job_title "..."`.
+     For multi-line bullets, use `__WOLF_BIN__ profile set experience.<id>.bullets
+     --from-file <path>`.
+   - Same shape for `__WOLF_BIN__ profile add project` /
+     `__WOLF_BIN__ profile add education`.
+   - Skills is one freeform field: `__WOLF_BIN__ profile set skills.text
+     "TypeScript / Python / Go; React / FastAPI; Postgres / Redis"`.
+     Layout is up to the user — tailor reformats per-JD.
 
-2. **`profiles/default/resume_pool.md`** — full experience bank. The
-   `[!TIP]` blocks under each `## Experience / ## Projects / ## Education /
-   ## Skills` heading contain example shapes. Ask the user about real roles,
-   projects, education, and skills; build out each section. Pool needs at
-   least ~5 substantive (non-blank, non-heading) lines after `> [!TIP]`
-   stripping or tailor will refuse — aim for one full role with 3+ bullets
-   to start, then expand iteratively.
+3. **Q&A third (former "stories" + "form_answers").** wolf seeds 23 builtin
+   questions at init — 6 short ATS form answers (work auth, sponsorship,
+   relocation, salary, "how did you hear", "when can you start") and 17
+   behavioral STAR prompts. Run `__WOLF_BIN__ profile fields question` to
+   see them. For each one the user has an answer for:
+   `__WOLF_BIN__ profile set question.<id>.answer <text>`. Skip any the
+   user doesn't have an answer for — leave the field empty.
 
-3. **`profiles/default/standard_questions.md`** — application-only Q&A
-   (why this company / why this role / behavioral STAR stories /
-   work-auth phrasing for forms). Same pattern: each `## H2` with an
-   `[!IMPORTANT]` body needs a real answer.
+After each batch, re-run `__WOLF_BIN__ doctor` to confirm progress.
 
 ### Tone
 
@@ -60,21 +90,19 @@ Walk the user through, one file at a time, in this order:
   role?" template they can edit), but never invent facts (employers,
   schools, dates).
 - For required-but-personal fields (work auth, demographics), explain the
-  field's purpose briefly, then accept whatever the user provides — including
-  "Decline to answer" where the field is voluntary.
-- After each file is finished, run the detection grep again and confirm
-  with the user before moving to the next file.
+  field's purpose briefly, then accept whatever the user provides — applying
+  the three-state rule above.
 
 ### When the user skips onboarding
 
 If the user wants to run wolf commands before onboarding is complete, that's
-fine — wolf will refuse cleanly (with a message naming the file to fill).
+fine — wolf will refuse cleanly (with a message naming the field to fill).
 Don't block them. But surface the friction once: "tailor will refuse until
-profile.md is filled — want to do that now or later?"
+identity / contact fields are filled — want to do that now or later?"
 
 ### When onboarding is already done
 
-If the detection grep returns nothing, skip this section entirely. Don't
+If `__WOLF_BIN__ doctor` reports READY, skip this section entirely. Don't
 re-onboard the user. Move on to whatever they actually asked.
 
 ## What wolf does
@@ -88,12 +116,9 @@ wolf is a CLI tool that:
 
 ## Command status (read this before suggesting commands)
 
-> Source of truth: `src/utils/commandStatus.ts` in the wolf source tree.
-> Keep this table in sync when commands ship.
-
 | Command | Status |
 |---|---|
-| `__WOLF_BIN__ init` / `add` / `tailor` / `status` / `doctor` / `job list` / `profile` / `config` / `env` / `mcp serve` | available |
+| `__WOLF_BIN__ init` / `add` / `tailor` / `status` / `doctor` / `migrate` / `job` (`list` / `show` / `get` / `set` / `fields`) / `profile` / `context` / `config` / `env` / `mcp serve` | available |
 | `__WOLF_BIN__ hunt` / `score` | NOT YET IMPLEMENTED — M2 |
 | `__WOLF_BIN__ fill` | NOT YET IMPLEMENTED — M4 |
 | `__WOLF_BIN__ reach` | NOT YET IMPLEMENTED — M5 |
@@ -117,6 +142,11 @@ wants the underlying behaviour today, use the available substitute:
 | `__WOLF_BIN__ hunt` | NOT YET (M2) — auto-fetch job listings from online sources |
 | `__WOLF_BIN__ score` | NOT YET (M2) — score pending jobs against the profile |
 | `__WOLF_BIN__ status` | List all tracked jobs with status and scores |
+| `__WOLF_BIN__ job list` | Filtered job list with `--search`, `--status`, `--min-score`, etc. |
+| `__WOLF_BIN__ job show <id>` | Print every column of a job + JD prose |
+| `__WOLF_BIN__ job get <id> <field>` | Read one field (pipe-friendly) |
+| `__WOLF_BIN__ job set <id> <field> <value>` | Update one field (use `--from-file` for `description_md` or long values) |
+| `__WOLF_BIN__ job fields` | List editable job fields with help / types / enum values |
 
 ### Tailor pipeline (3-agent flow with checkpoints)
 | Command | What it does |
@@ -134,18 +164,60 @@ All tailor commands accept `--hint "<text>"` to give the analyst pre-analysis gu
 | `__WOLF_BIN__ fill --job <id>` | NOT YET (M4) — auto-fill a job application form |
 | `__WOLF_BIN__ reach --job <id>` | NOT YET (M5) — find hiring contacts and draft outreach emails |
 
-### Config & profile management
+### Profile management (v2)
+
+`profiles/<name>/profile.toml` is the single source of truth. ALL writes go
+through wolf commands — never edit the TOML file directly. Surgical TOML
+editing preserves the comment blocks (REQUIRED / OPTIONAL hints) that help
+the user know what each field is for.
+
+| Command | What it does |
+|---|---|
+| `__WOLF_BIN__ profile show` | Print the raw profile.toml verbatim (debug / inspect) |
+| `__WOLF_BIN__ profile fields` | Print field reference (REQUIRED + OPTIONAL groups) |
+| `__WOLF_BIN__ profile fields <path>` | Print detail for one field |
+| `__WOLF_BIN__ profile fields --required` | Only list REQUIRED fields |
+| `__WOLF_BIN__ profile fields --json` | JSON output for AI / MCP consumers |
+| `__WOLF_BIN__ profile get <key>` | Read one field by dot-path (e.g. `contact.email`) |
+| `__WOLF_BIN__ profile set <key> <value>` | Write one field — surgical edit, preserves comments |
+| `__WOLF_BIN__ profile set <key> --from-file <path>` | Read value from a file (use for long prose, multi-line values, or values starting with `-`) |
+| `__WOLF_BIN__ profile add <type> [--id\|--slug-from]` | Add an experience / project / education entry |
+| `__WOLF_BIN__ profile remove <type> <id> --yes` | Remove an entry by id (builtin stories cannot be removed) |
+| `__WOLF_BIN__ profile list` | List profile directories (default marked with `*`) |
+| `__WOLF_BIN__ profile create <name> [--from <src>]` | Clone a profile |
+| `__WOLF_BIN__ profile use <name>` | Switch the default profile |
+| `__WOLF_BIN__ profile delete <name> --yes` | Delete a profile directory |
+
+### AI prompt context
+
+`__WOLF_BIN__ context --for=<scenario>` outputs a deterministic markdown
+bundle for AI agents that drive wolf-adjacent flows. Different from
+`profile show` (raw TOML for debug); this command is what AI agents
+should INJECT into their conversation context.
+
+| Command | What it does |
+|---|---|
+| `__WOLF_BIN__ context --for=search` | For a search-time agent (browsing jobs in the user's browser). Outputs job preferences + clearance + experience snapshot + user notes. NO identity / contact / PII |
+| `__WOLF_BIN__ context --for=tailor` | For a chat-wrapped tailor flow. Full profile + resume + filled stories |
+
+If you (the AI) are about to filter / recommend / search jobs for the user,
+**read `__WOLF_BIN__ context --for=search` first**. Re-read it when starting
+a new task or when the user has run `__WOLF_BIN__ profile set` since your
+last read.
+
+### Migration
+
+| Command | What it does |
+|---|---|
+| `__WOLF_BIN__ migrate` | Upgrade workspace to the binary's current schema version |
+| `__WOLF_BIN__ migrate --dry-run` | Print the migration plan without applying it |
+
+### Config & env
+
 | Command | What it does |
 |---|---|
 | `__WOLF_BIN__ config get/set <key> [value]` | Read or edit `wolf.toml` fields by dot-path (e.g. `tailor.model`) |
-| `__WOLF_BIN__ profile list` | List all profile directories (default marked with `*`) |
-| `__WOLF_BIN__ profile create <name> [--from <src>]` | Create a new profile (clones default unless --from given) |
-| `__WOLF_BIN__ profile use <name>` | Switch the default profile (updates `wolf.toml.default`) |
-| `__WOLF_BIN__ profile delete <name> --yes` | Delete a profile directory |
 | `__WOLF_BIN__ env show / set / clear` | Manage `WOLF_*` API keys in shell |
-
-> Profile data lives in `profiles/<name>/profile.md` and `standard_questions.md`.
-> Edit those files directly with any text editor — there is no `__WOLF_BIN__ profile get/set` CLI.
 
 ## Typical workflow
 
@@ -166,14 +238,11 @@ __WOLF_BIN__ tailor cover --job <jobId>                           # write cover 
 
 ## Data layout
 
-All generated artifacts live under `data/`, grouped by entity:
-
 ```
 data/
-├── wolf.sqlite                           ← metadata only (no prose)
+├── wolf.sqlite                           ← SQLite: jobs (incl. JD prose), companies, batches
 ├── jobs/
-│   └── <company>_<title>_<jobIdShort>/   ← one dir per job
-│       ├── jd.md                         ← job description (source of truth)
+│   └── <company>_<title>_<jobIdShort>/   ← one dir per job — only tailor artifacts
 │       ├── src/
 │       │   ├── hint.md                   ← you/your agent edit to steer the analyst
 │       │   ├── tailoring-brief.md        ← analyst output; edit to adjust
@@ -186,22 +255,17 @@ data/
         └── info.md                       ← free-form notes about the employer
 ```
 
-**Prose lives on disk, not in SQLite.** `jd.md` and `info.md` are greppable
-from the shell and editable with any text editor. SQLite keeps only the
-structured fields (id, title, score, status, etc.) that need indexing.
-
 **All `.md` and `.html` files under `src/` are editable checkpoints.** If the
 resume is off but the cover letter is fine, edit `tailoring-brief.md` (or
-`resume.html` directly) and re-run just `__WOLF_BIN__ tailor resume`. The analyst does
-not re-run unless you call `__WOLF_BIN__ tailor brief` again.
+`resume.html` directly) and re-run just `__WOLF_BIN__ tailor resume`. The
+analyst does not re-run unless you call `__WOLF_BIN__ tailor brief` again.
 
 ### hint.md / info.md convention
 
 `hint.md` is created the first time you run any tailor step for a job;
-`info.md` is created when a company is first recorded. Lines starting with `//`
-are stripped before AI sees the file (same rule as `resume_pool.md`), so the
-header is self-documenting but ignored. Write guidance/notes as plain Markdown
-**below** the `//` header.
+`info.md` is created when a company is first recorded. Lines starting with `>`
+form GitHub-Alert blocks that get stripped before the AI sees the file.
+Write guidance / notes as plain Markdown below the alert header.
 
 ## Configuration files
 
@@ -213,18 +277,13 @@ Location: `wolf.toml` in this directory.
 <details>
 <summary>Fields and how to edit</summary>
 
-Open `wolf.toml` with any text editor and save.
-
 ```toml
+schemaVersion = 2     # set by wolf init / wolf migrate; do not edit
 default = "default"   # the profile folder name under profiles/
 
-# Each AI-using command has its own model.
-# Format: "<provider>/<model>" where provider is "anthropic" or "openai".
-
 [hunt]
-minScore = 0.5                  # 0.0-1.0 - jobs below this are filtered
-maxResults = 50                 # max jobs fetched per hunt run
-# no model - __WOLF_BIN__ hunt does not call AI
+minScore = 0.5
+maxResults = 50
 
 [tailor]
 model = "anthropic/claude-sonnet-4-6"
@@ -236,54 +295,40 @@ model = "anthropic/claude-sonnet-4-6"
 [reach]
 model = "anthropic/claude-sonnet-4-6"
 defaultEmailTone = "professional"
-maxEmailsPerDay = 10            # safety cap
+maxEmailsPerDay = 10
 
 [fill]
-model = "anthropic/claude-haiku-4-5-20251001"   # cheaper/faster for form filling
+model = "anthropic/claude-haiku-4-5-20251001"
 ```
+
+Edit individual fields with `__WOLF_BIN__ config set <key> <value>` (preserves
+comments and other fields).
 
 </details>
 
-### profiles/default/ — three markdown files + attachments
+### profiles/<name>/ — single profile.toml + attachments
 
 A profile is a directory; the directory name IS the profile identifier
 (`appliedProfileId` on jobs and `wolf.toml.default` both store the dirname).
-There is no `profile.toml`; identity, demographics, work auth, and address
-all live in `profile.md`.
 
 ```
 profiles/default/
-├── profile.md             ← identity facts (name, contact, address, demographics, work auth, clearance)
-├── resume_pool.md         ← full experience bank (tailor reads this to write resumes)
-├── standard_questions.md  ← application-only Q&A + document pointers (fill reads this)
-└── attachments/           ← drop transcript, reference letter, portfolio sample, etc. here
+├── profile.toml          ← single source of truth: identity / contact / address /
+│                            preferences / demographics / clearance / form_answers /
+│                            documents / skills / experience / project / education / story
+└── attachments/          ← drop transcript, reference letter, portfolio sample, etc.
                               (NOT immigration / work-auth documents — those are post-offer, out of scope)
 ```
 
-**`profile.md`** uses `H1 = category, H2 = field/question` convention. AI agents
-(tailor, fill, outreach) include the full file as prompt context — they read
-the markdown directly, no field-level extraction.
+**`profile.toml`** uses TOML tables for structured fields and `[[experience]]
+/ [[project]] / [[education]] / [[story]]` array-of-tables for resume entries
+and behavioral story prompts. Comments above each field carry REQUIRED /
+OPTIONAL hints — preserved by `wolf profile set`'s surgical editor; the AI
+prompt builders strip them out before sending to the model.
 
-**`standard_questions.md`** uses the same H1/H2 convention plus `H3 = label`
-under the `# Documents` section, where the body of each H3 is a bare file
-name inside `attachments/`. Example:
-
-```md
-# Documents
-
-## What academic documents do you have?
-
-### Transcript
-transcript.pdf
-```
-
-**`resume_pool.md`** — the most important file to keep up to date. wolf reads
-this when tailoring resumes. Include everything — all past roles, projects,
-skills, and education. wolf selects the most relevant content per job.
-
-**`attachments/`** — files referenced by `standard_questions.md`. Files must
+**`attachments/`** — files referenced by `documents.*` paths. Files must
 live directly in this folder; subdirectories or absolute paths are rejected.
-If a file referenced in `standard_questions.md` is missing, `__WOLF_BIN__ fill` pauses
+If a file referenced in `documents.*` is missing, `__WOLF_BIN__ fill` pauses
 and asks you to drop it in.
 
 ## API keys

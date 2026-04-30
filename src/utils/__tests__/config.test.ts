@@ -29,6 +29,7 @@ describe('config utils', () => {
       const { saveConfig, loadConfig } = await import('../config.js');
 
       const config = {
+        schemaVersion: 1,
         default: 'default',
         hunt: { minScore: 0.5, maxResults: 50 },
         tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
@@ -61,7 +62,7 @@ describe('config utils', () => {
   describe('backupConfig', () => {
     it('copies wolf.toml to wolf.toml.backup1', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      await saveConfig({ default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: '' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' } });
+      await saveConfig({ schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: '' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' } });
 
       await backupConfig();
 
@@ -71,7 +72,7 @@ describe('config utils', () => {
 
     it('rotates backups: backup1 becomes backup2 on second call', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: '' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' } };
+      const stub = { schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: '' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' } };
 
       await saveConfig(stub);
       await backupConfig(); // creates backup1
@@ -87,7 +88,7 @@ describe('config utils', () => {
 
     it('keeps at most 5 backups', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: '' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' } };
+      const stub = { schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: '' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' } };
 
       for (let i = 0; i < 6; i++) {
         await saveConfig(stub);

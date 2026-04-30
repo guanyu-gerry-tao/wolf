@@ -52,10 +52,10 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-03 npm run w
 - No invalid command prints a Node stack trace (no `    at ...` frames after
   the error line). The user-facing line is the only error output.
 - Dev banner appears on stderr for every wolf invocation.
-- No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files are written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Report Requirements
 
 Include each invalid command, exit code, stderr excerpt, and whether the command
 failed for the expected reason.
-

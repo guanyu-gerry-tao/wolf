@@ -1,8 +1,12 @@
 import fs from 'node:fs';
 import { chromium } from 'playwright';
-import { stripComments } from '../../utils/stripComments.js';
-import { extractH2Content } from '../../utils/extractH2.js';
 import { getEnvValue, currentBinaryName } from '../../utils/instance.js';
+import {
+  REQUIRED_PROFILE_FIELDS,
+  WOLF_BUILTIN_QUESTIONS,
+  type FieldMeta,
+} from '../../utils/profileFields.js';
+import { isFilled, getByPath, type ProfileToml } from '../../utils/profileToml.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type {
   DoctorApplicationService,
@@ -10,25 +14,26 @@ import type {
   FileCheck,
 } from '../doctorApplicationService.js';
 
-// Profile.md fields whose H2 body must be non-empty before tailor will run.
-// Same list `assertReadyForTailor` enforces — kept in sync intentionally so
-// doctor reports the exact failures tailor would hit.
-const PROFILE_REQUIRED_H2 = [
-  'Legal first name',
-  'Legal last name',
-  'Email',
-  'Phone',
-] as const;
+// Resume content threshold — total non-empty bullets / list items across all
+// experience / project / education / skills entries. 5 is "at least one real
+// role with three bullets, plus a couple of skills" — enough that the AI has
+// material to work with without forcing the user to be exhaustive on day one.
+const RESUME_MIN_ENTRIES = 5;
 
-// Minimum non-blank, non-heading lines in resume_pool.md (post-strip).
-const POOL_MIN_LINES = 5;
+// Questions threshold — how many builtin Q&A prompts the user must have
+// answered before tailor / fill consider the workspace ready. fill (M4)
+// can still pause-and-ask for any missing field at apply time, so this is
+// a "you've started populating questions" check, not "every question
+// filled".
+const QUESTIONS_MIN_ANSWERED = 3;
 
 /**
  * `DoctorApplicationService` impl. Reads the default profile through
- * `ProfileRepository`, runs three pure check functions (`profile.md`,
- * `resume_pool.md`, `standard_questions.md`), and aggregates them into a
- * `DoctorReport`. Each check strips runtime-only callouts before measuring,
- * so unfilled templates correctly report empty.
+ * `ProfileRepository.getProfileToml`, runs four pure check functions
+ * (profile / resume pool / questions + form_answers / runtime), and aggregates
+ * them into a `DoctorReport`. Every check pulls from the same source-of-truth
+ * tables (`PROFILE_FIELDS` and `WOLF_BUILTIN_QUESTIONS`) so doctor's view of
+ * "ready" stays in lockstep with `wolf profile fields`.
  */
 export class DoctorApplicationServiceImpl implements DoctorApplicationService {
   constructor(private readonly profileRepository: ProfileRepository) {}
@@ -36,14 +41,11 @@ export class DoctorApplicationServiceImpl implements DoctorApplicationService {
   /** @inheritdoc */
   async run(): Promise<DoctorReport> {
     const profile = await this.profileRepository.getDefault();
+    const toml = await this.profileRepository.getProfileToml(profile.name);
 
-    const profileCheck = checkProfile(profile.md);
-    const poolCheck = checkResumePool(
-      await this.profileRepository.getResumePool(profile.name),
-    );
-    const sqCheck = checkStandardQuestions(
-      await this.profileRepository.getStandardQuestions(profile.name),
-    );
+    const profileCheck = checkProfileFields(toml);
+    const poolCheck = checkResumeContent(toml);
+    const sqCheck = checkQuestions(toml);
 
     // Runtime preflight checks — fail fast on these and tailor will error
     // before any AI call. Reported alongside the profile checks so the user
@@ -60,8 +62,10 @@ export class DoctorApplicationServiceImpl implements DoctorApplicationService {
   }
 }
 
-// API key check — uses `getEnvValue` so dev builds correctly read
-// `WOLF_DEV_ANTHROPIC_API_KEY` with fallback to `WOLF_ANTHROPIC_API_KEY`.
+// ---------------------------------------------------------------------------
+// API key + Chromium runtime checks — unchanged from v1.
+// ---------------------------------------------------------------------------
+
 function checkAnthropicKey(): FileCheck {
   const value = getEnvValue('ANTHROPIC_API_KEY');
   const ready = !!value && value.length > 0;
@@ -75,10 +79,6 @@ function checkAnthropicKey(): FileCheck {
   };
 }
 
-// Chromium presence — pure stat check, no spawning. Tailor's render service
-// will auto-install on first use, but doctor lets the user pre-warm the
-// install (and confirms the auto-install actually persisted) before the
-// first tailor run.
 function checkPlaywrightChromium(): FileCheck {
   const exe = chromium.executablePath();
   const ready = !!exe && fs.existsSync(exe);
@@ -92,77 +92,87 @@ function checkPlaywrightChromium(): FileCheck {
   };
 }
 
-function checkProfile(md: string): FileCheck {
-  // Strip first: an H2 whose body is only a `> [!IMPORTANT]` callout
-  // (the unfilled-template state) should count as empty, not "answered".
-  const stripped = stripComments(md);
-  const missing = PROFILE_REQUIRED_H2.filter(
-    (field) => extractH2Content(stripped, field).length === 0,
-  );
-  return {
-    file: 'profile.md',
-    ready: missing.length === 0,
-    missing: [...missing],
-    hint: missing.length === 0
-      ? 'all REQUIRED identity / contact fields filled'
-      : 'fill these H2 sections under # Identity / # Contact in profile.md',
-  };
-}
+// ---------------------------------------------------------------------------
+// profile.toml — REQUIRED scalar fields per PROFILE_FIELDS
+// ---------------------------------------------------------------------------
 
-function checkResumePool(md: string): FileCheck {
-  const stripped = stripComments(md);
-  const substantiveLines = stripped
-    .split('\n')
-    .filter((line) => {
-      const t = line.trim();
-      return t.length > 0 && !t.startsWith('#');
-    });
-  const ready = substantiveLines.length >= POOL_MIN_LINES;
-  return {
-    file: 'resume_pool.md',
-    ready,
-    missing: ready ? [] : [`only ${substantiveLines.length} substantive lines (need ≥ ${POOL_MIN_LINES})`],
-    hint: ready
-      ? 'pool has enough content for tailor'
-      : 'add at least one real role with bullets under ## Experience',
-  };
-}
-
-function checkStandardQuestions(md: string): FileCheck {
-  // Treat the whole file as "ready" when at least 3 H2s have non-callout
-  // bodies — fill (M4) can pause-and-ask for any missing field at apply time.
-  const stripped = stripComments(md);
-  const sections = countAnsweredH2s(stripped);
-  const ready = sections.answered >= 3;
-  return {
-    file: 'standard_questions.md',
-    ready,
-    missing: ready ? [] : [`only ${sections.answered} / ${sections.total} H2 sections have answers`],
-    hint: ready
-      ? `${sections.answered} / ${sections.total} answered — fill more as you go`
-      : 'write answers under at least three H2s (e.g. salary, why this company, why this role)',
-  };
-}
-
-// Counts H2 sections whose body has any non-blank content beyond block-only
-// callouts. After stripComments removes `> [!XYZ]` blocks, an "unanswered"
-// section's body is just blank lines.
-function countAnsweredH2s(stripped: string): { answered: number; total: number } {
-  const lines = stripped.split('\n');
-  let total = 0;
-  let answered = 0;
-  let i = 0;
-  while (i < lines.length) {
-    const m = /^##\s+(.*)$/.exec(lines[i]);
-    if (!m) { i++; continue; }
-    total++;
-    i++;
-    let hasBody = false;
-    while (i < lines.length && !/^#{1,2}\s/.test(lines[i])) {
-      if (lines[i].trim().length > 0) { hasBody = true; }
-      i++;
-    }
-    if (hasBody) answered++;
+/**
+ * Walks `REQUIRED_PROFILE_FIELDS` and reports any whose value (looked up
+ * via `getByPath`) is empty after trimming. Each missing entry includes
+ * the field's help text so the doctor output is actionable directly.
+ */
+function checkProfileFields(toml: ProfileToml): FileCheck {
+  const missingFields: FieldMeta[] = [];
+  for (const field of REQUIRED_PROFILE_FIELDS) {
+    const value = getByPath(toml, field.path);
+    const filled = typeof value === 'string' ? isFilled(value) : value !== undefined;
+    if (!filled) missingFields.push(field);
   }
-  return { answered, total };
+  const missing = missingFields.map((f) => `${f.path}${f.help ? ` — ${f.help}` : ''}`);
+  const ready = missing.length === 0;
+  return {
+    file: 'profile.toml',
+    ready,
+    missing: [...missing],
+    hint: ready
+      ? `all ${REQUIRED_PROFILE_FIELDS.length} REQUIRED fields filled`
+      : `run \`${currentBinaryName()} profile set <field> <value>\` for each missing field above`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resume content — total filled entries across experience / project /
+// education / skills. Replaces the old "≥ 5 substantive lines in
+// resume_pool.md" heuristic with a structural count.
+// ---------------------------------------------------------------------------
+
+function checkResumeContent(toml: ProfileToml): FileCheck {
+  let count = 0;
+  // Experience entries with at least a job_title or bullets count.
+  for (const e of toml.experience) {
+    if (isFilled(e.job_title) || isFilled(e.bullets)) count++;
+  }
+  for (const p of toml.project) {
+    if (isFilled(p.name) || isFilled(p.bullets)) count++;
+  }
+  for (const e of toml.education) {
+    if (isFilled(e.degree) || isFilled(e.school)) count++;
+  }
+  // β.10i: skills collapsed from 5 sub-fields into one freeform `text`.
+  // A filled skills block contributes 1 (down from up-to-5). The
+  // RESUME_MIN_ENTRIES threshold should be adjusted to match if the
+  // 5-vs-1 difference matters; currently keeping threshold the same and
+  // expecting users to lean on experience/project/education entries.
+  if (isFilled(toml.skills.text)) count++;
+
+  const ready = count >= RESUME_MIN_ENTRIES;
+  return {
+    file: 'resume content',
+    ready,
+    missing: ready ? [] : [`only ${count} entries / skill groups (need ≥ ${RESUME_MIN_ENTRIES})`],
+    hint: ready
+      ? `${count} resume entries / skills groups`
+      : `add experience / project / education entries via \`${currentBinaryName()} profile add experience\` and skills via \`${currentBinaryName()} profile set skills.<bucket>\``,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Questions — count filled builtin Q&A entries (β.10g unified pool)
+// ---------------------------------------------------------------------------
+
+function checkQuestions(toml: ProfileToml): FileCheck {
+  const builtinIds = new Set(WOLF_BUILTIN_QUESTIONS.map((s) => s.id));
+  const answeredBuiltins = toml.question.filter(
+    (s) => builtinIds.has(s.id) && isFilled(s.answer),
+  ).length;
+  const total = WOLF_BUILTIN_QUESTIONS.length;
+  const ready = answeredBuiltins >= QUESTIONS_MIN_ANSWERED;
+  return {
+    file: 'questions',
+    ready,
+    missing: ready ? [] : [`only ${answeredBuiltins} / ${total} builtin questions answered (need ≥ ${QUESTIONS_MIN_ANSWERED})`],
+    hint: ready
+      ? `${answeredBuiltins} / ${total} builtin questions answered — fill more as you go`
+      : `answer at least ${QUESTIONS_MIN_ANSWERED} builtin prompts via \`${currentBinaryName()} profile set question.<id>.answer <value>\``,
+  };
 }

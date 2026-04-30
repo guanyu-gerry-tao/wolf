@@ -50,9 +50,9 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-03 npm run w
 - 没有 invalid command 打印 Node stack trace（错误行之后不应出现
   `    at ...` 帧）。错误输出只有那一行用户友好的提示。
 - 每次 wolf 调用的 stderr 都出现 dev banner。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 
 包含每条 invalid command、exit code、stderr excerpt，以及该命令是否因预期原因失败。
-

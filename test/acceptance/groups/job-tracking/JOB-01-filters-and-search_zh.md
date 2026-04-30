@@ -57,9 +57,9 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run w
 - `--search Acme --status new` 显示两个 Acme jobs。
 - Missing search 输出 `No jobs match.`
 - 每次 wolf 调用的 stderr 都出现 dev banner。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 
 包含 setup commands、所有 list outputs、expected/actual visible job titles、exit codes 和 safety checks。
-

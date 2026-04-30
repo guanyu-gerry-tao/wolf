@@ -1,12 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import claudeTemplate from './templates/workspace-claude.md';
-import profileTemplate from './templates/profile.md';
-import standardQuestionsTemplate from './templates/standard_questions.md';
+import { profileTomlTemplate } from '../../utils/profileTomlGenerate.js';
 import attachmentsReadmeTemplate from './templates/attachments-readme.md';
-import resumePoolTemplate from './templates/resume_pool.md';
 import { saveConfig } from '../../utils/config.js';
 import { currentBinaryName } from '../../utils/instance.js';
+import { CURRENT_SCHEMA_VERSION } from '../../runtime/migrations/index.js';
 import type { AppConfig } from '../../utils/types/index.js';
 import type {
   InitApplicationService,
@@ -26,7 +25,14 @@ export class InitApplicationServiceImpl implements InitApplicationService {
 
   /** @inheritdoc */
   buildDefaultConfig(mode?: 'stable' | 'dev'): AppConfig {
+    // Write `schemaVersion` explicitly so a freshly initialized workspace
+    // declares its version on disk. Fresh installs are already at the
+    // binary's `CURRENT_SCHEMA_VERSION` (no migration needed) — but having
+    // the field present makes future `wolf migrate` invocations faster (no
+    // "missing field, treat as v1" inference) and lets older binaries
+    // recognise a too-new workspace and refuse cleanly.
     return {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       ...(mode ? { instance: { mode } } : {}),
       default: DEFAULT_PROFILE_NAME,
       hunt: { minScore: 0.5, maxResults: 50 },
@@ -55,14 +61,14 @@ export class InitApplicationServiceImpl implements InitApplicationService {
   }
 }
 
-// Writes the four template files that compose a fresh profile directory plus
-// the attachments/ subfolder. No file is overwritten if it already exists —
-// re-running `wolf init` is safe.
+// Writes the v2 profile skeleton: a single profile.toml plus the
+// attachments/ subfolder. No file is overwritten if it already exists —
+// re-running `wolf init` is safe. v1's profile.md / resume_pool.md /
+// standard_questions.md trio is no longer written; existing v1 workspaces
+// upgrade via `wolf migrate`.
 async function writeProfileSkeleton(profileDir: string): Promise<void> {
   await fs.mkdir(profileDir, { recursive: true });
-  await writeIfAbsent(path.join(profileDir, 'profile.md'), profileTemplate);
-  await writeIfAbsent(path.join(profileDir, 'standard_questions.md'), standardQuestionsTemplate);
-  await writeIfAbsent(path.join(profileDir, 'resume_pool.md'), resumePoolTemplate);
+  await writeIfAbsent(path.join(profileDir, 'profile.toml'), profileTomlTemplate);
   const attachmentsDir = path.join(profileDir, 'attachments');
   await fs.mkdir(attachmentsDir, { recursive: true });
   await writeIfAbsent(path.join(attachmentsDir, 'README.md'), attachmentsReadmeTemplate);

@@ -35,8 +35,9 @@ export function formatDoctor(report: DoctorReport): string {
   lines.push(`Status: ${report.ready ? 'READY' : 'NOT READY'}`);
   if (!report.ready) {
     lines.push(``);
-    lines.push(`Open profiles/${report.profileName}/profile.md and fill the > [!IMPORTANT]`);
-    lines.push(`sections, then re-run \`${currentBinaryName()} doctor\`.`);
+    lines.push(`Fill the missing fields with \`${currentBinaryName()} profile set <key> <value>\`,`);
+    lines.push(`add resume entries with \`${currentBinaryName()} profile add experience\`, and`);
+    lines.push(`re-run \`${currentBinaryName()} doctor\` to check progress.`);
   }
   return lines.join('\n');
 }

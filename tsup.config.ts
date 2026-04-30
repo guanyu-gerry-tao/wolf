@@ -39,8 +39,10 @@ export default defineConfig({
   entry: { 'cli/index': 'src/cli/index.ts' },
   format: ['esm'],
   outDir: 'dist',
-  // Inline .md files as string constants so no runtime file-read is needed.
-  loader: { '.md': 'text' },
+  // Inline .md and .toml files as string constants so no runtime file-read
+  // is needed. The .toml loader covers `profile.toml` (the v2 profile
+  // template that wolf init writes verbatim into a fresh workspace).
+  loader: { '.md': 'text', '.toml': 'text' },
   define: {
     __WOLF_BUILD_MODE__: JSON.stringify(buildMode),
   },

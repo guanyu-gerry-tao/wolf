@@ -17,6 +17,19 @@
 | `UC-02.2.1` | 从粘贴的 JD 数据添加结构化 job（CLI） | `add/ADD-01`, `add/ADD-02` |
 | `AC-10-1` | `wolf_add` 返回 `jobId`（只覆盖 CLI 等价形态；MCP 变体 `UC-02.2.2` 未测） | `add/ADD-01` |
 
+### Profile 数据治理（`wolf profile`）
+
+| Requirement | 行为 | Acceptance 覆盖 |
+|---|---|---|
+| `AC-11-1` | `wolf profile fields` 暴露 `PROFILE_FIELDS` schema 参考，包括 required/json/single-path 模式 | `profile/PROFILE-01` |
+| `AC-11-2` | `wolf profile show` 打印 raw `profile.toml`；`wolf profile get <path>` 打印单个字段值 | `profile/PROFILE-01` |
+| `AC-11-3` | `wolf profile set <path> <value>` 精确更新标量字段 | `profile/PROFILE-02` |
+| `AC-11-4` | `wolf profile set <path> --from-file <file>` 更新多行内容，且不加入虚假尾随换行 | `profile/PROFILE-02` |
+| `AC-11-5` | `wolf profile add/remove experience|project|education` 管理 resume-source array entries | `profile/PROFILE-03` |
+| `AC-11-6` | `wolf profile add question --prompt --answer` 创建自定义 question；自定义 question 可删除 | `profile/PROFILE-04` |
+| `AC-11-7` | Wolf-builtin question 的 prompt/required/remove 操作被拒绝，但 answer 仍可编辑 | `profile/PROFILE-05` |
+| `AC-11-8` | 无效 profile path、type、缺失 value 和不安全写入失败，且不破坏 `profile.toml` | `profile/PROFILE-06` |
+
 ### Tailor (`wolf tailor`)
 
 | Requirement | 行为 | Acceptance 覆盖 |
@@ -28,6 +41,17 @@
 | `AC-05-1` | 在 tailored resume 旁边写出 `cover_letter.html` 和 `cover_letter.pdf`，并把 cover letter PDF 路径写回 Job 行 | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-05-2` | Cover letter 含正确的 role title 和 company name | `tailor/TAILOR-01` |
 | Analyst hint 流程（`--hint` 写 `src/hint.md`，引导 analyst brief） | `UC-06.1.1` 的子能力；没有专属 AC id | `tailor/TAILOR-03` |
+
+### Job 数据治理（`wolf job show|get|set|fields`）
+
+| Requirement | 行为 | Acceptance 覆盖 |
+|---|---|---|
+| `AC-12-1` | `wolf job fields` 暴露 `JOB_FIELDS` schema 参考，包括 required/json/single-field 模式 | `job/JOB-GOV-01` |
+| `AC-12-2` | `wolf job show` 和 `wolf job get` 读取 flat job columns 和 `description_md` | `job/JOB-GOV-01` |
+| `AC-12-3` | `wolf job set` 对可编辑字段做类型转换并持久化，包括 `description_md --from-file` | `job/JOB-GOV-02` |
+| `AC-12-4` | Salary 约定接受 `salaryLow=0` 加正数 `salaryHigh`，blank/null 仍表示 unknown | `job/JOB-GOV-03` |
+| `AC-12-5` | 无效 job 写入被拒绝，且保留旧值 | `job/JOB-GOV-04` |
+| `AC-12-6` | System-managed 字段可读，但会被 `wolf job set` 拒绝写入 | `job/JOB-GOV-05` |
 
 ### Job tracking (`wolf status` + `wolf job list`)
 

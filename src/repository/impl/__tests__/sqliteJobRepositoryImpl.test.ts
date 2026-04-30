@@ -47,7 +47,8 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
       source: 'Other',
       location: 'Remote',
       remote: true,
-      salary: null,
+      salaryLow: null,
+      salaryHigh: null,
       workAuthorizationRequired: 'no sponsorship',
       clearanceRequired: false,
       score: null,
@@ -55,11 +56,10 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
       status: 'new',
       error: null,
       appliedProfileId: null,
-      tailoredResumePdfPath: null,
-      coverLetterHtmlPath: null,
-      coverLetterPdfPath: null,
-      screenshotPath: null,
-      outreachDraftPath: null,
+      hasTailoredResume: false,
+      hasTailoredCoverLetter: false,
+      hasScreenshots: false,
+      hasOutreachDraft: false,
       createdAt: '2026-04-10T00:00:00.000Z',
       updatedAt: '2026-04-10T00:00:00.000Z',
       ...overrides,
@@ -85,9 +85,9 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
       makeJob({ id: 'j1', companyId: 'c-acme', status: 'new', score: 0.5, source: 'LinkedIn',
         createdAt: '2026-04-10T00:00:00.000Z' }),
       makeJob({ id: 'j2', companyId: 'c-acme', status: 'applied', score: 0.9,
-        tailoredResumePdfPath: '/path/resume.pdf', createdAt: '2026-04-12T00:00:00.000Z' }),
+        hasTailoredResume: true, createdAt: '2026-04-12T00:00:00.000Z' }),
       makeJob({ id: 'j3', companyId: 'c-beta', status: 'reviewed', score: 0.8,
-        tailoredResumePdfPath: '/path/resume2.pdf', source: 'Indeed',
+        hasTailoredResume: true, source: 'Indeed',
         createdAt: '2026-04-14T00:00:00.000Z' }),
       makeJob({ id: 'j4', companyId: 'c-beta', status: 'applied', score: null,
         createdAt: '2026-04-16T00:00:00.000Z' }),
@@ -114,16 +114,16 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
   });
 
   describe('countWithTailoredResume()', () => {
-    // Counts only rows where tailoredResumePdfPath IS NOT NULL. Two of the
-    // five seeded jobs have a path; the other three have null.
-    it('counts only rows with a non-null tailoredResumePdfPath', async () => {
+    // β.10h: counts rows where hasTailoredResume = true. Two of the five
+    // seeded jobs are flagged true; the other three default to false.
+    it('counts only rows with hasTailoredResume = true', async () => {
       expect(await jobRepo.countWithTailoredResume()).toBe(2);
     });
 
-    // Updating a job to clear its tailored path must decrement the count —
-    // guards against the path being treated as a monotonic "once set, set forever" flag.
-    it('reflects updates that clear the tailored path', async () => {
-      await jobRepo.update('j2', { tailoredResumePdfPath: null });
+    // Clearing the flag must decrement the count — guards against the
+    // boolean being treated as a monotonic "once set, set forever" marker.
+    it('reflects updates that clear hasTailoredResume', async () => {
+      await jobRepo.update('j2', { hasTailoredResume: false });
       expect(await jobRepo.countWithTailoredResume()).toBe(1);
     });
   });

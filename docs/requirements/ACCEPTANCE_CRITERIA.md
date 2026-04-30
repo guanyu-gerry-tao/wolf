@@ -32,7 +32,7 @@ Each section corresponds to a User Story and Use Case.
 **AC-01-5 — Scriptable empty init**
 - Given an automated agent needs a non-interactive workspace
 - When it runs `wolf init --empty`
-- Then wolf writes schema-valid `wolf.toml`, the three template MDs (`profiles/default/profile.md`, `profiles/default/resume_pool.md`, `profiles/default/standard_questions.md`), an empty `profiles/default/attachments/` directory, and `data/` without prompting
+- Then wolf writes schema-valid `wolf.toml`, `profiles/default/profile.toml`, an empty `profiles/default/attachments/` directory, and `data/` without prompting
 
 **AC-01-6 — Dev init isolation**
 - Given a dev build invoked as `npm run wolf -- init --dev --empty`
@@ -333,3 +333,87 @@ Follows the standard shape for `wolf <noun> list` commands — see DECISIONS.md 
 - Given any MCP tool call
 - When the tool completes (success or error)
 - Then the response conforms to the tool's declared output schema
+
+---
+
+## AC-11 · Profile Data Governance (`wolf profile`)
+
+**Story:** US-10 · **Use case:** UC-10.1, UC-10.2, UC-10.3
+
+**AC-11-1 — Profile schema reference**
+- Given a dev workspace has been initialized
+- When the user runs `wolf profile fields`, `wolf profile fields --required`, `wolf profile fields --json`, or `wolf profile fields <path>`
+- Then wolf prints the `PROFILE_FIELDS` source-of-truth metadata, supports required-only and machine-readable output, and rejects unknown paths with a clear error
+
+**AC-11-2 — Read and show profile data**
+- Given the active profile contains a known value
+- When the user runs `wolf profile show` and `wolf profile get <path>`
+- Then `show` prints the raw active `profile.toml` with comments preserved, and `get` prints only the requested field value for piping
+
+**AC-11-3 — Scalar field update**
+- Given the active profile contains an editable top-level field
+- When the user runs `wolf profile set <path> <value>`
+- Then wolf surgically updates only that field, preserves surrounding comments/formatting, and the new value is visible through `wolf profile get <path>`
+
+**AC-11-4 — Multiline field update from file**
+- Given a multiline profile field and a temporary input file under `/tmp/wolf-test/`
+- When the user runs `wolf profile set <path> --from-file <file>`
+- Then wolf stores the file content without a phantom trailing newline and later reads it back correctly
+
+**AC-11-5 — Array entry add, edit, and remove**
+- Given the user needs to manage resume-source entries
+- When the user runs `wolf profile add experience|project|education`, edits fields on the returned id, and removes the entry with `--yes`
+- Then wolf creates a stable `[[experience]]`, `[[project]]`, or `[[education]]` entry, allows only supported per-entry fields, and removes only the requested id
+
+**AC-11-6 — Custom question add and remove**
+- Given the user has a reusable application question
+- When the user runs `wolf profile add question --prompt <text> --answer <text>` and later removes the returned id with `wolf profile remove question <id> --yes`
+- Then wolf creates a custom `[[question]]` entry with `required = false`, stores prompt and answer, and removes that custom entry without affecting wolf-builtin questions
+
+**AC-11-7 — Builtin question protection**
+- Given a wolf-builtin question exists in the active profile
+- When the user attempts to remove it or change its prompt / required flag
+- Then wolf rejects the operation with a clear error and tells the user to clear the answer instead
+
+**AC-11-8 — Profile write validation**
+- Given the user passes an unknown path, unknown array type, duplicate unsafe id, missing value, or TOML-breaking value
+- When `wolf profile set`, `add`, or `remove` runs
+- Then wolf exits non-zero with a clear message and does not silently corrupt `profile.toml`
+
+---
+
+## AC-12 · Job Data Governance (`wolf job show|get|set|fields`)
+
+**Story:** US-08 · **Use case:** UC-08
+
+**AC-12-1 — Job schema reference**
+- Given a dev workspace contains at least one job
+- When the user runs `wolf job fields`, `wolf job fields --required`, `wolf job fields --json`, or `wolf job fields <name>`
+- Then wolf prints the `JOB_FIELDS` source-of-truth metadata, supports required-only and machine-readable output, and rejects unknown field names with a clear error
+
+**AC-12-2 — Read and show job data**
+- Given a job exists with JD prose
+- When the user runs `wolf job show <id>`, `wolf job show <id> --json`, and `wolf job get <id> <field>`
+- Then `show` prints every flat job column plus `description_md`, JSON output is machine-readable, and `get` prints only the requested field value for piping
+
+**AC-12-3 — Editable job field update**
+- Given a job exists
+- When the user runs `wolf job set <id> <field> <value>` on editable fields such as `status`, `score`, `remote`, or `description_md --from-file`
+- Then wolf coerces the CLI string according to `JOB_FIELDS`, persists the typed value, and the value round-trips through `wolf job get`
+
+**AC-12-4 — Salary range convention**
+- Given a job exists with unknown salary fields
+- When the user runs `wolf job set <id> salaryLow 0` and `wolf job set <id> salaryHigh 30000`
+- Then both commands succeed, `salaryLow` reads back as `0`, `salaryHigh` reads back as `30000`, and wolf treats `0` as explicit unpaid while blank/null remains unknown
+
+**AC-12-5 — Job write validation**
+- Given the user passes an unknown field, invalid enum, invalid boolean, invalid number, or removed sentinel such as `salaryLow unpaid`
+- When `wolf job set` runs
+- Then wolf exits non-zero with a clear validation error and leaves the previous job value unchanged
+
+**AC-12-6 — System-managed fields are read-only**
+- Given system-managed fields such as `id`, `companyId`, `createdAt`, and `updatedAt` exist on a job row
+- When the user reads them with `wolf job show` or `wolf job get`
+- Then the values are visible
+- AND when the user tries to update them with `wolf job set`
+- Then wolf rejects the write as system-managed

@@ -17,6 +17,19 @@ UC ids reference [`docs/requirements/USE_CASES.md`](../../docs/requirements/USE_
 | `UC-02.2.1` | Add a structured job from pasted JD data (CLI) | `add/ADD-01`, `add/ADD-02` |
 | `AC-10-1` | `wolf_add` returns `jobId` (CLI-equivalent shape only — MCP variant `UC-02.2.2` not tested) | `add/ADD-01` |
 
+### Profile data governance (`wolf profile`)
+
+| Requirement | Behavior | Acceptance Coverage |
+|---|---|---|
+| `AC-11-1` | `wolf profile fields` exposes the `PROFILE_FIELDS` schema reference, including required/json/single-path modes | `profile/PROFILE-01` |
+| `AC-11-2` | `wolf profile show` prints raw `profile.toml`; `wolf profile get <path>` prints one field value | `profile/PROFILE-01` |
+| `AC-11-3` | `wolf profile set <path> <value>` surgically updates a scalar field | `profile/PROFILE-02` |
+| `AC-11-4` | `wolf profile set <path> --from-file <file>` updates multiline content without a phantom trailing newline | `profile/PROFILE-02` |
+| `AC-11-5` | `wolf profile add/remove experience|project|education` manages resume-source array entries | `profile/PROFILE-03` |
+| `AC-11-6` | `wolf profile add question --prompt --answer` creates a custom question; custom questions can be removed | `profile/PROFILE-04` |
+| `AC-11-7` | Wolf-builtin question prompt/required/remove operations are rejected while answers remain editable | `profile/PROFILE-05` |
+| `AC-11-8` | Invalid profile paths, types, missing values, and unsafe writes fail without corrupting `profile.toml` | `profile/PROFILE-06` |
+
 ### Tailor (`wolf tailor`)
 
 | Requirement | Behavior | Acceptance Coverage |
@@ -28,6 +41,17 @@ UC ids reference [`docs/requirements/USE_CASES.md`](../../docs/requirements/USE_
 | `AC-05-1` | `cover_letter.html` and `cover_letter.pdf` written alongside tailored resume; cover letter PDF path recorded on Job row | `tailor/TAILOR-01`, `tailor/TAILOR-02` |
 | `AC-05-2` | Cover letter includes correct role title and company name from JD | `tailor/TAILOR-01` |
 | Analyst hint flow (`--hint` writes `src/hint.md`, steers analyst brief) | Sub-feature of `UC-06.1.1`; no canonical AC id assigned | `tailor/TAILOR-03` |
+
+### Job data governance (`wolf job show|get|set|fields`)
+
+| Requirement | Behavior | Acceptance Coverage |
+|---|---|---|
+| `AC-12-1` | `wolf job fields` exposes the `JOB_FIELDS` schema reference, including required/json/single-field modes | `job/JOB-GOV-01` |
+| `AC-12-2` | `wolf job show` and `wolf job get` read flat job columns and `description_md` | `job/JOB-GOV-01` |
+| `AC-12-3` | `wolf job set` coerces and persists editable field values, including `description_md --from-file` | `job/JOB-GOV-02` |
+| `AC-12-4` | Salary convention accepts `salaryLow=0` plus positive `salaryHigh`, with blank/null still meaning unknown | `job/JOB-GOV-03` |
+| `AC-12-5` | Invalid job writes are rejected and leave prior values unchanged | `job/JOB-GOV-04` |
+| `AC-12-6` | System-managed fields are readable but rejected by `wolf job set` | `job/JOB-GOV-05` |
 
 ### Job tracking (`wolf status` + `wolf job list`)
 

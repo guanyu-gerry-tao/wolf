@@ -27,7 +27,8 @@
 
 ## Setup
 
-使用和 [TAILOR-01](TAILOR-01-full-pipeline_zh.md) 相同的 fixture profile、resume pool 和 add-job setup，但放在 TAILOR-02 workspace 下。
+使用和 [TAILOR-01](TAILOR-01-full-pipeline_zh.md) 相同的 CLI-populated fixture
+profile、resume content 和 add-job setup，但放在 TAILOR-02 workspace 下。
 
 ## 步骤
 
@@ -65,9 +66,9 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-02 npm
 - `resume` 和 `cover` 使用同一个已有的 `tailoring-brief.md`。
 - 共享 reviewer rubric 返回 `PASS` 或 `PASS_WITH_MINOR_IMPROVEMENTS`，且
   上面的本 case 独有检查通过。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 
 包含 command logs、`jobId`、每个 JSON response 的 output paths、artifact existence checks、brief excerpt、AI review findings 和 safety checks。
-

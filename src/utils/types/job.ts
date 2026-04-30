@@ -54,10 +54,19 @@ export type JobError =
   | "reach_send_error";           // Gmail API failed to send email
 
 /**
- * Annual compensation in USD, or "unpaid" for internships/volunteer roles.
- * Using a union type forces explicit handling of the unpaid case.
+ * Annual compensation in USD.
+ *
+ * β.10j: split into `salaryLow` + `salaryHigh` on Job. JD often advertises
+ * a range ("$120k–$180k"); we store both endpoints.
+ *
+ * β.10k: unpaid sentinel removed. We use plain `number` everywhere with two
+ * conventions:
+ *   - `0`    → explicitly unpaid (internship / volunteer / equity-only).
+ *   - `null` → unknown / not listed by the JD.
+ * Callers MUST distinguish — a 0 minimum is a real signal, "unknown"
+ * means the JD didn't say. Single-point comp ("$150k flat") → low=high.
  */
-export type Salary = number | "unpaid";
+export type Salary = number;
 
 /** Where wolf found the job. Set by each provider — not an exhaustive enum. */
 export type JobSource =
@@ -79,7 +88,20 @@ export interface Job {
   source: JobSource;
   location: string; // specific office location for this role
   remote: boolean;
-  salary: Salary | null; // null if not listed
+  // β.10j/k: salary range. Both fields are plain numbers in USD.
+  //   "$120k–$180k"            → salaryLow=120000, salaryHigh=180000
+  //   "$150k flat"             → salaryLow=salaryHigh=150000
+  //   Unpaid intern (no comp)  → salaryLow=0,      salaryHigh=0
+  //   Unpaid base + $30k bonus → salaryLow=0,      salaryHigh=30000
+  //   Not listed in JD         → salaryLow=null,   salaryHigh=null
+  // Two distinct conventions:
+  //   `0`    = explicit "unpaid" (real signal — user knowingly takes it).
+  //   `null` = unknown (JD didn't say).
+  // The pair (low, high) carries no implicit constraint — `low=0 high=N`
+  // is valid (e.g. unpaid base with bonus ceiling). Coercion does NOT
+  // validate the pair; the AI / scorer interprets shape.
+  salaryLow: number | null;
+  salaryHigh: number | null;
   workAuthorizationRequired: Sponsorship; // e.g. "no sponsorship", "US citizens only"
   clearanceRequired: boolean;
   score: number | null; // AI relevance score 0.0–1.0; null if unscored
@@ -90,11 +112,13 @@ export interface Job {
   status: JobStatus;
   error: JobError | null;          // set when status is "error"; null otherwise
   appliedProfileId: string | null; // which profile was used; null if not yet applied
-  tailoredResumePdfPath: string | null; // path to the tailored resume PDF
-  coverLetterHtmlPath: string | null; // path to the cover letter HTML file generated
-  coverLetterPdfPath: string | null; // path to the PDF generated
-  screenshotPath: string | null; // path to the screenshot folders when applying via browser
-  outreachDraftPath: string | null; // path to the outreach email draft (.eml)
+  // β.10h: replaced 5 nullable path strings with 4 booleans. Artifact files
+  // live at convention paths under data/jobs/<jobDirName>/ — resolve via
+  // JobRepository.getArtifactPath(id, kind) when a path is needed.
+  hasTailoredResume: boolean;       // tailor produced resume.pdf
+  hasTailoredCoverLetter: boolean;  // tailor produced cover_letter.html + cover_letter.pdf
+  hasScreenshots: boolean;          // fill recorded screenshots/ directory
+  hasOutreachDraft: boolean;        // reach drafted outreach.eml
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }
@@ -117,15 +141,45 @@ export interface JobQuery {
   limit?: number;
 }
 
+/**
+ * Partial-update patch — every field on the `jobs` row that's user-editable
+ * appears here. System-managed columns (`id`, `companyId`, `createdAt`,
+ * `updatedAt`) are intentionally NOT updatable through this surface.
+ *
+ * Two layers consume this:
+ *
+ *   - **pipeline writers** (score / tailor / fill / reach) typically patch
+ *     a small targeted slice (e.g. `{ status, score }` after scoring).
+ *   - **`wolf job set <field>`** patches exactly one field at a time, with
+ *     the user-supplied value coerced to the field's runtime type.
+ *
+ * Adding a new editable column means:
+ *   - add it here,
+ *   - add it to `JOB_FIELDS` in `src/utils/jobFields.ts` (drives CLI),
+ *   - extend `sqliteJobRepositoryImpl.update` if it doesn't already
+ *     pass through unknown keys (drizzle's `set(patch)` does — no change
+ *     needed for typical scalar additions).
+ */
 export interface JobUpdate {
+  // ---- core (set by `wolf add` / `wolf hunt`; rarely re-edited)
+  title?: string;
+  url?: string;
+  source?: JobSource;
+  location?: string;
+  remote?: boolean;
+  salaryLow?: number | null;
+  salaryHigh?: number | null;
+  workAuthorizationRequired?: Sponsorship;
+  clearanceRequired?: boolean;
+
+  // ---- pipeline state
   status?: JobStatus;
   error?: JobError | null;
   appliedProfileId?: string | null;
   score?: number | null;
   scoreJustification?: string | null;
-  tailoredResumePdfPath?: string | null;
-  coverLetterHtmlPath?: string | null;
-  coverLetterPdfPath?: string | null;
-  screenshotPath?: string | null;
-  outreachDraftPath?: string | null;
+  hasTailoredResume?: boolean;
+  hasTailoredCoverLetter?: boolean;
+  hasScreenshots?: boolean;
+  hasOutreachDraft?: boolean;
 }

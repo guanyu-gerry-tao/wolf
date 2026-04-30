@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Verify that the resume writer (a) never invents an entire section the resume
-pool lacks, and (b) emits sections in the exact order they appear in the pool —
-even when that order contradicts conventional resume layout.
+Verify that the resume writer (a) never invents an entire section the structured
+resume data lacks, and (b) emits sections in the exact order declared by
+`resume.section_order` — even when that order contradicts conventional resume
+layout.
 
 This case is the regression guard for Bug B3 (writer fabricated
 `Education: BS, Computer Science` when the pool had no education entry).
@@ -40,14 +41,15 @@ Run the dev build once for the whole group:
 npm run build:dev
 ```
 
-For each sub-case, initialize a separate workspace and drop in the shared
-mid-career SWE fixture (same persona TAILOR-01 uses):
+For each sub-case, initialize a separate workspace and populate the selected
+mid-career SWE fixture through the public `wolf profile` CLI:
 
 ```bash
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
   npm run wolf -- init --dev --empty
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub>
-cp -r test/fixtures/wolf-profile/swe-mid/* "$WS/profiles/default/"
+bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh <persona> "$WS"
+WOLF_DEV_HOME="$WS" npm run wolf -- doctor
 ```
 
 Add the same fixture job (row 119 of the JD CSV) used by TAILOR-01:
@@ -60,60 +62,17 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<su
   --company "Fixture Company" --jd-text "$JD_TEXT"
 ```
 
-The per-sub-case `resume_pool.md` is overwritten in step 1 of each sub-case
-below (the init template is replaced).
-
 ## Sub-case 4a — Pool with no Education
 
-**Pool content** — overwrite
-`/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-4a/profiles/default/resume_pool.md`
-with:
+**Fixture persona:** `swe-mid-no-education`.
 
-```md
-# Test Candidate Resume Pool
-
-## Experience
-
-### Backend Engineer - Northwind Systems
-*2022 - 2025*
-- Built Java and Scala backend services running 200+ event-processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
-- Designed internal REST APIs and on-call runbooks for distributed job processing.
-- Migrated legacy Hadoop jobs to Spark Structured Streaming with zero data loss.
-
-### Data Platform Engineer - Vega Logistics
-*2020 - 2022*
-- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
-- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
-- Authored the team's data-quality framework (Great Expectations + custom Scala validators).
-
-### Software Engineer Intern - Atlas Tools
-*2019*
-- Built Java API integrations between internal reporting tools and a third-party billing system.
-- Wrote integration tests for batch processing endpoints; raised coverage from 41% to 78%.
-
-## Projects
-
-### Internal Job Scheduler
-*2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
-- Replaced four bespoke scripts and reduced on-call paging by ~30%.
-
-### Open-Source Spark Connector
-*2023*
-- Maintainer of a small Spark connector for an internal columnar format.
-- Two minor releases shipped, used by three downstream teams.
-
-## Skills
-
-Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
-```
-
-**Note:** intentionally NO `## Education` section. The candidate is a
-bootcamp / self-taught backend engineer with no degree to list. The pool is
-otherwise dense enough that the resulting resume can fill a single page on
-Experience + Projects + Skills alone — so an underflow `CannotFillError` here
-would correctly be treated as a fixture density bug, not a renderer bug.
+**Note:** this persona intentionally has no `education` entries and sets
+`resume.section_order` to Experience → Project → Skills. The candidate is a
+bootcamp / self-taught backend engineer with no degree to list. The structured
+resume data is otherwise dense enough that the resulting resume can fill a
+single page on Experience + Projects + Skills alone — so an underflow
+`CannotFillError` here would correctly be treated as a fixture density bug, not
+a renderer bug.
 
 **Run:**
 
@@ -135,59 +94,16 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-4a 
   [`../../reviewers/tailor-artifact-review.md`](../../reviewers/tailor-artifact-review.md))
   confirms zero Education-related fabrication. No "BS", no "Bachelor", no
   university name appears anywhere in the resume.
-- No files written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Sub-case 4b — Pool with reordered sections (Skills first, Education last)
 
-**Pool content** — overwrite
-`/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-4b/profiles/default/resume_pool.md`
-with:
+**Fixture persona:** `swe-mid-reordered`.
 
-```md
-# Test Candidate Resume Pool
-
-## Skills
-
-Java, Scala, Spark, Hadoop, Kafka, PostgreSQL, Snowflake, REST API design, distributed systems, Go
-
-## Projects
-
-### Internal Job Scheduler
-*2024*
-- Lightweight cron replacement for ad-hoc team automations; Go + SQLite, ~600 LOC.
-- Replaced four bespoke scripts and reduced on-call paging by ~30%.
-
-### Open-Source Spark Connector
-*2023*
-- Maintainer of a small Spark connector for an internal columnar format.
-
-## Experience
-
-### Backend Engineer - Northwind Systems
-*2022 - 2025*
-- Built Java and Scala backend services running 200+ event-processing workflows.
-- Improved Spark data pipelines used by analytics and operations teams; cut nightly batch runtime by 38%.
-- Designed internal REST APIs and on-call runbooks for distributed job processing.
-
-### Data Platform Engineer - Vega Logistics
-*2020 - 2022*
-- Owned the streaming ingestion path on Kafka; sustained 12k events/sec at p99 < 80ms.
-- Built a Postgres CDC pipeline replicating 40+ tables to a Snowflake warehouse.
-
-### Software Engineer Intern - Atlas Tools
-*2019*
-- Built Java API integrations between internal reporting tools and a third-party billing system.
-
-## Education
-
-### B.S. Computer Science - Northwind State University
-*2015 - 2019*
-```
-
-**Note:** sections are intentionally in non-conventional order:
-`Skills → Projects → Experience → Education`. Conventional resume layout would
-put Experience first or Education last; this pool puts Skills first and
-Experience third.
+**Note:** `resume.section_order` is intentionally non-conventional:
+`Skills → Project → Experience → Education`. Conventional resume layout would
+put Experience first; this profile puts Skills first and Experience third.
 
 **Run:**
 
@@ -209,7 +125,8 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-4b 
   "Education".
 - AI reviewer confirms no reordering — the writer did NOT rearrange sections
   to follow conventional resume layout.
-- No files written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## AI Review Rubric
 
@@ -220,18 +137,20 @@ letter may be marked `N/A` if the run only generated the resume.
 
 ### Case-specific checks
 
-- (4a) The generated `resume.html` contains exactly the sections present in
-  the pool (Experience / Projects / Skills) and NO additional section. If any
+- (4a) The generated `resume.html` contains exactly the structured resume
+  sections present in the profile (Experience / Projects / Skills) and NO
+  additional section. If any
   Education-shaped content is present (degree, school, dates, the word
   "Bachelor", a university name), this is a hard FAIL — the writer fabricated
-  data not in the pool.
+  data not in the profile.
 - (4b) The four sections appear in the resume in the exact order Skills →
   Projects → Experience → Education. Any other order (e.g. Experience first
-  to match convention) is a hard FAIL — the writer must respect the pool's
-  ordering authority.
+  to match convention) is a hard FAIL — the writer must respect
+  `resume.section_order`.
 
 ## Report Requirements
 
-For each sub-case include: command logs, `jobId`, the pool content used,
-the generated `resume.html` (full or excerpts showing all `<h2>` sections in
-order), reviewer findings, and protected-path safety checks.
+For each sub-case include: command logs, `jobId`, the fixture persona used,
+`wolf profile get resume.section_order`, the generated `resume.html` (full or
+excerpts showing all `<h2>` sections in order), reviewer findings, and
+protected-path safety checks.

@@ -47,6 +47,7 @@ import { HuntApplicationServiceImpl } from '../application/impl/huntApplicationS
 import { ScoreApplicationServiceImpl } from '../application/impl/scoreApplicationServiceImpl.js';
 import { FillApplicationServiceImpl } from '../application/impl/fillApplicationServiceImpl.js';
 import { ReachApplicationServiceImpl } from '../application/impl/reachApplicationServiceImpl.js';
+import { ContextApplicationServiceImpl } from '../application/impl/contextApplicationServiceImpl.js';
 import { FillServiceImpl } from '../service/impl/fillServiceImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
@@ -78,6 +79,7 @@ import type { HuntApplicationService } from '../application/huntApplicationServi
 import type { ScoreApplicationService } from '../application/scoreApplicationService.js';
 import type { FillApplicationService } from '../application/fillApplicationService.js';
 import type { ReachApplicationService } from '../application/reachApplicationService.js';
+import type { ContextApplicationService } from '../application/contextApplicationService.js';
 import type { FillService } from '../service/fillService.js';
 import type { AiConfig } from '../utils/types/index.js';
 
@@ -107,6 +109,7 @@ export interface AppContext {
   scoreApp: ScoreApplicationService;
   fillApp: FillApplicationService;
   reachApp: ReachApplicationService;
+  contextApp: ContextApplicationService;
   fillService: FillService;
   // config
   defaultAiConfig: AiConfig;
@@ -169,6 +172,7 @@ function wireContext(
   const scoreApp = new ScoreApplicationServiceImpl();
   const fillApp = new FillApplicationServiceImpl();
   const reachApp = new ReachApplicationServiceImpl();
+  const contextApp = new ContextApplicationServiceImpl(profileRepository);
   const fillService = new FillServiceImpl();
 
   return {
@@ -194,6 +198,7 @@ function wireContext(
     scoreApp,
     fillApp,
     reachApp,
+    contextApp,
     fillService,
     defaultAiConfig,
   };
