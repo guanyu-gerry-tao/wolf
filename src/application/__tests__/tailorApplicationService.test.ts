@@ -108,15 +108,69 @@ function makeJobRepo(job: Job | null = FAKE_JOB): JobRepository {
   } as unknown as JobRepository;
 }
 
-function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string } = {}): ProfileRepository {
+function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string; tomlOverrides?: Record<string, unknown> } = {}): ProfileRepository {
   // Only the methods this service uses are stubbed; the rest stay as bare vi.fn()
   // so accidental calls to unmocked methods surface as test failures.
   const profile = overrides.profile ?? FAKE_PROFILE;
   const pool = overrides.resumePool ?? FAKE_RESUME_POOL;
+
+  // Build a minimal-but-passing ProfileToml. Tailor's assertReadyForTailor
+  // checks REQUIRED PROFILE_FIELDS + ≥ 5 resume entries. Provide enough
+  // structure to clear both gates.
   return {
     get: vi.fn(),
     getDefault: vi.fn().mockResolvedValue(profile),
     list: vi.fn(),
+    getProfileToml: vi.fn().mockImplementation(async () => {
+      const { parseProfileToml } = await import('../../utils/profileToml.js');
+      const profileTomlTemplate = (await import('../../application/impl/templates/profile.toml')).default;
+      const parsed = parseProfileToml(profileTomlTemplate);
+      // Fill REQUIRED scalar fields so assertReadyForTailor's loop passes.
+      const populated = {
+        ...parsed,
+        identity: {
+          ...parsed.identity,
+          legal_first_name: 'Alex',
+          legal_last_name: 'Rivera',
+          country_of_citizenship: 'United States',
+        },
+        contact: { ...parsed.contact, email: 'alex@example.test', phone: '+1 555 010 0100' },
+        address: { ...parsed.address, full: '123 Main St, SF, CA 94102, USA' },
+        links: { ...parsed.links, first: 'https://linkedin.com/in/alex' },
+        job_preferences: {
+          ...parsed.job_preferences,
+          target_roles: '- SWE',
+          target_locations: '- SF Bay Area',
+        },
+        form_answers: {
+          ...parsed.form_answers,
+          authorized_to_work: 'Yes',
+          require_sponsorship: 'No',
+          willing_to_relocate: 'Yes',
+        },
+        // Five filled "resume entries" to clear the ≥ 5 threshold:
+        // 1 experience + skills.languages + skills.frameworks + skills.tools + skills.domains.
+        experience: [{
+          id: 'acme-2024',
+          job_title: 'SWE',
+          company: 'Acme',
+          start: '2022',
+          end: '2025',
+          location: '',
+          bullets: '- Built distributed systems',
+          subnote: '',
+        }],
+        skills: {
+          languages: 'TypeScript',
+          frameworks: 'React',
+          tools: 'Git',
+          domains: 'Backend',
+          free_text: '',
+        },
+        ...overrides.tomlOverrides,
+      };
+      return populated;
+    }),
     getProfileMd: vi.fn().mockResolvedValue(profile.md),
     getResumePool: vi.fn().mockResolvedValue(pool),
     getStandardQuestions: vi.fn(),
@@ -344,86 +398,66 @@ describe('TailorApplicationService', () => {
   // message that names the file the user must edit.
   // ---------------------------------------------------------------------------
 
-  it('refuses tailor when profile.md is missing required fields (Legal first name)', async () => {
-    const profileMissingFirstName: Profile = {
-      name: 'default',
-      // Identity has only Last name; First name H2 absent → assertReady fails.
-      md: '# Identity\n\n## Legal last name\nRivera\n\n# Contact\n\n## Email\nx@x.test\n\n## Phone\n+1\n',
-    };
-    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: profileMissingFirstName }) });
-    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
+  it('refuses tailor when REQUIRED profile field is empty (legal_first_name)', async () => {
+    const svc = makeSvc({
+      profileRepo: makeProfileRepo({
+        tomlOverrides: {
+          identity: {
+            legal_first_name: '',
+            legal_middle_name: '',
+            legal_last_name: 'Rivera',
+            preferred_name: '',
+            pronouns: '',
+            date_of_birth: '',
+            country_of_citizenship: 'United States',
+            country_currently_in: 'United States',
+            note: '',
+          },
+        },
+      }),
+    });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/identity\.legal_first_name/);
   });
 
-  // Regression: an H2 whose body is only a `> [!IMPORTANT]` callout (the
-  // un-edited template state right after `wolf init`) must NOT be treated
-  // as filled. assertReadyForTailor strips alert blocks before extracting,
-  // matching what the AI actually sees.
-  it('refuses tailor when profile.md required field body is only a > [!IMPORTANT] callout (fresh init state)', async () => {
-    const calloutOnlyProfile: Profile = {
-      name: 'default',
-      md: [
-        '## Legal first name',
-        '> [!IMPORTANT]',
-        '> you must answer; AI cannot guess this.',
-        '## Legal last name',
-        'Rivera',
-        '## Email',
-        'r@x.test',
-        '## Phone',
-        '+1 555 0100',
-      ].join('\n'),
-    };
-    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: calloutOnlyProfile }) });
-    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Legal first name/);
+  it('refuses tailor when REQUIRED profile field is whitespace-only (isFilled trim contract)', async () => {
+    const svc = makeSvc({
+      profileRepo: makeProfileRepo({
+        tomlOverrides: {
+          contact: {
+            email: '   \n  \n   ',  // whitespace-only counts as not-filled
+            phone: '+1 555 0100',
+            note: '',
+          },
+        },
+      }),
+    });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/contact\.email/);
   });
 
-  it('refuses tailor when profile.md required field is blank-bodied', async () => {
-    const profileBlankEmail: Profile = {
-      name: 'default',
-      md: '## Legal first name\nAlex\n## Legal last name\nRivera\n## Email\n\n## Phone\n+1\n',
-    };
-    const svc = makeSvc({ profileRepo: makeProfileRepo({ profile: profileBlankEmail }) });
-    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/Email/);
+  it('refuses tailor when resume content is sparse (< 5 entries / skill groups)', async () => {
+    const svc = makeSvc({
+      profileRepo: makeProfileRepo({
+        tomlOverrides: {
+          experience: [],
+          project: [],
+          education: [],
+          skills: {
+            languages: '',
+            frameworks: '',
+            tools: '',
+            domains: '',
+            free_text: '',
+          },
+        },
+      }),
+    });
+    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/too sparse/);
   });
 
-  it('refuses tailor when resume_pool.md has only placeholder examples (post-strip empty)', async () => {
-    // Mimics what `wolf init --empty` produces now: every example block lives
-    // inside a > [!TIP] alert, so stripComments removes them and only the H2
-    // headings remain. No bullets, no real content, nothing to tailor from.
-    const placeholderPool = [
-      '# Resume Pool',
-      '## Experience',
-      '> [!TIP]',
-      '> EXAMPLE',
-      '> ### Job Title — Company Name',
-      '> *Month Year - Month Year*',
-      '> - Bullet describing impact',
-      '## Skills',
-      '> [!TIP]',
-      '> EXAMPLE',
-      '> TypeScript, Python, SQL',
-    ].join('\n');
-    const svc = makeSvc({ profileRepo: makeProfileRepo({ resumePool: placeholderPool }) });
-    await expect(svc.tailor({ jobId: 'job-1' })).rejects.toThrow(/empty or only has placeholder/);
-  });
-
-  it('does NOT refuse when the pool is sparse but real (≥ 5 substantive lines)', async () => {
-    // Above the threshold — proves we don't over-reject realistic NG/intern pools
-    // (one role with a couple bullets + a degree + a skills line is enough).
-    const sparseRealPool = [
-      '# Resume Pool',
-      '## Experience',
-      '### Software Engineer Intern — Acme',
-      '*Summer 2024*',
-      '- Built ETL pipelines processing 10M rows/day.',
-      '- Wrote integration tests; raised coverage 40%→78%.',
-      '## Education',
-      '### B.S. CS — State University',
-      '*2021 - 2025*',
-      '## Skills',
-      'Python, SQL, Git, Linux, Postgres',
-    ].join('\n');
-    const svc = makeSvc({ profileRepo: makeProfileRepo({ resumePool: sparseRealPool }) });
+  it('does NOT refuse when the resume content has ≥ 5 entries (1 experience + 4 skill buckets)', async () => {
+    // The default makeProfileRepo() builds exactly that — one experience
+    // entry plus four filled skill buckets. tailor should run end-to-end.
+    const svc = makeSvc();
     await expect(svc.tailor({ jobId: 'job-1' })).resolves.toMatchObject({
       tailoredPdfPath: expect.stringContaining('resume.pdf'),
     });

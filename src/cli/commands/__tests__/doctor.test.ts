@@ -4,182 +4,190 @@ import type { ProfileRepository } from '../../../repository/profileRepository.js
 import type { Profile } from '../../../utils/types/index.js';
 import type { AppContext } from '../../../runtime/appContext.js';
 import { DoctorApplicationServiceImpl } from '../../../application/impl/doctorApplicationServiceImpl.js';
+import { parseProfileToml, type ProfileToml } from '../../../utils/profileToml.js';
+import profileTomlTemplate from '../../../application/impl/templates/profile.toml';
 
-// Minimal AppContext stub — doctor() only ever touches profileRepository,
-// wired through a real DoctorApplicationServiceImpl.
+// All doctor tests run against a typed ProfileToml. We start from the
+// bundled template (so every field has the canonical default) and override
+// the slice the test cares about. This keeps tests readable and lets
+// minor schema additions ride through without per-test churn.
+
 function makeCtx(opts: {
-  profile: Profile;
-  resumePool: string;
-  standardQuestions: string;
+  profile?: Profile;
+  toml?: ProfileToml;
+  tomlOverrides?: (base: ProfileToml) => ProfileToml;
 }): AppContext {
+  const base = parseProfileToml(profileTomlTemplate);
+  // Helper to build a "fully-filled" ProfileToml that clears every
+  // doctor check by default — tests then deliberately empty fields to
+  // exercise the failure paths.
+  const filled: ProfileToml = {
+    ...base,
+    identity: {
+      ...base.identity,
+      legal_first_name: 'Alex',
+      legal_last_name: 'Rivera',
+      country_of_citizenship: 'United States',
+    },
+    contact: { ...base.contact, email: 'a@example.test', phone: '+1 555 0100' },
+    address: { ...base.address, full: '123 Main St, SF, CA 94102, USA' },
+    links: { ...base.links, first: 'https://linkedin.com/in/alex' },
+    job_preferences: {
+      ...base.job_preferences,
+      target_roles: '- SWE',
+      target_locations: '- SF Bay Area',
+    },
+    form_answers: {
+      ...base.form_answers,
+      authorized_to_work: 'Yes',
+      require_sponsorship: 'No',
+      willing_to_relocate: 'Yes',
+    },
+    // Five filled "resume entries" so checkResumeContent passes:
+    // 1 experience + 4 skills buckets.
+    experience: [{
+      id: 'acme-2024',
+      job_title: 'SWE',
+      company: 'Acme',
+      start: '2022',
+      end: '2025',
+      location: '',
+      bullets: '- Built distributed systems',
+      subnote: '',
+    }],
+    skills: {
+      languages: 'TypeScript',
+      frameworks: 'React',
+      tools: 'Git',
+      domains: 'Backend',
+      free_text: '',
+    },
+    // Three answered builtin stories so checkStoriesAndFormAnswers passes.
+    story: base.story.map((s) => {
+      if (['tell_me_about_yourself', 'tell_me_about_failure', 'biggest_strength'].includes(s.id)) {
+        return { ...s, star_story: 'A real STAR answer.' };
+      }
+      return s;
+    }),
+  };
+
+  const tomlValue = opts.toml ?? (opts.tomlOverrides ? opts.tomlOverrides(filled) : filled);
+
+  const profile: Profile = opts.profile ?? { name: 'default', md: '' };
+
   const repo = {
     get: vi.fn(),
-    getDefault: vi.fn().mockResolvedValue(opts.profile),
+    getDefault: vi.fn().mockResolvedValue(profile),
     list: vi.fn(),
-    getProfileMd: vi.fn().mockResolvedValue(opts.profile.md),
-    getResumePool: vi.fn().mockResolvedValue(opts.resumePool),
-    getStandardQuestions: vi.fn().mockResolvedValue(opts.standardQuestions),
+    getProfileToml: vi.fn().mockResolvedValue(tomlValue),
+    getProfileMd: vi.fn().mockResolvedValue(profile.md),
+    getResumePool: vi.fn(),
+    getStandardQuestions: vi.fn(),
     getAttachmentsList: vi.fn().mockResolvedValue([]),
   } as unknown as ProfileRepository;
+
   return {
     profileRepository: repo,
     doctorApp: new DoctorApplicationServiceImpl(repo),
   } as unknown as AppContext;
 }
 
-// Convenience: profile with all REQUIRED H2 sections filled.
-const FILLED_PROFILE: Profile = {
-  name: 'default',
-  md: [
-    '# Identity',
-    '## Legal first name', 'Alex',
-    '## Legal last name', 'Rivera',
-    '# Contact',
-    '## Email', 'a@example.test',
-    '## Phone', '+1 555 0100',
-  ].join('\n'),
-};
-
-// 5 substantive (non-blank, non-heading) lines: clears the POOL_MIN_LINES floor.
-// (`### ...` is a heading per `startsWith('#')` and is not counted.)
-const FILLED_POOL = [
-  '## Experience',
-  '### SWE — Acme',
-  '*2024*',
-  '- Built things.',
-  '- Fixed things.',
-  '- Shipped things.',
-  '- Owned the on-call rotation.',
-  '- Migrated legacy ETL.',
-].join('\n');
-
-const FILLED_SQ = [
-  '## What\'s your salary expectation?', 'Open to discuss.',
-  '## How did you hear about us?', 'LinkedIn.',
-  '## Why this company?', 'Mission-aligned.',
-  '## Why this role?', 'Backend depth.',
-].join('\n');
-
 describe('doctor()', () => {
-  // Happy path: every file passes its readiness criterion.
-  it('reports ready=true when profile + pool + questions are all filled', async () => {
-    const report = await doctor({}, makeCtx({
-      profile: FILLED_PROFILE,
-      resumePool: FILLED_POOL,
-      standardQuestions: FILLED_SQ,
-    }));
-    expect(report.ready).toBe(true);
-    expect(report.checks.every(c => c.ready)).toBe(true);
+  // Happy path: every check passes. The default `makeCtx({})` builds a
+  // fully-populated profile to exercise this baseline.
+  it('reports ready=true when profile + resume + stories are all filled', async () => {
+    const report = await doctor({}, makeCtx({}));
+    // Workspace-level runtime checks (API key, Chromium) may fail in CI;
+    // assert per-file readiness directly so this isn't environment-coupled.
+    const profileCheck = report.checks.find(c => c.file === 'profile.toml')!;
+    const poolCheck = report.checks.find(c => c.file === 'resume content')!;
+    const sqCheck = report.checks.find(c => c.file === 'stories')!;
+    expect(profileCheck.ready).toBe(true);
+    expect(poolCheck.ready).toBe(true);
+    expect(sqCheck.ready).toBe(true);
     expect(report.profileName).toBe('default');
   });
 
-  // profile.md missing REQUIRED H2 → that file fails, overall ready=false.
-  it('flags missing REQUIRED profile fields by name', async () => {
-    const profileMissingPhone: Profile = {
-      name: 'default',
-      md: '## Legal first name\nAlex\n## Legal last name\nRivera\n## Email\na@example.test\n',
-    };
-    const report = await doctor({}, makeCtx({
-      profile: profileMissingPhone,
-      resumePool: FILLED_POOL,
-      standardQuestions: FILLED_SQ,
-    }));
-    expect(report.ready).toBe(false);
-    const profileCheck = report.checks.find(c => c.file === 'profile.md')!;
+  // REQUIRED scalar field empty → profile.toml fails with the path listed.
+  it('flags missing REQUIRED profile fields by dot-path', async () => {
+    const ctx = makeCtx({
+      tomlOverrides: (base) => ({
+        ...base,
+        contact: { ...base.contact, phone: '' },
+      }),
+    });
+    const report = await doctor({}, ctx);
+    const profileCheck = report.checks.find(c => c.file === 'profile.toml')!;
     expect(profileCheck.ready).toBe(false);
-    expect(profileCheck.missing).toContain('Phone');
+    // The doctor's missing list is "<path> — <help>"; just check the path.
+    expect(profileCheck.missing.some(m => m.startsWith('contact.phone'))).toBe(true);
   });
 
-  // resume_pool below the substantive-line floor → that file fails.
-  it('flags resume pool when substantive line count is below the floor', async () => {
-    const sparsePool = [
-      '## Experience',
-      '### SWE — Acme',
-      '*2024*',
-      '- Bullet one.',
-    ].join('\n');  // only 3 substantive lines, floor is 5
-    const report = await doctor({}, makeCtx({
-      profile: FILLED_PROFILE,
-      resumePool: sparsePool,
-      standardQuestions: FILLED_SQ,
-    }));
-    const poolCheck = report.checks.find(c => c.file === 'resume_pool.md')!;
+  // Resume content too sparse → resume-content check fails.
+  it('flags resume content when total entries / skill groups is below the floor', async () => {
+    const ctx = makeCtx({
+      tomlOverrides: (base) => ({
+        ...base,
+        experience: [],  // drop the seed experience
+        skills: {
+          ...base.skills,
+          languages: '',
+          frameworks: '',
+          tools: '',
+          domains: '',
+          free_text: '',
+        },
+      }),
+    });
+    const report = await doctor({}, ctx);
+    const poolCheck = report.checks.find(c => c.file === 'resume content')!;
     expect(poolCheck.ready).toBe(false);
-    // Pool fixture had 1 date line + 1 bullet = 2 substantive lines (the
-    // ### heading is filtered out). Sanity-check that the count surfaces.
-    expect(poolCheck.missing[0]).toMatch(/2 substantive lines/);
+    expect(poolCheck.missing[0]).toMatch(/0 entries/);
   });
 
-  // standard_questions with fewer than 3 answered H2s → that file fails.
-  it('flags standard_questions when too few H2 sections have answers', async () => {
-    const sparseSQ = [
-      '## What\'s your salary expectation?', 'Open to discuss.',
-      '## How did you hear about us?', 'LinkedIn.',
-      '## Why this company?', '> [!IMPORTANT]', '> write a flexible template',
-      '## Why this role?', '> [!IMPORTANT]', '> write a flexible template',
-    ].join('\n');  // 2 answered, 4 total
-    const report = await doctor({}, makeCtx({
-      profile: FILLED_PROFILE,
-      resumePool: FILLED_POOL,
-      standardQuestions: sparseSQ,
-    }));
-    const sqCheck = report.checks.find(c => c.file === 'standard_questions.md')!;
+  // Fewer than 3 builtin stories answered → stories check fails.
+  it('flags stories when too few builtin stories have been answered', async () => {
+    const ctx = makeCtx({
+      tomlOverrides: (base) => ({
+        ...base,
+        story: base.story.map(s => ({ ...s, star_story: '' })),  // empty all
+      }),
+    });
+    const report = await doctor({}, ctx);
+    const sqCheck = report.checks.find(c => c.file === 'stories')!;
     expect(sqCheck.ready).toBe(false);
-    expect(sqCheck.missing[0]).toMatch(/2 \/ 4/);
+    expect(sqCheck.missing[0]).toMatch(/0 \/ 17 builtin stories answered/);
   });
 
-  // Regression: wolf init writes profile.md with each REQUIRED H2 followed
-  // by a `> [!IMPORTANT]` callout. doctor must strip those before checking
-  // — otherwise it reports fresh-init profiles as ready and fools the user.
-  it('flags REQUIRED profile fields whose body is only a > [!IMPORTANT] callout (fresh init template state)', async () => {
-    const calloutOnlyProfile: Profile = {
-      name: 'default',
-      md: [
-        '# Identity',
-        '## Legal first name',
-        '> [!IMPORTANT]',
-        '> you must answer; AI cannot guess this.',
-        '## Legal last name',
-        '> [!IMPORTANT]',
-        '> you must answer; AI cannot guess this.',
-        '# Contact',
-        '## Email',
-        '> [!IMPORTANT]',
-        '> you must answer; AI cannot guess this.',
-        '## Phone',
-        '> [!IMPORTANT]',
-        '> you must answer; AI cannot guess this.',
-      ].join('\n'),
-    };
-    const report = await doctor({}, makeCtx({
-      profile: calloutOnlyProfile,
-      resumePool: FILLED_POOL,
-      standardQuestions: FILLED_SQ,
-    }));
-    const profileCheck = report.checks.find(c => c.file === 'profile.md')!;
+  // Empty (whitespace-only) values count as not-filled — same as totally
+  // missing. Mirrors the isFilled() contract.
+  it('treats whitespace-only field values as missing', async () => {
+    const ctx = makeCtx({
+      tomlOverrides: (base) => ({
+        ...base,
+        contact: { ...base.contact, email: '   \n  \n   ' },
+      }),
+    });
+    const report = await doctor({}, ctx);
+    const profileCheck = report.checks.find(c => c.file === 'profile.toml')!;
     expect(profileCheck.ready).toBe(false);
-    // All four REQUIRED fields should be flagged, not just one.
-    expect(profileCheck.missing).toEqual(
-      expect.arrayContaining(['Legal first name', 'Legal last name', 'Email', 'Phone']),
-    );
+    expect(profileCheck.missing.some(m => m.startsWith('contact.email'))).toBe(true);
   });
 
-  // > [!XYZ] alert blocks should be stripped before counting; an H2 that
-  // contains ONLY a callout body counts as unanswered.
-  it('treats H2 sections whose only body is a > [!XYZ] callout as unanswered', async () => {
-    const onlyCalloutSQ = [
-      '## Q1', '> [!IMPORTANT]', '> please answer this',
-      '## Q2', '> [!TIP]', '> sample default',
-      '## Q3', 'Real answer here.',
-    ].join('\n');
-    const report = await doctor({}, makeCtx({
-      profile: FILLED_PROFILE,
-      resumePool: FILLED_POOL,
-      standardQuestions: onlyCalloutSQ,
-    }));
-    const sqCheck = report.checks.find(c => c.file === 'standard_questions.md')!;
-    // Only Q3 has a real answer; Q1 and Q2 are callout-only after strip.
-    expect(sqCheck.missing[0]).toMatch(/1 \/ 3/);
+  // The Doctor pulls REQUIRED fields from the same PROFILE_FIELDS table
+  // that drives `wolf profile fields --required`. Fresh-init profile.toml
+  // (no fields filled) should flag every REQUIRED field, not just some.
+  it('flags every REQUIRED field on a totally empty profile', async () => {
+    const ctx = makeCtx({
+      // The bundled template parsed unmodified — every REQUIRED field empty.
+      toml: parseProfileToml(profileTomlTemplate),
+    });
+    const report = await doctor({}, ctx);
+    const profileCheck = report.checks.find(c => c.file === 'profile.toml')!;
+    expect(profileCheck.ready).toBe(false);
+    // Every REQUIRED field should be flagged (not just a subset).
+    const { REQUIRED_PROFILE_FIELDS } = await import('../../../utils/profileFields.js');
+    expect(profileCheck.missing.length).toBe(REQUIRED_PROFILE_FIELDS.length);
   });
 });
 
@@ -190,9 +198,9 @@ describe('formatDoctor()', () => {
       profileName: 'default',
       ready: true,
       checks: [
-        { file: 'profile.md', ready: true, missing: [], hint: 'all good' },
-        { file: 'resume_pool.md', ready: true, missing: [], hint: 'all good' },
-        { file: 'standard_questions.md', ready: true, missing: [], hint: 'all good' },
+        { file: 'profile.toml', ready: true, missing: [], hint: 'all good' },
+        { file: 'resume content', ready: true, missing: [], hint: 'all good' },
+        { file: 'stories', ready: true, missing: [], hint: 'all good' },
       ],
     });
     expect(text).toMatch(/Status: READY/);
@@ -206,15 +214,14 @@ describe('formatDoctor()', () => {
       profileName: 'default',
       ready: false,
       checks: [
-        { file: 'profile.md', ready: false, missing: ['Phone', 'Email'], hint: 'fill these' },
-        { file: 'resume_pool.md', ready: true, missing: [], hint: 'OK' },
-        { file: 'standard_questions.md', ready: true, missing: [], hint: 'OK' },
+        { file: 'profile.toml', ready: false, missing: ['contact.phone', 'contact.email'], hint: 'fill these' },
+        { file: 'resume content', ready: true, missing: [], hint: 'OK' },
+        { file: 'stories', ready: true, missing: [], hint: 'OK' },
       ],
     });
     expect(text).toMatch(/Status: NOT READY/);
-    expect(text).toMatch(/✗ profile\.md/);
-    expect(text).toMatch(/- Phone/);
-    expect(text).toMatch(/- Email/);
-    expect(text).toMatch(/Open profiles\/default\/profile\.md/);
+    expect(text).toMatch(/✗ profile\.toml/);
+    expect(text).toMatch(/- contact\.phone/);
+    expect(text).toMatch(/- contact\.email/);
   });
 });
