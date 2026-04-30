@@ -13,9 +13,9 @@ export interface ProfileSetResult {
   newValue: string;
 }
 
-/** Result of `addEntry`. */
+/** Result of `addEntry` / `addStory`. */
 export interface ProfileAddEntryResult {
-  arrayName: 'experience' | 'project' | 'education';
+  arrayName: 'experience' | 'project' | 'education' | 'story';
   id: string;
 }
 
@@ -120,15 +120,35 @@ export interface ProfileApplicationService {
    * `opts.slugFrom` (slugified) or uses `opts.id` verbatim, falling back
    * to a UUID-style slug if neither is given. Returns the resolved id so
    * the CLI can echo it back to the agent.
-   *
-   * Stories are NOT addable via this method in β — the 17 builtins are
-   * seeded at init time and `wolf profile add story --prompt` is a
-   * future-phase command.
    */
   addEntry(
     arrayName: 'experience' | 'project' | 'education',
     opts?: { id?: string; slugFrom?: string; profileName?: string },
   ): Promise<ProfileAddEntryResult>;
+
+  /**
+   * Appends a user-custom `[[story]]` entry. Different signature from
+   * `addEntry` because stories carry the question text in a `prompt`
+   * field rather than deriving id-only from a slug.
+   *
+   * - `opts.prompt` (REQUIRED): the question text. Becomes both the
+   *   `prompt` field AND the source of the slugified id (unless
+   *   `opts.id` is given explicitly).
+   * - `opts.answer` (OPTIONAL): pre-fills `star_story`. If omitted,
+   *   the user can fill it later via `wolf profile set
+   *   story.<id>.star_story <text>`.
+   * - `opts.id` (OPTIONAL): override the generated slug.
+   *
+   * Custom stories always get `required = false` (only wolf-builtin
+   * stories carry `required = true`). The id can collide with a builtin
+   * id; in that case wolf appends `-2` / `-3` rather than overwriting.
+   */
+  addStory(opts: {
+    prompt: string;
+    answer?: string;
+    id?: string;
+    profileName?: string;
+  }): Promise<ProfileAddEntryResult>;
 
   /**
    * Removes a `[[<arrayName>]]` entry by id. Refuses to delete a

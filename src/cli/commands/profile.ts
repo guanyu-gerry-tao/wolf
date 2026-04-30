@@ -134,6 +134,55 @@ export async function profileAdd(
 }
 
 /**
+ * Adds a user-custom `[[story]]` entry. Different signature from the other
+ * `add` types because stories carry a prompt (the question text) plus an
+ * optional pre-filled answer.
+ *
+ * `--prompt-from-file` / `--answer-from-file` read from disk for long
+ * content or values containing `"""` (which break TOML termination).
+ */
+export async function profileAddStory(
+  opts: {
+    prompt?: string;
+    answer?: string;
+    promptFromFile?: string;
+    answerFromFile?: string;
+    id?: string;
+  } = {},
+  ctx: AppContext = createAppContext(),
+): Promise<void> {
+  // Resolve prompt: arg > --prompt-from-file > error.
+  let prompt: string;
+  if (opts.promptFromFile) {
+    prompt = (await fs.readFile(opts.promptFromFile, 'utf-8')).replace(/\n$/, '');
+  } else if (opts.prompt !== undefined) {
+    prompt = opts.prompt;
+  } else {
+    throw new Error(
+      `\`${currentBinaryName()} profile add story\` requires --prompt "<question>" or --prompt-from-file <path>.`,
+    );
+  }
+
+  // Resolve answer: optional. arg > --answer-from-file > '' (user fills later).
+  let answer: string | undefined;
+  if (opts.answerFromFile) {
+    answer = (await fs.readFile(opts.answerFromFile, 'utf-8')).replace(/\n$/, '');
+  } else if (opts.answer !== undefined) {
+    answer = opts.answer;
+  }
+
+  const r = await ctx.profileApp.addStory({
+    prompt,
+    answer,
+    id: opts.id,
+  });
+  console.log(`Added ${r.arrayName}.${r.id}`);
+  if (answer === undefined || answer.trim().length === 0) {
+    console.log(`  fill the answer with \`${currentBinaryName()} profile set ${r.arrayName}.${r.id}.star_story <text>\``);
+  }
+}
+
+/**
  * Removes an array-of-table entry by id. `--yes` is required (typo guard).
  * Builtin stories cannot be removed (clear `star_story` instead).
  */

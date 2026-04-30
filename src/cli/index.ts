@@ -14,7 +14,7 @@ import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
 import { configGet, configSet } from './commands/config.js';
 import {
   profileList, profileCreate, profileUse, profileDelete,
-  profileShow, profileGet, profileSet, profileAdd, profileRemove, profileFields,
+  profileShow, profileGet, profileSet, profileAdd, profileAddStory, profileRemove, profileFields,
 } from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
 import { context } from './commands/context.js';
@@ -358,14 +358,39 @@ profileCmd
   });
 profileCmd
   .command('add <type>')
-  .description('Add a new resume entry. <type> = experience / project / education. Use --slug-from "<text>" for AI-friendly id generation.')
+  .description(
+    'Add a new entry. <type> = experience / project / education / story. ' +
+    'For experience/project/education use --slug-from "<text>" for AI-friendly id generation. ' +
+    'For story use --prompt "<question>" and optionally --answer "<text>".',
+  )
   .option('--id <id>', 'Explicit id (slug-style)')
-  .option('--slug-from <text>', 'Free-form description; wolf slugifies it into an id')
-  .action(async (type: string, opts: { id?: string; slugFrom?: string }) => {
-    if (type !== 'experience' && type !== 'project' && type !== 'education') {
-      throw new Error(`Unknown type "${type}". Allowed: experience / project / education.`);
+  .option('--slug-from <text>', '(experience/project/education) Free-form description; wolf slugifies into an id')
+  .option('--prompt <text>', '(story only) The question text — also the source of the slug-id')
+  .option('--answer <text>', '(story only) Pre-fill the star_story answer')
+  .option('--prompt-from-file <path>', '(story only) Read --prompt from a file')
+  .option('--answer-from-file <path>', '(story only) Read --answer from a file')
+  .action(async (type: string, opts: {
+    id?: string;
+    slugFrom?: string;
+    prompt?: string;
+    answer?: string;
+    promptFromFile?: string;
+    answerFromFile?: string;
+  }) => {
+    if (type === 'story') {
+      await profileAddStory({
+        prompt: opts.prompt,
+        answer: opts.answer,
+        promptFromFile: opts.promptFromFile,
+        answerFromFile: opts.answerFromFile,
+        id: opts.id,
+      });
+      return;
     }
-    await profileAdd(type, opts);
+    if (type !== 'experience' && type !== 'project' && type !== 'education') {
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / story.`);
+    }
+    await profileAdd(type, { id: opts.id, slugFrom: opts.slugFrom });
   });
 profileCmd
   .command('remove <type> <id>')

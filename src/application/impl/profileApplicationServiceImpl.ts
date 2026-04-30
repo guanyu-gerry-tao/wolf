@@ -357,6 +357,50 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
   }
 
   /** @inheritdoc */
+  async addStory(opts: {
+    prompt: string;
+    answer?: string;
+    id?: string;
+    profileName?: string;
+  }): Promise<ProfileAddEntryResult> {
+    if (!opts.prompt || opts.prompt.trim().length === 0) {
+      throw new Error('--prompt is required and must be non-empty.');
+    }
+    const profileName = opts.profileName ?? await resolveActiveProfileName();
+    const tomlPath = profileTomlPath(profileName);
+    const before = await readProfileToml(profileName);
+
+    // Id resolution: explicit --id > slugify(prompt) > UUID fallback.
+    let proposedId = opts.id ?? slugify(opts.prompt);
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(proposedId)) {
+      throw new Error(
+        `Invalid id "${proposedId}". Use letters, digits, hyphens, underscores; must start with letter/digit.`,
+      );
+    }
+
+    // De-dupe against existing entries (including any wolf-builtin id —
+    // we don't overwrite a builtin if user picks the same slug).
+    const parsed = parseProfileToml(before);
+    const existingIds = new Set(parsed.story.map((s) => s.id));
+    let id = proposedId;
+    let attempt = 2;
+    while (existingIds.has(id)) {
+      id = `${proposedId}-${attempt}`;
+      attempt++;
+      if (attempt > 100) {
+        throw new Error(`Could not generate a unique id from "${proposedId}".`);
+      }
+    }
+
+    // Build the [[story]] block with prompt + (optional) star_story.
+    const block = buildStoryBlock(id, opts.prompt, opts.answer ?? '');
+    const after = appendArrayMember(before, block);
+    await fs.writeFile(tomlPath, after, 'utf-8');
+
+    return { arrayName: 'story', id };
+  }
+
+  /** @inheritdoc */
   async removeEntry(
     arrayName: 'experience' | 'project' | 'education' | 'story',
     id: string,
@@ -439,4 +483,33 @@ function buildEmptyArrayBlock(arrayName: 'experience' | 'project' | 'education',
     lines.push(`${f} = """`, '', '"""');
   }
   return lines.join('\n');
+}
+
+/** Returns a `[[story]]` block for a user-custom story (required = false).
+ *  prompt is the question text; star_story may be pre-filled or empty.
+ *  Multiline triple-quote shape matches what surgical edits expect for
+ *  later updates. */
+function buildStoryBlock(id: string, prompt: string, answer: string): string {
+  // Reject `"""` in either value — would break TOML termination. Same
+  // contract as setMultilineString in tomlEdit.
+  if (prompt.includes('"""') || answer.includes('"""')) {
+    throw new Error(
+      `Story prompt or answer contains triple-quote ("""), which would ` +
+      `break TOML multiline-string termination. Pass via --from-file <path> instead.`,
+    );
+  }
+  return [
+    '[[story]]',
+    `id = "${id}"`,
+    'prompt = """',
+    prompt,
+    '"""',
+    'required = false',
+    'star_story = """',
+    answer,
+    '"""',
+    'subnote = """',
+    '',
+    '"""',
+  ].join('\n');
 }
