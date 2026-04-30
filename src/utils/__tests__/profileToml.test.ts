@@ -84,7 +84,9 @@ describe('parseProfileToml()', () => {
     // β.10g: form_answers absorbed into [[question]] array; defaults now seeded
     // via WOLF_BUILTIN_QUESTIONS.defaultAnswer at template generation.
     const byId = new Map(parsed.question.map((q) => [q.id, q]));
-    expect(byId.get('salary_expectation')!.answer.trim().length).toBeGreaterThan(0);
+    // β.10j: salary_expectation default removed — fill agent computes
+    // from JD's salary range at runtime. The seeded answer is empty.
+    expect(byId.get('salary_expectation')!.answer.trim().length).toBe(0);
     expect(byId.get('how_did_you_hear')!.answer.trim()).toBe('LinkedIn');
     expect(byId.get('when_can_you_start')!.answer.trim()).toBe('Available immediately');
     expect(parsed.job_preferences.remote_preference.trim()).toBe('no preference');

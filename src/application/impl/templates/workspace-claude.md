@@ -68,13 +68,17 @@ Never invent content. If the user gives no info, leave the field empty.
      --from-file <path>`.
    - Same shape for `__WOLF_BIN__ profile add project` /
      `__WOLF_BIN__ profile add education`.
-   - Skills are scalar fields: `__WOLF_BIN__ profile set skills.languages
-     "TypeScript, Python, Go"`.
+   - Skills is one freeform field: `__WOLF_BIN__ profile set skills.text
+     "TypeScript / Python / Go; React / FastAPI; Postgres / Redis"`.
+     Layout is up to the user — tailor reformats per-JD.
 
-3. **Behavioral stories third.** wolf seeds 17 builtin prompts at init. Run
-   `__WOLF_BIN__ profile fields story` to see them. For each one the user has
-   a real story for: `__WOLF_BIN__ profile set story.<id>.star_story <text>`.
-   Skip any the user doesn't have a story for — leave the field empty.
+3. **Q&A third (former "stories" + "form_answers").** wolf seeds 23 builtin
+   questions at init — 6 short ATS form answers (work auth, sponsorship,
+   relocation, salary, "how did you hear", "when can you start") and 17
+   behavioral STAR prompts. Run `__WOLF_BIN__ profile fields question` to
+   see them. For each one the user has an answer for:
+   `__WOLF_BIN__ profile set question.<id>.answer <text>`. Skip any the
+   user doesn't have an answer for — leave the field empty.
 
 After each batch, re-run `__WOLF_BIN__ doctor` to confirm progress.
 

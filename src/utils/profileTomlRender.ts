@@ -23,8 +23,8 @@ import { PROFILE_FIELDS, type FieldMeta } from './profileFields.js';
  * # What the loops can NOT express (and we hand-render)
  *
  * - **Skills** as a one-block summary (Languages / Frameworks / Tools /
- *   ...). `renderSkillsBody` does this — the categories carry real
- *   resume-rendering semantics (separate lines per bucket).
+ *   ...) — emitted as one `## Skills` block off `skills.text`.
+ *   β.10i collapsed the old categorized 5 sub-fields into one freeform.
  * - **Per-entry array-of-table content** (experience / project / education
  *   / question) — these aren't fields with paths in PROFILE_FIELDS; they
  *   loop over `toml.experience` etc. directly.
@@ -228,11 +228,11 @@ export function renderResumePoolMarkdown(toml: ProfileToml): string {
     }
   }
 
-  // ## Skills
-  const skills = renderSkillsBody(toml);
-  if (skills) {
+  // ## Skills — β.10i collapsed 5 sub-fields into one freeform `text`.
+  // Render the value verbatim under one `## Skills` heading.
+  if (isFilled(toml.skills.text)) {
     out.push('## Skills');
-    out.push(skills);
+    out.push(toml.skills.text.trim());
     out.push('');
   }
 
@@ -247,17 +247,6 @@ export function renderResumePoolMarkdown(toml: ProfileToml): string {
   }
 
   return out.join('\n').trimEnd() + '\n';
-}
-
-/** Combines [skills] sub-fields into a single body block. */
-function renderSkillsBody(toml: ProfileToml): string {
-  const lines: string[] = [];
-  if (isFilled(toml.skills.languages))  lines.push(`Languages: ${toml.skills.languages.trim()}`);
-  if (isFilled(toml.skills.frameworks)) lines.push(`Frameworks: ${toml.skills.frameworks.trim()}`);
-  if (isFilled(toml.skills.tools))      lines.push(`Tools: ${toml.skills.tools.trim()}`);
-  if (isFilled(toml.skills.domains))    lines.push(`Domains: ${toml.skills.domains.trim()}`);
-  if (isFilled(toml.skills.free_text))  lines.push(toml.skills.free_text.trim());
-  return lines.join('\n');
 }
 
 // ---------------------------------------------------------------------------

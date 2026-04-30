@@ -31,7 +31,8 @@ const FAKE_JOB: Job = {
   source: 'Other',
   location: '',
   remote: false,
-  salary: null,
+  salaryLow: null,
+  salaryHigh: null,
   workAuthorizationRequired: 'no sponsorship',
   clearanceRequired: false,
   score: null,
@@ -151,24 +152,17 @@ function makeProfileRepo(overrides: { profile?: Profile; resumePool?: string; to
           };
           return q.id in required ? { ...q, answer: required[q.id] } : q;
         }),
-        // Five filled "resume entries" to clear the ≥ 5 threshold:
-        // 1 experience + skills.languages + skills.frameworks + skills.tools + skills.domains.
-        experience: [{
-          id: 'acme-2024',
-          job_title: 'SWE',
-          company: 'Acme',
-          start: '2022',
-          end: '2025',
-          location: '',
-          bullets: '- Built distributed systems',
-          subnote: '',
-        }],
+        // Five filled "resume entries" to clear the ≥ 5 threshold.
+        // β.10i collapsed skills to one freeform `text` (worth 1 entry),
+        // so we add 4 experiences + 1 skills block instead of 1+5-buckets.
+        experience: [
+          { id: 'acme-2024', job_title: 'SWE', company: 'Acme', start: '2022', end: '2025', location: '', bullets: '- Built distributed systems', subnote: '' },
+          { id: 'beta-2023', job_title: 'Eng', company: 'Beta', start: '2021', end: '2022', location: '', bullets: '- Latency win', subnote: '' },
+          { id: 'gamma-2022', job_title: 'Eng', company: 'Gamma', start: '2020', end: '2021', location: '', bullets: '- TS migration', subnote: '' },
+          { id: 'delta-2021', job_title: 'Intern', company: 'Delta', start: '2019', end: '2020', location: '', bullets: '- Form fill', subnote: '' },
+        ],
         skills: {
-          languages: 'TypeScript',
-          frameworks: 'React',
-          tools: 'Git',
-          domains: 'Backend',
-          free_text: '',
+          text: 'TypeScript / React / Git / Backend',
         },
         ...overrides.tomlOverrides,
       };
@@ -443,13 +437,7 @@ describe('TailorApplicationService', () => {
           experience: [],
           project: [],
           education: [],
-          skills: {
-            languages: '',
-            frameworks: '',
-            tools: '',
-            domains: '',
-            free_text: '',
-          },
+          skills: { text: '' },
         },
       }),
     });

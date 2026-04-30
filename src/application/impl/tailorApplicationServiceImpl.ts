@@ -364,11 +364,8 @@ function assertReadyForTailor(profile: Profile, toml: ProfileToml): void {
   for (const e of toml.education) {
     if (isFilled(e.degree) || isFilled(e.school)) entryCount++;
   }
-  if (isFilled(toml.skills.languages))  entryCount++;
-  if (isFilled(toml.skills.frameworks)) entryCount++;
-  if (isFilled(toml.skills.tools))      entryCount++;
-  if (isFilled(toml.skills.domains))    entryCount++;
-  if (isFilled(toml.skills.free_text))  entryCount++;
+  // β.10i: skills collapsed to one freeform `text` field.
+  if (isFilled(toml.skills.text)) entryCount++;
   if (entryCount < MIN_RESUME_ENTRIES) {
     log.error('tailor.context.pool_empty', {
       profileName: profile.name,

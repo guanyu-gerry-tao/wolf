@@ -128,11 +128,11 @@ const DocumentsSchema = z.object({
 }).default({} as never);
 
 const SkillsSchema = z.object({
-  languages: MultilineString,
-  frameworks: MultilineString,
-  tools: MultilineString,
-  domains: MultilineString,
-  free_text: MultilineString,
+  // β.10i: collapsed languages / frameworks / tools / domains / free_text
+  // (5 sub-fields) into one freeform `text` field. Same rationale as
+  // β.10f — no programmatic consumer reads the categories separately;
+  // tailor's resume writer takes the prose and reformats per JD.
+  text: MultilineString,
 }).default({} as never);
 
 // Optional resume sections — same shape (items + note).

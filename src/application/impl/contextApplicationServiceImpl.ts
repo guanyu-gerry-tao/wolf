@@ -96,16 +96,13 @@ function renderSearchContext(toml: ProfileToml): string {
     lines.push('');
   }
 
-  // ## User notes — collected from each table's `note` field + per-entry
-  // subnotes. Note paths are derived from PROFILE_FIELDS; subnotes loop
-  // over the array-of-tables.
-  const notes = collectNotes(toml);
-  if (notes.length > 0) {
-    lines.push('## User notes (small thoughts to weigh)');
-    lines.push('');
-    for (const n of notes) lines.push(`- (from ${n.source}) ${oneLine(n.text)}`);
-    lines.push('');
-  }
+  // β.10i: removed the separate `## User notes` block. Notes that affect
+  // search now flow through the main loop above (job_preferences.note +
+  // clearance.note carry inSearchContext: true), so the AI sees them
+  // attached to the table they belong to instead of pulled out and
+  // detached from context. Per-entry subnotes (experience.<id>.subnote
+  // etc.) are intentionally not in search context — search is a snapshot,
+  // tailor context is where full resume detail lives.
 
   // ## User experience snapshot — count + stack hint.
   const summary = renderExperienceSnapshot(toml);
@@ -124,8 +121,8 @@ function renderSearchContext(toml: ProfileToml): string {
   lines.push('- Hard-reject companies → never recommend.');
   lines.push("- Sponsorship conflicts → flag, don't silently drop.");
   lines.push('- Compensation floor → respect; treat blank floors as "no floor", NOT "free OK".');
-  lines.push('- "User notes" capture preferences expressed in past chats — weigh as');
-  lines.push('  the user\'s signals, but the user can always override per-search.');
+  lines.push('- Notes attached to a section capture user preferences expressed in past');
+  lines.push('  chats — weigh as the user\'s signals, but the user can always override per-search.');
 
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
@@ -203,50 +200,11 @@ function oneLine(text: string): string {
   return text.trim().replace(/\s*\n\s*/g, ' ⏎ ');
 }
 
-interface CollectedNote {
-  source: string;   // e.g. "job_preferences.note", "story.tell_me_about_failure.subnote"
-  text: string;
-}
-
-/** Walks every `*.note` path in PROFILE_FIELDS plus per-entry `.subnote`
- *  fields on the array-of-tables, returning the filled ones. Note-path
- *  enumeration is automatic — adding a `<table>.note` to PROFILE_FIELDS
- *  picks it up here on next render. */
-function collectNotes(toml: ProfileToml): CollectedNote[] {
-  const out: CollectedNote[] = [];
-  // Top-level table .note fields, derived from PROFILE_FIELDS.
-  for (const f of PROFILE_FIELDS) {
-    if (!f.path.endsWith('.note')) continue;
-    const v = getByPath(toml, f.path);
-    if (typeof v === 'string' && isFilled(v)) {
-      out.push({ source: f.path, text: v });
-    }
-  }
-  // Per-entry subnotes (array-of-tables — not field-shaped, must loop).
-  for (const e of toml.experience) {
-    if (isFilled(e.subnote)) out.push({ source: `experience.${e.id}.subnote`, text: e.subnote });
-  }
-  for (const p of toml.project) {
-    if (isFilled(p.subnote)) out.push({ source: `project.${p.id}.subnote`, text: p.subnote });
-  }
-  for (const e of toml.education) {
-    if (isFilled(e.subnote)) out.push({ source: `education.${e.id}.subnote`, text: e.subnote });
-  }
-  for (const s of toml.question) {
-    if (isFilled(s.subnote)) out.push({ source: `story.${s.id}.subnote`, text: s.subnote });
-  }
-  return out;
-}
-
-/** Builds the "user experience snapshot" line: counts + stack hint. */
+/** Builds the "user experience snapshot" line: entry counts + skills excerpt. */
 function renderExperienceSnapshot(toml: ProfileToml): string {
   const expCount = toml.experience.filter((e) => isFilled(e.job_title) || isFilled(e.bullets)).length;
   const projCount = toml.project.filter((p) => isFilled(p.name) || isFilled(p.bullets)).length;
   const eduCount = toml.education.filter((e) => isFilled(e.degree) || isFilled(e.school)).length;
-  const stack: string[] = [];
-  if (isFilled(toml.skills.languages))  stack.push(toml.skills.languages.trim());
-  if (isFilled(toml.skills.frameworks)) stack.push(toml.skills.frameworks.trim());
-  if (isFilled(toml.skills.tools))      stack.push(toml.skills.tools.trim());
   const lines: string[] = [];
   if (expCount + projCount + eduCount > 0) {
     const counts: string[] = [];
@@ -255,8 +213,12 @@ function renderExperienceSnapshot(toml: ProfileToml): string {
     if (eduCount) counts.push(`${eduCount} education entr${eduCount === 1 ? 'y' : 'ies'}`);
     lines.push(counts.join(', '));
   }
-  if (stack.length > 0) {
-    lines.push(`Stack: ${stack.join(' / ')}`);
+  // β.10i: skills collapsed from 5 sub-fields into one freeform text.
+  // Surface a one-line excerpt (first line trimmed) so the search agent
+  // gets a quick "what stack" hint without a multi-paragraph dump.
+  if (isFilled(toml.skills.text)) {
+    const firstLine = toml.skills.text.trim().split('\n')[0].trim();
+    if (firstLine.length > 0) lines.push(`Stack: ${firstLine}`);
   }
   return lines.join('\n');
 }

@@ -45,7 +45,10 @@ export const jobs = sqliteTable('jobs', {
   source: text('source').$type<JobSource>().notNull(),
   location: text('location').notNull(),
   remote: integer('remote', { mode: 'boolean' }).notNull(),
-  salary: text('salary', { mode: 'json' }).$type<Salary>(),
+  // β.10j: salary split into low/high. salaryLow stores the unpaid
+  // sentinel ("unpaid") via JSON; salaryHigh is plain real (no unpaid).
+  salaryLow: text('salary_low', { mode: 'json' }).$type<Salary>(),
+  salaryHigh: real('salary_high'),
   workAuthorizationRequired: text('work_authorization_required').$type<Sponsorship>().notNull(),
   clearanceRequired: integer('clearance_required', { mode: 'boolean' }).notNull(),
   // v2: JD prose lives in this column instead of `data/jobs/<dir>/jd.md`.

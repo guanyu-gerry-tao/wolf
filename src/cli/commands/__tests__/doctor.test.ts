@@ -37,24 +37,17 @@ function makeCtx(opts: {
       target_roles: '- SWE',
       target_locations: '- SF Bay Area',
     },
-    // Five filled "resume entries" so checkResumeContent passes:
-    // 1 experience + 4 skills buckets.
-    experience: [{
-      id: 'acme-2024',
-      job_title: 'SWE',
-      company: 'Acme',
-      start: '2022',
-      end: '2025',
-      location: '',
-      bullets: '- Built distributed systems',
-      subnote: '',
-    }],
+    // β.10i: skills collapsed to one freeform field worth 1 entry, so we
+    // seed 4 experiences + 1 skills block to clear the ≥ 5 floor (down
+    // from the old "1 experience + up-to-5 skills buckets" shape).
+    experience: [
+      { id: 'acme-2024',  job_title: 'SWE', company: 'Acme',  start: '2022', end: '2025', location: '', bullets: '- Built distributed systems', subnote: '' },
+      { id: 'beta-2023',  job_title: 'Eng', company: 'Beta',  start: '2021', end: '2022', location: '', bullets: '- Latency win',                subnote: '' },
+      { id: 'gamma-2022', job_title: 'Eng', company: 'Gamma', start: '2020', end: '2021', location: '', bullets: '- TS migration',              subnote: '' },
+      { id: 'delta-2021', job_title: 'Intern', company: 'Delta', start: '2019', end: '2020', location: '', bullets: '- Form fill',              subnote: '' },
+    ],
     skills: {
-      languages: 'TypeScript',
-      frameworks: 'React',
-      tools: 'Git',
-      domains: 'Backend',
-      free_text: '',
+      text: 'TypeScript / Python; React / FastAPI; Postgres / Redis',
     },
     // Builtin questions: pre-seed REQ short answers (former form_answers)
     // and three behavioral STAR stories so doctor's question check passes.
@@ -130,14 +123,7 @@ describe('doctor()', () => {
       tomlOverrides: (base) => ({
         ...base,
         experience: [],  // drop the seed experience
-        skills: {
-          ...base.skills,
-          languages: '',
-          frameworks: '',
-          tools: '',
-          domains: '',
-          free_text: '',
-        },
+        skills: { text: '' },
       }),
     });
     const report = await doctor({}, ctx);

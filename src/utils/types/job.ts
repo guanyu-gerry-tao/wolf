@@ -56,6 +56,10 @@ export type JobError =
 /**
  * Annual compensation in USD, or "unpaid" for internships/volunteer roles.
  * Using a union type forces explicit handling of the unpaid case.
+ *
+ * β.10j: split into `salaryLow` + `salaryHigh` on Job. JD often advertises
+ * a range ("$120k–$180k"); we store both endpoints. `salaryLow` carries
+ * the unpaid sentinel; `salaryHigh` is always numeric or null.
  */
 export type Salary = number | "unpaid";
 
@@ -79,7 +83,14 @@ export interface Job {
   source: JobSource;
   location: string; // specific office location for this role
   remote: boolean;
-  salary: Salary | null; // null if not listed
+  // β.10j: split salary into low/high. If the JD lists a range "$120k–
+  // $180k" → salaryLow=120000, salaryHigh=180000. Single value "$150k" →
+  // salaryLow=salaryHigh=150000 (or salaryLow=150000, salaryHigh=null —
+  // both are valid; AI fillers should treat both as "single point").
+  // Unpaid internship → salaryLow="unpaid", salaryHigh=null.
+  // Unknown / not listed → salaryLow=null, salaryHigh=null.
+  salaryLow: Salary | null;
+  salaryHigh: number | null;
   workAuthorizationRequired: Sponsorship; // e.g. "no sponsorship", "US citizens only"
   clearanceRequired: boolean;
   score: number | null; // AI relevance score 0.0–1.0; null if unscored
@@ -145,7 +156,8 @@ export interface JobUpdate {
   source?: JobSource;
   location?: string;
   remote?: boolean;
-  salary?: Salary | null;
+  salaryLow?: Salary | null;
+  salaryHigh?: number | null;
   workAuthorizationRequired?: Sponsorship;
   clearanceRequired?: boolean;
 

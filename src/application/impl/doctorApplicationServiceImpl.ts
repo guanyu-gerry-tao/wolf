@@ -137,12 +137,12 @@ function checkResumeContent(toml: ProfileToml): FileCheck {
   for (const e of toml.education) {
     if (isFilled(e.degree) || isFilled(e.school)) count++;
   }
-  // Skills sub-fields each contribute 1 if filled.
-  if (isFilled(toml.skills.languages)) count++;
-  if (isFilled(toml.skills.frameworks)) count++;
-  if (isFilled(toml.skills.tools)) count++;
-  if (isFilled(toml.skills.domains)) count++;
-  if (isFilled(toml.skills.free_text)) count++;
+  // β.10i: skills collapsed from 5 sub-fields into one freeform `text`.
+  // A filled skills block contributes 1 (down from up-to-5). The
+  // RESUME_MIN_ENTRIES threshold should be adjusted to match if the
+  // 5-vs-1 difference matters; currently keeping threshold the same and
+  // expecting users to lean on experience/project/education entries.
+  if (isFilled(toml.skills.text)) count++;
 
   const ready = count >= RESUME_MIN_ENTRIES;
   return {

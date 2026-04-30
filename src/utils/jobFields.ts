@@ -84,7 +84,11 @@ export const JOB_FIELDS: ReadonlyArray<JobFieldMeta> = [
   { name: 'remote',                      type: 'boolean',          required: true,  help: 'Whether the role is remote.' },
 
   // ---- optional pay / requirements
-  { name: 'salary',                      type: 'salary',           required: false, help: 'Annual USD (number) or "unpaid"; blank = unknown.' },
+  // β.10j: salary split into low/high. JD listing "$120k–$180k" →
+  // salaryLow=120000, salaryHigh=180000. Unpaid → salaryLow="unpaid",
+  // salaryHigh=null. Unknown → both null.
+  { name: 'salaryLow',                   type: 'salary',           required: false, help: 'Lower bound of annual USD (number) or "unpaid" for unpaid roles; blank = unknown.' },
+  { name: 'salaryHigh',                  type: 'number',           required: false, help: 'Upper bound of annual USD; blank if single-point or unknown.' },
   { name: 'workAuthorizationRequired',   type: 'enum',             required: true,  help: 'Sponsorship stance per JD.', enumValues: SPONSORSHIP_VALUES },
   { name: 'clearanceRequired',           type: 'boolean',          required: true,  help: 'Whether the role requires a security clearance.' },
 

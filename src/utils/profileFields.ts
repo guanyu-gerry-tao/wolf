@@ -107,8 +107,11 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
     comment: 'OPTIONAL — Where you are physically right now. Defaults to United States; update if you are abroad.',
     defaultValue: 'United States',
     heading: "Country you're currently in", section: 'profile_md' },
-  // identity.note: collected by collectNotes(); not emitted by any renderer loop.
-  { path: 'identity.note',                       required: false, type: 'multilineString', help: 'Identity-related notes / "small thoughts".' },
+  // β.10i: per-table .note fields render inline at the end of their H1
+  // block in profile_md, instead of being extracted to a separate
+  // `## User notes` block. Same applies to all sibling .note paths below.
+  { path: 'identity.note',                       required: false, type: 'multilineString', help: 'Identity-related notes / "small thoughts".',
+    heading: 'Notes', section: 'profile_md' },
 
   // ---- contact
   { path: 'contact.email',                       required: true,  type: 'multilineString', help: 'Resume header & outreach From: address.',
@@ -117,13 +120,15 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
   { path: 'contact.phone',                       required: true,  type: 'multilineString', help: 'Resume header.',
     comment: 'REQUIRED — Resume header.',
     heading: 'Phone', section: 'profile_md' },
-  { path: 'contact.note',                        required: false, type: 'multilineString', help: '' },
+  { path: 'contact.note',                        required: false, type: 'multilineString', help: 'Contact-related notes / preferred contact times / etc.',
+    heading: 'Notes', section: 'profile_md' },
 
   // ---- address
   { path: 'address.full',                        required: true,  type: 'multilineString', help: 'Complete address including country.',
     comment: 'REQUIRED — Complete address including country, e.g. "123 Main St, Apt 4, San Francisco, CA 94102, USA".',
     heading: 'Full address', section: 'profile_md' },
-  { path: 'address.note',                        required: false, type: 'multilineString', help: '' },
+  { path: 'address.note',                        required: false, type: 'multilineString', help: 'Address-related notes (e.g. mailing vs current).',
+    heading: 'Notes', section: 'profile_md' },
 
   // ---- links
   { path: 'links.first',                         required: true,  type: 'multilineString', help: 'At minimum your LinkedIn. Wolf infers link type from the URL.',
@@ -134,7 +139,8 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
   { path: 'links.others',                        required: false, type: 'multilineString', help: 'Additional URLs, one per line.',
     comment: 'OPTIONAL — additional URLs, one per line (markdown bullet style).',
     heading: 'Other links', section: 'profile_md' },
-  { path: 'links.note',                          required: false, type: 'multilineString', help: '' },
+  { path: 'links.note',                          required: false, type: 'multilineString', help: 'Notes about your links (e.g. portfolio is WIP).',
+    heading: 'Notes', section: 'profile_md' },
 
   // ---- job preferences
   { path: 'job_preferences.target_roles',        required: true,  type: 'multilineString', help: 'One role per line (markdown bullets).',
@@ -174,9 +180,8 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
     heading: 'Minimum annual salary (new grad, USD)', section: 'profile_md', inSearchContext: true },
   { path: 'job_preferences.scoring_notes',               required: false, type: 'multilineString', help: 'Free-form preferences for the AI scorer.',
     heading: 'Scoring notes', section: 'profile_md', inSearchContext: true },
-  // job_preferences.note: special "User notes" heading inside Job Preferences H1.
-  { path: 'job_preferences.note',                        required: false, type: 'multilineString', help: 'Job-search "small thoughts".',
-    heading: 'User notes', section: 'profile_md' },
+  { path: 'job_preferences.note',                required: false, type: 'multilineString', help: 'Job-search "small thoughts" the AI scorer / search agent should weigh.',
+    heading: 'Notes', section: 'profile_md', inSearchContext: true },
 
   // ---- demographics (all OPTIONAL by US EEO law)
   { path: 'demographics.race',                   required: false, type: 'multilineString', help: 'OPTIONAL EEO.',
@@ -197,7 +202,8 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
   { path: 'demographics.first_gen_college',      required: false, type: 'multilineString', help: 'OPTIONAL: "Yes" / "No" / "Decline to answer".',
     defaultValue: 'No',
     heading: 'First-generation college student', section: 'profile_md' },
-  { path: 'demographics.note',                   required: false, type: 'multilineString', help: '' },
+  { path: 'demographics.note',                   required: false, type: 'multilineString', help: 'Demographic notes (e.g. why declining).',
+    heading: 'Notes', section: 'profile_md' },
 
   // ---- clearance: same collapse rationale. 4 pseudo-enum fields → 1 freeform.
   // Note: form fill writes verbatim ATS answers from `form_answers.*`, NOT
@@ -205,7 +211,8 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
   { path: 'clearance.preferences',               required: false, type: 'multilineString', help: 'Free-form. Whether you hold an active clearance, level / status if so, and willingness to obtain one.',
     comment: 'OPTIONAL — Free-form. Whether you hold an active clearance (Secret / TS / TS-SCI), its current status (Active / Inactive / Eligible), and your willingness to obtain one if not.',
     heading: 'Clearance preferences', section: 'profile_md', inSearchContext: true },
-  { path: 'clearance.note',                      required: false, type: 'multilineString', help: '' },
+  { path: 'clearance.note',                      required: false, type: 'multilineString', help: 'Clearance notes (e.g. willing to relocate to DMV for clearance role).',
+    heading: 'Notes', section: 'profile_md', inSearchContext: true },
 
   // β.10g: form_answers table removed; its 6 fields became builtin entries
   // in the unified `[[question]]` array (see WOLF_BUILTIN_QUESTIONS below).
@@ -227,13 +234,13 @@ export const PROFILE_FIELDS: ReadonlyArray<FieldMeta> = [
     heading: 'Portfolio sample', section: 'standard_questions' },
   { path: 'documents.note',                      required: false, type: 'multilineString', help: '' },
 
-  // ---- skills (combined into one "## Skills" body block, not loop-emitted)
-  { path: 'skills.languages',                    required: false, type: 'multilineString', help: 'Programming languages.',
-    comment: 'Comma- or newline-separated; wolf reformats per JD.' },
-  { path: 'skills.frameworks',                   required: false, type: 'multilineString', help: '' },
-  { path: 'skills.tools',                        required: false, type: 'multilineString', help: '' },
-  { path: 'skills.domains',                      required: false, type: 'multilineString', help: '' },
-  { path: 'skills.free_text',                    required: false, type: 'multilineString', help: 'Skills not fitting the buckets above.' },
+  // ---- skills (collapsed β.10i: 5 categorized sub-fields → 1 freeform).
+  // Lives in resume_pool, not profile_md — `renderResumePoolMarkdown`
+  // emits `## Skills` directly off this field; main profile_md loop skips
+  // it (no `section` set).
+  { path: 'skills.text',                         required: false, type: 'multilineString', help: 'Free-form skills summary. Languages / frameworks / tools / domains in any layout — tailor reformats per JD.',
+    comment: 'OPTIONAL — Free-form. Mention programming languages, frameworks, tools, domains. Wolf tailor reformats per-JD.',
+    heading: 'Skills' },
 
   // ---- optional resume sections
   { path: 'awards.items',                        required: false, type: 'multilineString', help: 'Awards & honors, one per line.',
@@ -337,7 +344,9 @@ export const WOLF_BUILTIN_QUESTIONS: ReadonlyArray<BuiltinQuestion> = [
   { id: 'authorized_to_work',              prompt: 'Are you legally authorized to work in the country of this job?',          required: true  },
   { id: 'require_sponsorship',             prompt: 'Will you now or in the future require sponsorship for employment?',       required: true  },
   { id: 'willing_to_relocate',             prompt: 'Are you willing to relocate for this role?',                               required: true  },
-  { id: 'salary_expectation',              prompt: "What's your salary expectation?",                                          required: false, defaultAnswer: 'Open to discuss based on the full compensation package and role scope.' },
+  // β.10j: no static default — fill agent computes from JD's salary range
+  // (ceiling integer of midpoint between salaryLow and salaryHigh).
+  { id: 'salary_expectation',              prompt: "What's your salary expectation?",                                          required: false },
   { id: 'how_did_you_hear',                prompt: 'How did you hear about us?',                                               required: false, defaultAnswer: 'LinkedIn' },
   { id: 'when_can_you_start',              prompt: 'When can you start?',                                                      required: false, defaultAnswer: 'Available immediately' },
 
