@@ -15,6 +15,7 @@ extension 使用的 ping 请求。
 - `GET /api/runs/:runId`
 - Companion extension reload 和手动 import 路径
 - 未完成 companion service 的结构化 TODO 响应
+- no-auto-submit fill 的安全 Stagehand 占位行为
 
 ## Case SERVE-01 - `wolf serve` 响应 `/api/ping`
 
@@ -78,6 +79,7 @@ curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/inbox/process" \
 
 sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
   'select id, kind, source, status, title, url from inbox_items order by received_at;
+   select id, title, url, status from jobs order by created_at;
    select id, type, status, created_at from background_ai_batches order by created_at;
    select id, background_ai_batch_id, provider, status, item_count, provider_batch_id from background_ai_batch_shards order by id;
    select subject_id, status, substr(ai_input_json, 1, 120) as input_preview from background_ai_batch_items order by id;'
@@ -92,13 +94,14 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 - JSON 响应包含 `"nonce":"serve-smoke"`。
 - JSON 响应包含非空的 `serverTime` 和 `version`。
 - Session 1 打印 `USER PLEASE READ` port block,并提示用户保持 terminal 打开。
-- `/api/runtime/status` 在 browser instance launch 实现前返回 browser status
-  `not_started`。
+- `/api/runtime/status` 在默认 browser launch 成功后返回 browser status
+  `ready`。如果 Session 1 使用 `--no-browser`,则可以返回 `not_started`,
+  companion 应显示 wolf browser overlay。
 - 两个 manual inbox item 被写入 SQLite。
-- `POST /api/inbox/process` 返回 `202`,并带 `status:"queued"`；如果 inbox
-  已经处理过,可以返回 `status:"empty"`。
-- 处理非空 raw inbox 后,SQLite 能看到一行 `background_ai_batches` 以及对应
-  shard/item rows。
+- `POST /api/inbox/process` 返回 `202`,并带 `status:"completed"` 和
+  `jobIds`；如果 inbox 已经处理过,可以返回 `status:"empty"`。
+- 处理非空 raw inbox 后,SQLite 能看到 promoted inbox rows 和匹配的 `jobs`
+  rows。本地 no-provider MVP 路径下可以没有 background AI batch rows。
 - 未完成 companion endpoint 返回结构化
   `{ "status": "todo", "todo": "...", "nextStep": "..." }`,不能是 404。
 - Autofill 保持 no-auto-submit。任何 fill endpoint 或 UI 文案都必须说明 wolf
@@ -115,17 +118,17 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 5. 打开名为 `wolf companion` 的 side panel。
 6. 把 Session 1 打印的 port 复制到 port 输入框,点击 `Reconnect`。
 7. Import 两个简单 job 页面。Activity 应报告 import 成功或 duplicate。
-8. 点击 `Process Inbox`; 确认 paid-action prompt; 用 Session 2 查询 SQLite
-   batch rows。
+8. 点击 `Process Inbox`; 确认 prompt; 用 Session 2 查询 promoted inbox rows
+   和 job rows。
 
 ### TODO Endpoint 检查
 
 用一个未完成 endpoint 确认稳定 TODO 行为:
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/tailor/quick" \
+curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/artifacts/regenerate" \
   -H "content-type: application/json" \
-  -d '{"jobId":"job-1","userPrompt":"focus on backend systems"}'
+  -d '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"","userPrompt":"tighten bullets"}'
 ```
 
 预期: HTTP `501`,响应包含 `status:"todo"` 和说明缺失 application/service

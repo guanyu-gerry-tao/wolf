@@ -270,6 +270,157 @@ describe('NodeHttpServerImpl', () => {
     expect(res.body).toMatchObject({ error: 'invalid quick tailor request' });
   });
 
+  // Browser and tab routes should become real as soon as serve has a browser
+  // manager, while still staying unit-testable through the pure dispatcher.
+  it('routes browser open, tab list, and tab focus through the browser manager', async () => {
+    const browserManager = {
+      open: async () => ({
+        status: 'ready' as const,
+        detail: 'ready',
+        requiredAction: 'Use wolf browser.',
+      }),
+      openUrl: async (url: string) => ({
+        id: 'wolf-tab-2',
+        title: 'Opened Role',
+        url,
+        tabId: 'wolf-tab-2',
+        windowId: null,
+        company: 'example.com',
+      }),
+      listTabs: async () => ({
+        queues: {
+          filling: [{ id: 'tab-1', title: 'Role', url: 'https://example.com', tabId: 'tab-1', windowId: null, company: 'Example' }],
+          ready: [],
+          stuck: [],
+        },
+      }),
+      focusTab: async (tabId: string) => ({ id: tabId, title: 'Role', url: 'https://example.com', tabId, windowId: null, company: 'Example' }),
+      status: () => ({
+        status: 'ready' as const,
+        detail: 'ready',
+        requiredAction: 'Use wolf browser.',
+      }),
+      getPage: async () => null,
+      stop: async () => undefined,
+    };
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/browser/open',
+      version: '0.1.0',
+      browserManager,
+    })).resolves.toMatchObject({ status: 200, body: { status: 'ready' } });
+
+    await expect(dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/tabs',
+      version: '0.1.0',
+      browserManager,
+    })).resolves.toMatchObject({ status: 200, body: { queues: { filling: [expect.objectContaining({ id: 'tab-1' })] } } });
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/tabs/tab-1/focus',
+      version: '0.1.0',
+      browserManager,
+    })).resolves.toMatchObject({ status: 200, body: { id: 'tab-1' } });
+  });
+
+  // Ready-column jobs are database rows, not already-open browser tabs. Focusing
+  // one should open its canonical URL inside the wolf-controlled browser.
+  it('opens a ready job URL in the wolf browser when focusing a job tab id', async () => {
+    const browserManager = {
+      open: async () => ({ status: 'ready' as const, detail: 'ready', requiredAction: 'Use wolf browser.' }),
+      openUrl: async (url: string) => ({
+        id: 'wolf-tab-2',
+        title: 'Opened Role',
+        url,
+        tabId: 'wolf-tab-2',
+        windowId: null,
+        company: 'example.com',
+      }),
+      listTabs: async () => ({ queues: { filling: [], ready: [], stuck: [] } }),
+      focusTab: async () => { throw new Error('job ids should open by URL'); },
+      status: () => ({ status: 'ready' as const, detail: 'ready', requiredAction: 'Use wolf browser.' }),
+      getPage: async () => null,
+      stop: async () => undefined,
+    };
+
+    const res = await dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/tabs/job-job-1/focus',
+      version: '0.1.0',
+      browserManager,
+      jobRepository: {
+        get: async () => ({ id: 'job-1', url: 'https://example.com/apply/1' }),
+      } as never,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      tabId: 'wolf-tab-2',
+      url: 'https://example.com/apply/1',
+    });
+  });
+
+  // With the companion action service wired, quick tailor is no longer a TODO:
+  // the HTTP layer validates the payload and returns an async run id.
+  it('routes quick tailor and batch tailor through companion actions', async () => {
+    const companionActionApp = {
+      quickTailor: async () => ({ runId: 'quick-1', status: 'queued' as const }),
+      batchTailor: async () => ({ runId: 'batch-1', status: 'queued' as const }),
+      quickFill: async () => ({ runId: 'fill-1', status: 'queued' as const }),
+      getRunStatus: async () => null,
+    };
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/tailor/quick',
+      version: '0.1.0',
+      body: '{"jobId":"job-1","userPrompt":"focus backend"}',
+      companionActionApp,
+    })).resolves.toMatchObject({ status: 202, body: { runId: 'quick-1' } });
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/tailor/batch',
+      version: '0.1.0',
+      body: '{"jobIds":["job-1"]}',
+      companionActionApp,
+    })).resolves.toMatchObject({ status: 202, body: { runId: 'batch-1' } });
+  });
+
+  // Quick fill needs both the action service and the wolf browser page. The
+  // implementation remains no-auto-submit; Stagehand observe/cache/replay is a
+  // later TODO behind the action boundary.
+  it('routes quick fill through companion actions with a browser page', async () => {
+    const page = null;
+    const companionActionApp = {
+      quickTailor: async () => ({ runId: 'quick-1', status: 'queued' as const }),
+      batchTailor: async () => ({ runId: 'batch-1', status: 'queued' as const }),
+      quickFill: async () => ({ runId: 'fill-1', status: 'queued' as const }),
+      getRunStatus: async () => null,
+    };
+    const browserManager = {
+      open: async () => ({ status: 'ready' as const, detail: 'ready', requiredAction: 'Use wolf browser.' }),
+      openUrl: async () => { throw new Error('not used'); },
+      listTabs: async () => ({ queues: { filling: [], ready: [], stuck: [] } }),
+      focusTab: async () => { throw new Error('not used'); },
+      status: () => ({ status: 'ready' as const, detail: 'ready', requiredAction: 'Use wolf browser.' }),
+      getPage: async () => page,
+      stop: async () => undefined,
+    };
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/fill/quick',
+      version: '0.1.0',
+      body: '{"jobId":"job-1","tabId":"tab-1"}',
+      companionActionApp,
+      browserManager,
+    })).resolves.toMatchObject({ status: 202, body: { runId: 'fill-1' } });
+  });
+
   // The companion UI is allowed to depend on stable HTTP paths before every
   // underlying service exists. Missing services must return structured TODO
   // responses, not vague 404s or one-off error strings.

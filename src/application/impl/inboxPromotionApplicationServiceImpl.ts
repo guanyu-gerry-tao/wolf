@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BackgroundAiBatchRepository } from '../../repository/backgroundAiBatchRepository.js';
 import type { InboxItem, InboxRepository } from '../../repository/inboxRepository.js';
+import type { AddApplicationService } from '../addApplicationService.js';
 import type {
   InboxPromoteOptions,
   InboxPromoteResult,
@@ -12,6 +13,7 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
   constructor(
     private readonly inboxRepository: InboxRepository,
     private readonly backgroundAiBatchRepository: BackgroundAiBatchRepository,
+    private readonly addApplicationService?: AddApplicationService,
   ) {}
 
   async promoteRawInbox(options: InboxPromoteOptions): Promise<InboxPromoteResult> {
@@ -28,11 +30,12 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
     const now = new Date().toISOString();
     const batchId = `inbox_promote_${randomUUID()}`;
     const shards = chunk(rawItems, options.shardSize);
+    const canPromoteLocally = this.addApplicationService !== undefined;
 
     await this.backgroundAiBatchRepository.saveBatch({
       id: batchId,
       type: 'inbox_promote',
-      status: 'queued',
+      status: canPromoteLocally ? 'completed' : 'queued',
       inputJson: JSON.stringify({
         limit: options.limit,
         provider: options.provider,
@@ -45,6 +48,7 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
       error: null,
     });
 
+    const promotedJobIds: string[] = [];
     for (let shardIndex = 0; shardIndex < shards.length; shardIndex += 1) {
       const shardItems = shards[shardIndex];
       const shardId = `${batchId}_shard_${shardIndex + 1}`;
@@ -54,7 +58,7 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
         backgroundAiBatchId: batchId,
         provider: options.provider,
         providerBatchId: null,
-        status: 'queued',
+        status: canPromoteLocally ? 'completed' : 'queued',
         itemCount: shardItems.length,
         nextPollAt: null,
         submittedAt: null,
@@ -63,24 +67,39 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
       });
 
       for (const item of shardItems) {
+        const promotedJobId = canPromoteLocally
+          ? await this.promoteItemLocally(item).catch(async (err: unknown) => {
+              await this.inboxRepository.updateStatus(item.id, {
+                status: 'failed',
+                error: err instanceof Error ? err.message : String(err),
+              });
+              return null;
+            })
+          : null;
+        if (promotedJobId) promotedJobIds.push(promotedJobId);
+
         await this.backgroundAiBatchRepository.saveItem({
           id: `${batchId}_item_${item.id}`,
           backgroundAiBatchId: batchId,
           shardId,
           subjectType: 'inbox_item',
           subjectId: item.id,
-          status: 'queued',
+          status: promotedJobId ? 'promoted' : canPromoteLocally ? 'failed' : 'queued',
           aiInputJson: buildPromotionInput(item),
           debugJson: null,
           debugExpiresAt: null,
-          targetId: null,
-          error: null,
+          targetId: promotedJobId,
+          error: promotedJobId || !canPromoteLocally ? null : 'Local inbox promotion failed.',
         });
-        await this.inboxRepository.updateStatus(item.id, { status: 'queued', error: null });
+        if (promotedJobId) {
+          await this.inboxRepository.updateStatus(item.id, { status: 'promoted', jobId: promotedJobId, error: null });
+        } else if (!canPromoteLocally) {
+          await this.inboxRepository.updateStatus(item.id, { status: 'queued', error: null });
+        }
       }
     }
 
-    log.info('inbox.promote.queued', {
+    log.info(canPromoteLocally ? 'inbox.promote.completed' : 'inbox.promote.queued', {
       batchId,
       provider: options.provider,
       itemCount: rawItems.length,
@@ -89,10 +108,32 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
 
     return {
       batchId,
-      status: 'queued',
+      status: canPromoteLocally ? 'completed' : 'queued',
       itemCount: rawItems.length,
       shardCount: shards.length,
+      jobIds: promotedJobIds,
     };
+  }
+
+  private async promoteItemLocally(item: InboxItem): Promise<string> {
+    if (!this.addApplicationService) throw new Error('AddApplicationService is unavailable.');
+    const parsed = JSON.parse(item.rawJson) as {
+      title?: string;
+      url?: string;
+      html?: string;
+      results?: unknown[];
+    };
+    const title = cleanText(parsed.title ?? item.title ?? 'Imported Job');
+    const url = parsed.url ?? item.url ?? '';
+    const jdText = htmlToText(parsed.html ?? item.rawJson);
+    const company = companyFromUrl(url);
+    const result = await this.addApplicationService.add({
+      title,
+      company,
+      url,
+      jdText,
+    });
+    return result.jobId;
   }
 }
 
@@ -113,4 +154,25 @@ function chunk<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+function htmlToText(html: string): string {
+  return cleanText(html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' '));
+}
+
+function cleanText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function companyFromUrl(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const first = host.split('.')[0];
+    return first ? first[0].toUpperCase() + first.slice(1) : 'Imported Company';
+  } catch {
+    return 'Imported Company';
+  }
 }

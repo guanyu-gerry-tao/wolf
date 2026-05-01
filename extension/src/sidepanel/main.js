@@ -37,6 +37,7 @@ const state = {
     },
   },
   currentTab: null,
+  activeWolfTabId: null,
   currentPageStatus: { kind: 'normal', detail: null },
   currentJobId: 'demo-ready-1',
   view: 'main',
@@ -78,6 +79,7 @@ const els = {
   runtimeOverlay: document.querySelector('#runtimeOverlay'),
   runtimeOverlayDetail: document.querySelector('#runtimeOverlayDetail'),
   runtimeOverlayStatus: document.querySelector('#runtimeOverlayStatus'),
+  openBrowserButton: document.querySelector('#openBrowserButton'),
   currentTabLabel: document.querySelector('#currentTabLabel'),
   duplicateNotice: document.querySelector('#duplicateNotice'),
   importCurrentPageButton: document.querySelector('#importCurrentPageButton'),
@@ -149,6 +151,7 @@ async function storePort(port) {
 
 function wireEvents() {
   els.configButton.addEventListener('click', openConfig);
+  els.openBrowserButton.addEventListener('click', openWolfBrowser);
   els.closeConfigButton.addEventListener('click', showMainView);
   els.saveConfigButton.addEventListener('click', saveConfig);
   els.backToCurrentButton.addEventListener('click', showMainView);
@@ -231,6 +234,24 @@ async function refreshRuntimeStatus() {
   renderConnection();
 }
 
+async function openWolfBrowser() {
+  if (state.connection.status !== 'connected') {
+    log('Connect to wolf serve first.');
+    return;
+  }
+  setButtonState(els.openBrowserButton, 'Opening...', true);
+  try {
+    await postJson('/api/browser/open', {});
+    await refreshRuntimeStatus();
+    await refreshQueues();
+    log('Wolf browser is ready. Use that window for application pages.');
+  } catch (err) {
+    log(`Wolf browser could not open: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    setButtonState(els.openBrowserButton, 'Open wolf browser', false);
+  }
+}
+
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 2_500);
@@ -244,6 +265,7 @@ async function fetchWithTimeout(url, options = {}) {
 function setConnection(status, detail) {
   state.connection = { status, detail };
   if (status !== 'connected') {
+    state.activeWolfTabId = null;
     state.runtime.browser = {
       status: 'unknown',
       detail: 'Connect to wolf serve first.',
@@ -315,6 +337,7 @@ function renderRuntimeOverlay() {
   els.runtimeOverlayDetail.textContent = state.runtime.browser.requiredAction ??
     'Start the browser from wolf serve, then reconnect.';
   els.runtimeOverlayStatus.textContent = `Current status: ${state.runtime.browser.status}`;
+  els.openBrowserButton.disabled = state.connection.status !== 'connected';
 }
 
 function renderArtifactButtons() {
@@ -518,9 +541,11 @@ function normalizeQueues(rawQueues) {
 function normalizeQueueItems(items) {
   if (!Array.isArray(items)) return [];
   return items.map((item, index) => ({
-    id: item.id ?? item.jobId ?? `item-${index}`,
+    id: item.jobId ?? item.id ?? `item-${index}`,
+    jobId: item.jobId ?? item.id ?? null,
     title: item.title ?? 'Untitled job',
     company: item.company ?? item.source ?? 'Unknown company',
+    url: item.url ?? null,
     tabId: item.tabId ?? null,
     windowId: item.windowId ?? null,
   }));
@@ -621,7 +646,7 @@ async function focusNext(column) {
   const index = state.cursors[column] % items.length;
   state.cursors[column] += 1;
   const item = items[index];
-  state.currentJobId = item.id;
+  state.currentJobId = item.jobId ?? item.id;
   await refreshArtifactStatus();
 
   const targetTabId = item.tabId ?? item.id;
@@ -630,6 +655,7 @@ async function focusNext(column) {
     log(result.todo ?? 'Wolf browser tab focus is not implemented yet.');
     return;
   }
+  state.activeWolfTabId = result.tabId ?? result.id ?? targetTabId;
   log(`Focused ${item.company} - ${item.title}`);
 }
 
@@ -791,7 +817,7 @@ function importErrorMessage(err) {
 async function processInboxWithAi() {
   if (!ensureReady()) return;
   const confirmed = window.confirm(
-    'Process raw inbox items with AI? This may use paid batch API calls.',
+    'Process raw inbox items into jobs? Future AI extraction may use paid batch API calls.',
   );
   if (!confirmed) {
     log('Inbox processing cancelled.');
@@ -804,6 +830,12 @@ async function processInboxWithAi() {
     if (result.status === 'empty') {
       setButtonState(els.processInboxButton, 'Nothing to Process', false);
       log('No raw inbox items to process.');
+      return;
+    }
+    if (result.status === 'completed') {
+      setButtonState(els.processInboxButton, 'Processed', false);
+      log(`Inbox processed: ${result.itemCount ?? 0} item(s), ${result.jobIds?.length ?? 0} job(s) created.`);
+      await refreshQueues();
       return;
     }
     setButtonState(els.processInboxButton, 'Queued', false);
@@ -899,7 +931,7 @@ async function autofillThisPage() {
   try {
     const result = await postJson('/api/fill/quick', {
       jobId: state.currentJobId,
-      tabId: state.currentTab?.id ?? null,
+      tabId: state.activeWolfTabId ?? null,
       userPrompt,
     });
     els.fillPromptBox.hidden = true;
@@ -1015,13 +1047,11 @@ async function saveConfig() {
     const result = await postJson('/api/config', {
       port,
       defaultProfile: els.defaultProfileInput.value.trim() || 'default',
-      maxStagehandSessions: Number(els.stagehandSessionsInput.value || 3),
-      browserMode: els.browserModeInput.value.trim(),
     });
     if (result.status === 'todo') {
       log(result.todo ?? 'Config write is not implemented yet.');
     } else {
-      log('Config saved.');
+      log('Config saved: port and default profile.');
     }
   } catch (err) {
     log(`Config save unavailable: ${err instanceof Error ? err.message : String(err)}`);

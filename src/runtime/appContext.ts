@@ -54,10 +54,13 @@ import { InboxApplicationServiceImpl } from '../application/impl/inboxApplicatio
 import { InboxPromotionApplicationServiceImpl } from '../application/impl/inboxPromotionApplicationServiceImpl.js';
 import { BackgroundAiBatchWorkerImpl } from '../application/impl/backgroundAiBatchWorkerImpl.js';
 import { RunStatusApplicationServiceImpl } from '../application/impl/runStatusApplicationServiceImpl.js';
+import { ArtifactApplicationServiceImpl } from '../application/impl/artifactApplicationServiceImpl.js';
+import { CompanionActionApplicationServiceImpl } from '../application/impl/companionActionApplicationServiceImpl.js';
 import { FillServiceImpl } from '../service/impl/fillServiceImpl.js';
 import { SqliteInboxRepositoryImpl } from '../repository/impl/sqliteInboxRepositoryImpl.js';
 import { SqliteBackgroundAiBatchRepositoryImpl } from '../repository/impl/sqliteBackgroundAiBatchRepositoryImpl.js';
 import { NodeHttpServerImpl } from '../serve/impl/nodeHttpServerImpl.js';
+import { PlaywrightBrowserManagerImpl } from '../serve/impl/playwrightBrowserManagerImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
@@ -97,7 +100,10 @@ import type { InboxApplicationService } from '../application/inboxApplicationSer
 import type { InboxPromotionApplicationService } from '../application/inboxPromotionApplicationService.js';
 import type { BackgroundAiBatchWorker } from '../application/backgroundAiBatchWorker.js';
 import type { RunStatusApplicationService } from '../application/runStatusApplicationService.js';
+import type { ArtifactApplicationService } from '../application/artifactApplicationService.js';
+import type { CompanionActionApplicationService } from '../application/companionActionApplicationService.js';
 import type { FillService } from '../service/fillService.js';
+import type { ServeBrowserManager } from '../serve/browserManager.js';
 import type { ServeApplicationService } from '../application/serveApplicationService.js';
 import type { HttpServer } from '../serve/httpServer.js';
 import type { AiConfig } from '../utils/types/index.js';
@@ -137,6 +143,9 @@ export interface AppContext {
   inboxPromotionApp: InboxPromotionApplicationService;
   backgroundAiBatchWorker: BackgroundAiBatchWorker;
   runStatusApp: RunStatusApplicationService;
+  artifactApp: ArtifactApplicationService;
+  companionActionApp: CompanionActionApplicationService;
+  browserManager: ServeBrowserManager;
   serveApp: ServeApplicationService;
   fillService: FillService;
   // config
@@ -193,28 +202,40 @@ function wireContext(
   const statusApp = new StatusApplicationServiceImpl(statusCounters);
   const addApp = new AddApplicationServiceImpl(jobRepo, companyRepo);
   const inboxApp = new InboxApplicationServiceImpl(inboxRepo);
-  const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(inboxRepo, backgroundAiBatchRepo);
+  const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(inboxRepo, backgroundAiBatchRepo, addApp);
   const backgroundAiBatchWorker = new BackgroundAiBatchWorkerImpl(backgroundAiBatchRepo);
-  const runStatusApp = new RunStatusApplicationServiceImpl(backgroundAiBatchRepo);
-  const httpServer = new NodeHttpServerImpl({
-    version: WOLF_VERSION,
-    workspacePath: workspaceDir,
-    inboxApp,
-    inboxPromotionApp,
-    runStatusApp,
-  });
+  const artifactApp = new ArtifactApplicationServiceImpl(jobRepo);
+  const companionActionApp = new CompanionActionApplicationServiceImpl(tailorApp, jobRepo, profileRepository);
+  const runStatusApp = new RunStatusApplicationServiceImpl(backgroundAiBatchRepo, companionActionApp);
+  const browserManager = new PlaywrightBrowserManagerImpl(path.join(workspaceDir, 'data', 'wolf-browser-profile'));
   const configApp = new ConfigApplicationServiceImpl();
   const envApp = new EnvApplicationServiceImpl();
   const profileApp = new ProfileApplicationServiceImpl();
   const doctorApp = new DoctorApplicationServiceImpl(profileRepository);
   const initApp = new InitApplicationServiceImpl();
   const jobApp = new JobApplicationServiceImpl(jobRepo, companyRepo);
+  const httpServer = new NodeHttpServerImpl({
+    version: WOLF_VERSION,
+    workspacePath: workspaceDir,
+    inboxApp,
+    inboxPromotionApp,
+    runStatusApp,
+    artifactApp,
+    companionActionApp,
+    browserManager,
+    jobApp,
+    statusApp,
+    configApp,
+    profileApp,
+    jobRepository: jobRepo,
+    companyRepository: companyRepo,
+  });
   const huntApp = new HuntApplicationServiceImpl();
   const scoreApp = new ScoreApplicationServiceImpl();
   const fillApp = new FillApplicationServiceImpl();
   const reachApp = new ReachApplicationServiceImpl();
   const contextApp = new ContextApplicationServiceImpl(profileRepository);
-  const serveApp = new ServeApplicationServiceImpl(httpServer, backgroundAiBatchWorker);
+  const serveApp = new ServeApplicationServiceImpl(httpServer, backgroundAiBatchWorker, browserManager);
   const fillService = new FillServiceImpl();
 
   return {
@@ -249,6 +270,9 @@ function wireContext(
     inboxPromotionApp,
     backgroundAiBatchWorker,
     runStatusApp,
+    artifactApp,
+    companionActionApp,
+    browserManager,
     serveApp,
     fillService,
     defaultAiConfig,

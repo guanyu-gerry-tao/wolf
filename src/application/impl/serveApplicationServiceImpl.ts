@@ -1,6 +1,7 @@
 import type { ServeApplicationService, ServeOptions } from '../serveApplicationService.js';
 import type { BackgroundAiBatchWorker } from '../backgroundAiBatchWorker.js';
 import type { HttpServer } from '../../serve/httpServer.js';
+import type { ServeBrowserManager } from '../../serve/browserManager.js';
 
 const BACKGROUND_WORKER_TICK_MS = 30_000;
 
@@ -8,6 +9,7 @@ export class ServeApplicationServiceImpl implements ServeApplicationService {
   constructor(
     private readonly httpServer: HttpServer,
     private readonly backgroundAiBatchWorker?: BackgroundAiBatchWorker,
+    private readonly browserManager?: ServeBrowserManager,
   ) {}
 
   async run(options: ServeOptions): Promise<void> {
@@ -15,7 +17,13 @@ export class ServeApplicationServiceImpl implements ServeApplicationService {
     process.stdout.write(`wolf serve listening on http://127.0.0.1:${options.port}\n`);
     process.stdout.write(formatCompanionSetupBanner(options.port));
     if (options.browser !== false) {
-      process.stdout.write('Wolf Browser launch is not implemented yet.\n');
+      try {
+        await this.browserManager?.open();
+        process.stdout.write('Wolf Browser is ready.\n');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`Wolf Browser launch failed: ${message}\n`);
+      }
     }
 
     if (options.stopAfterStart) return;
@@ -28,6 +36,7 @@ export class ServeApplicationServiceImpl implements ServeApplicationService {
         process.off('SIGTERM', shutdown);
         if (workerTimer) clearInterval(workerTimer);
         try {
+          await this.browserManager?.stop();
           await this.httpServer.stop();
           resolve();
         } catch (err) {

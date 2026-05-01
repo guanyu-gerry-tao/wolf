@@ -15,6 +15,7 @@ answer the companion extension's ping request.
 - `GET /api/runs/:runId`
 - Companion extension reload and manual import path
 - Structured TODO responses for unfinished companion services
+- Safe Stagehand placeholder behavior for no-auto-submit fill
 
 ## Case SERVE-01 - `wolf serve` answers `/api/ping`
 
@@ -78,6 +79,7 @@ curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/inbox/process" \
 
 sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
   'select id, kind, source, status, title, url from inbox_items order by received_at;
+   select id, title, url, status from jobs order by created_at;
    select id, type, status, created_at from background_ai_batches order by created_at;
    select id, background_ai_batch_id, provider, status, item_count, provider_batch_id from background_ai_batch_shards order by id;
    select subject_id, status, substr(ai_input_json, 1, 120) as input_preview from background_ai_batch_items order by id;'
@@ -93,13 +95,15 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 - The JSON response includes a non-empty `serverTime` and `version`.
 - Session 1 prints the `USER PLEASE READ` port block and tells the user to
   keep the terminal open.
-- `/api/runtime/status` returns browser status `not_started` until browser
-  instance launch is implemented.
+- `/api/runtime/status` returns browser status `ready` after the default
+  browser launch succeeds. If Session 1 uses `--no-browser`, it may return
+  `not_started` and the companion should show the wolf-browser overlay.
 - Two manual inbox items are written to SQLite.
-- `POST /api/inbox/process` returns `202` with `status:"queued"` or
-  `status:"empty"` if the inbox was already processed.
-- SQLite shows one `background_ai_batches` row and related shard/item rows
-  after processing non-empty raw inbox items.
+- `POST /api/inbox/process` returns `202` with `status:"completed"` and
+  `jobIds`, or `status:"empty"` if the inbox was already processed.
+- SQLite shows promoted inbox rows and matching `jobs` rows after processing
+  non-empty raw inbox items. Background AI batch rows may be absent in the
+  local no-provider MVP path.
 - Unimplemented companion endpoints return structured
   `{ "status": "todo", "todo": "...", "nextStep": "..." }` rather than 404.
 - Autofill remains no-auto-submit. Any fill endpoint or UI copy must state
@@ -118,17 +122,17 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
    `Reconnect`.
 7. Import two simple job pages. Activity should report successful imports or
    duplicate detection.
-8. Click `Process Inbox`; confirm the paid-action prompt; verify the SQLite
-   batch rows from Session 2.
+8. Click `Process Inbox`; confirm the prompt; verify promoted inbox rows and
+   job rows from Session 2.
 
 ### TODO Endpoint Check
 
 Use one unfinished endpoint to confirm stable TODO behavior:
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/tailor/quick" \
+curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/artifacts/regenerate" \
   -H "content-type: application/json" \
-  -d '{"jobId":"job-1","userPrompt":"focus on backend systems"}'
+  -d '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"","userPrompt":"tighten bullets"}'
 ```
 
 Expected: HTTP `501` with `status:"todo"` and a `nextStep` naming the missing

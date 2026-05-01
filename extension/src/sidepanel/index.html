@@ -24,6 +24,7 @@
           <p class="runtime-warning">⚠️ wolf browser is not ready</p>
           <p id="runtimeOverlayDetail">Start the browser from wolf serve, then reconnect.</p>
           <p id="runtimeOverlayStatus" class="muted">Current status: not_started</p>
+          <button id="openBrowserButton" type="button">Open wolf browser</button>
         </div>
       </aside>
 
@@ -95,16 +96,16 @@
         <div class="form-section">
           <label class="field-label" for="defaultProfileInput">Default profile</label>
           <input id="defaultProfileInput" value="default" />
-          <p class="form-help">Profile write support is TODO; this field is kept visible so the final HTTP shape is clear.</p>
+          <p class="form-help">Saved to wolf.toml as the default profile name.</p>
         </div>
         <div class="form-section">
           <label class="field-label" for="stagehandSessionsInput">Max parallel Stagehand sessions</label>
-          <input id="stagehandSessionsInput" inputmode="numeric" maxlength="2" value="3" />
-          <p class="form-help">Default is 3. Future serve config may allow up to 10 local sessions.</p>
+          <input id="stagehandSessionsInput" inputmode="numeric" maxlength="2" value="3" disabled />
+          <p class="form-help">Read-only for now. Stagehand LOCAL session pooling is a TODO behind wolf serve.</p>
         </div>
         <div class="form-section">
           <label class="field-label" for="browserModeInput">Browser instance mode</label>
-          <input id="browserModeInput" value="wolf persistent profile" />
+          <input id="browserModeInput" value="wolf persistent profile" disabled />
           <p class="form-help">wolf should automate only the wolf-controlled Chrome instance, not the user's main Chrome profile.</p>
         </div>
         <div class="form-section">

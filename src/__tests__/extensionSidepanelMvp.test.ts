@@ -57,6 +57,8 @@ describe('companion side panel MVP', () => {
     expect(html).toContain('id="runtimeOverlay"');
     expect(html).toContain('⚠️ wolf browser is not ready');
     expect(html).toContain('Start the browser from wolf serve, then reconnect.');
+    expect(html).toContain('id="openBrowserButton"');
+    expect(html).toContain('Open wolf browser');
     expect(html).toContain('id="configButton"');
     expect(html).toContain('Config');
     expect(html).toContain('id="duplicateNotice"');
@@ -83,7 +85,9 @@ describe('companion side panel MVP', () => {
     expect(html).toContain('id="regenerateArtifactButton"');
     expect(html).toContain('id="configPanel"');
     expect(html).toContain('Companion Config');
+    expect(html).toContain('Saved to wolf.toml as the default profile name.');
     expect(html).toContain('Max parallel Stagehand sessions');
+    expect(html).toContain('Stagehand LOCAL session pooling is a TODO');
     expect(html).toContain('wolf should automate only the wolf-controlled Chrome instance');
     expect(html).toContain('data-column="filling"');
     expect(html).toContain('data-column="ready"');
@@ -93,6 +97,7 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('/focus');
     expect(js).toContain('/api/ping');
     expect(js).toContain('/api/runtime/status');
+    expect(js).toContain('/api/browser/open');
     expect(js).toContain('/api/inbox/items');
     expect(js).toContain('/api/inbox/process');
     expect(js).toContain('/api/tailor/quick');
@@ -102,8 +107,8 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('/api/config');
     expect(js).toContain('/api/runs/');
     expect(js).toContain('/api/inbox/duplicate-check');
-    expect(js).toContain('paid batch API calls');
-    expect(js).toContain('Process raw inbox items with AI?');
+    expect(js).toContain('Future AI extraction may use paid batch API calls');
+    expect(js).toContain('Process raw inbox items into jobs?');
     expect(js).toContain('Inbox processing queued');
     expect(js).toContain('artifactTargets');
     expect(js).toContain('Instant tailor unavailable');
@@ -120,6 +125,7 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('showMainView');
     expect(js).toContain('openConfig');
     expect(js).toContain('Config write is not implemented yet.');
+    expect(js).toContain('Config saved: port and default profile.');
     expect(js).toContain('No filling pages yet.');
     expect(js).toContain('Wolf browser tab registry is not implemented yet.');
     expect(js).toContain('/artifacts');
@@ -143,6 +149,8 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('Connect to wolf serve first.');
     expect(js).toContain('Start the browser from wolf serve, then reconnect.');
     expect(js).toContain('isRuntimeReady');
+    expect(js).toContain('activeWolfTabId');
+    expect(js).toContain('Wolf browser is ready. Use that window for application pages.');
     expect(js).toContain('Lost connection to wolf serve.');
     expect(js).toContain('HEARTBEAT_MS');
     expect(js).toContain('/api/jobs/');

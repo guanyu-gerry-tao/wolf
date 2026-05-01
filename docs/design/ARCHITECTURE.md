@@ -622,6 +622,7 @@ This design aligns with how AI agents work: Claude Code's working context is the
 ├── credentials/        # OAuth tokens (Gmail) — gitignored
 └── data/               # Generated artifacts — gitignored
     ├── wolf.sqlite      # Structured metadata, raw inbox, background AI batches
+    ├── wolf-browser-profile/ # Persistent profile for the wolf-controlled browser
     ├── jobs/
     │   └── <company>_<title>_<jobIdShort>/
     │       ├── src/
@@ -639,9 +640,12 @@ This design aligns with how AI agents work: Claude Code's working context is the
 Raw inbox data lives in SQLite `inbox_items`, not per-capture folders. The
 table stores only original manual-page or hunt-result payloads plus processing
 state (`raw`, `queued`, `promoted`, `failed`, etc.). Explicit user actions can
-create `background_ai_batches` / shards / items for paid processing. Successful
-AI output is applied immediately to canonical job state; only short-lived debug
-payloads remain in `background_ai_batch_items`.
+create `background_ai_batches` / shards / items for paid processing. The current
+companion MVP can also promote manual raw pages directly into canonical `jobs`
+rows with a conservative local extraction path; future AI promotion can replace
+that path without changing the inbox contract. Successful AI output is applied
+immediately to canonical job state; only short-lived debug payloads remain in
+`background_ai_batch_items`.
 
 > API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env show` / `wolf env clear` to manage.
 

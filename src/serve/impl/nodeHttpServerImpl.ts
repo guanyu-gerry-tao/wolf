@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import {
@@ -15,6 +16,15 @@ import {
 import type { InboxApplicationService } from '../../application/inboxApplicationService.js';
 import type { InboxPromotionApplicationService } from '../../application/inboxPromotionApplicationService.js';
 import type { RunStatusApplicationService } from '../../application/runStatusApplicationService.js';
+import type { ArtifactApplicationService } from '../../application/artifactApplicationService.js';
+import type { CompanionActionApplicationService } from '../../application/companionActionApplicationService.js';
+import type { JobApplicationService } from '../../application/jobApplicationService.js';
+import type { StatusApplicationService } from '../../application/statusApplicationService.js';
+import type { ConfigApplicationService } from '../../application/configApplicationService.js';
+import type { ProfileApplicationService } from '../../application/profileApplicationService.js';
+import type { CompanyRepository } from '../../repository/companyRepository.js';
+import type { JobRepository } from '../../repository/jobRepository.js';
+import type { ServeBrowserManager } from '../browserManager.js';
 import type { HttpServer } from '../httpServer.js';
 
 export interface NodeHttpServerOptions {
@@ -23,11 +33,22 @@ export interface NodeHttpServerOptions {
   inboxApp: InboxApplicationService;
   inboxPromotionApp?: InboxPromotionApplicationService;
   runStatusApp?: RunStatusApplicationService;
+  artifactApp?: ArtifactApplicationService;
+  companionActionApp?: CompanionActionApplicationService;
+  browserManager?: ServeBrowserManager;
+  jobApp?: JobApplicationService;
+  statusApp?: StatusApplicationService;
+  configApp?: ConfigApplicationService;
+  profileApp?: ProfileApplicationService;
+  jobRepository?: JobRepository;
+  companyRepository?: CompanyRepository;
 }
 
 export interface HttpRouteResult {
   status: number;
   body: unknown;
+  headers?: Record<string, string>;
+  raw?: boolean;
 }
 
 export class NodeHttpServerImpl implements HttpServer {
@@ -93,8 +114,17 @@ export class NodeHttpServerImpl implements HttpServer {
       inboxApp: this.opts.inboxApp,
       inboxPromotionApp: this.opts.inboxPromotionApp,
       runStatusApp: this.opts.runStatusApp,
+      artifactApp: this.opts.artifactApp,
+      companionActionApp: this.opts.companionActionApp,
+      browserManager: this.opts.browserManager,
+      jobApp: this.opts.jobApp,
+      statusApp: this.opts.statusApp,
+      configApp: this.opts.configApp,
+      profileApp: this.opts.profileApp,
+      jobRepository: this.opts.jobRepository,
+      companyRepository: this.opts.companyRepository,
     });
-    writeJson(res, result.status, result.body);
+    writeResult(res, result);
   }
 }
 
@@ -106,9 +136,19 @@ export async function dispatchHttpRequest(input: {
   inboxApp?: InboxApplicationService;
   inboxPromotionApp?: InboxPromotionApplicationService;
   runStatusApp?: RunStatusApplicationService;
+  artifactApp?: ArtifactApplicationService;
+  companionActionApp?: CompanionActionApplicationService;
+  browserManager?: ServeBrowserManager;
+  jobApp?: JobApplicationService;
+  statusApp?: StatusApplicationService;
+  configApp?: ConfigApplicationService;
+  profileApp?: ProfileApplicationService;
+  jobRepository?: JobRepository;
+  companyRepository?: CompanyRepository;
   workspacePath?: string;
 }): Promise<HttpRouteResult> {
   const url = new URL(input.url, 'http://127.0.0.1');
+  const baseUrl = 'http://127.0.0.1';
   if (input.method === 'GET' && url.pathname === '/api/ping') {
     const parsed = PingRequestSchema.safeParse({
       nonce: url.searchParams.get('nonce') ?? undefined,
@@ -129,7 +169,7 @@ export async function dispatchHttpRequest(input: {
     const body: RuntimeStatusResponse = {
       version: input.version,
       workspacePath: input.workspacePath ?? '',
-      browser: {
+      browser: input.browserManager?.status() ?? {
         status: 'not_started',
         detail: 'Wolf browser launch is not implemented yet.',
         requiredAction: 'Start the browser from wolf serve, then reconnect.',
@@ -138,13 +178,46 @@ export async function dispatchHttpRequest(input: {
         status: 'unknown',
       },
       features: {
-        browserInstance: false,
-        quickTailor: false,
-        batchTailor: false,
-        quickFill: false,
+        browserInstance: Boolean(input.browserManager),
+        quickTailor: Boolean(input.companionActionApp),
+        batchTailor: Boolean(input.companionActionApp),
+        quickFill: Boolean(input.companionActionApp && input.browserManager),
       },
     };
     return { status: 200, body };
+  }
+
+  if (input.method === 'POST' && url.pathname === '/api/browser/open') {
+    if (!input.browserManager) return todoRoute(input.method, url.pathname);
+    return { status: 200, body: await input.browserManager.open() };
+  }
+
+  if (input.method === 'GET' && url.pathname === '/api/tabs') {
+    if (!input.browserManager) return todoRoute(input.method, url.pathname);
+    const tabs = await input.browserManager.listTabs();
+    if (input.jobRepository && input.companyRepository) {
+      const readyJobs = await companionReadyJobs(input.jobRepository, input.companyRepository);
+      return {
+        status: 200,
+        body: {
+          queues: {
+            filling: tabs.queues.filling,
+            ready: readyJobs,
+            stuck: tabs.queues.stuck,
+          },
+        },
+      };
+    }
+    return { status: 200, body: tabs };
+  }
+
+  if (input.method === 'POST' && /^\/api\/tabs\/[^/]+\/focus$/.test(url.pathname)) {
+    if (!input.browserManager) return todoRoute(input.method, url.pathname);
+    const tabId = decodeURIComponent(url.pathname.split('/')[3] ?? '');
+    return {
+      status: 200,
+      body: await focusCompanionTab(tabId, input.browserManager, input.jobRepository),
+    };
   }
 
   if (input.method === 'GET' && url.pathname === '/api/inbox/duplicate-check') {
@@ -228,16 +301,33 @@ export async function dispatchHttpRequest(input: {
 
   if (input.method === 'GET' && /^\/api\/jobs\/[^/]+\/artifacts$/.test(url.pathname)) {
     const jobId = decodeURIComponent(url.pathname.split('/')[3] ?? '');
+    if (!input.artifactApp) {
+      return {
+        status: 501,
+        body: {
+          status: 'todo',
+          todo: 'Artifact readiness is not implemented yet.',
+          nextStep: 'Add artifact readiness to TailorApplicationService or a dedicated ArtifactApplicationService.',
+          jobId,
+          resume: { status: 'not_ready', url: null },
+          coverLetter: { status: 'not_ready', url: null },
+        },
+      };
+    }
+    return { status: 200, body: await input.artifactApp.getReadiness(jobId, baseUrl) };
+  }
+
+  if (input.method === 'GET' && /^\/api\/jobs\/[^/]+\/artifacts\/(resume|cover-letter)$/.test(url.pathname)) {
+    if (!input.artifactApp) return todoRoute(input.method, url.pathname);
+    const parts = url.pathname.split('/');
+    const jobId = decodeURIComponent(parts[3] ?? '');
+    const kind = parts[5] === 'resume' ? 'resume' : 'cover-letter';
+    const file = await input.artifactApp.getPreviewFile(jobId, kind);
     return {
-      status: 501,
-      body: {
-        status: 'todo',
-        todo: 'Artifact readiness is not implemented yet.',
-        nextStep: 'Add artifact readiness to TailorApplicationService or a dedicated ArtifactApplicationService.',
-        jobId,
-        resume: { status: 'not_ready', url: null },
-        coverLetter: { status: 'not_ready', url: null },
-      },
+      status: 200,
+      body: await fs.readFile(file.path),
+      raw: true,
+      headers: { 'content-type': file.contentType },
     };
   }
 
@@ -252,6 +342,76 @@ export async function dispatchHttpRequest(input: {
 
   const validationResult = validateTodoRequest(input.method, url.pathname, input.body);
   if (validationResult) return validationResult;
+
+  if (input.method === 'GET' && url.pathname === '/api/jobs') {
+    if (!input.jobApp) return todoRoute(input.method, url.pathname);
+    return { status: 200, body: await input.jobApp.list({ limit: 50 }) };
+  }
+
+  if (input.method === 'GET' && /^\/api\/jobs\/[^/]+$/.test(url.pathname)) {
+    if (!input.jobApp) return todoRoute(input.method, url.pathname);
+    const jobId = decodeURIComponent(url.pathname.split('/')[3] ?? '');
+    return { status: 200, body: await input.jobApp.show(jobId) };
+  }
+
+  if (input.method === 'POST' && url.pathname === '/api/tailor/quick') {
+    if (!input.companionActionApp) return todoRoute(input.method, url.pathname);
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+    const parsed = QuickTailorRequestSchema.parse(parsedJson.value);
+    return { status: 202, body: await input.companionActionApp.quickTailor(parsed) };
+  }
+
+  if (input.method === 'POST' && url.pathname === '/api/tailor/batch') {
+    if (!input.companionActionApp) return todoRoute(input.method, url.pathname);
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+    const parsed = BatchTailorRequestSchema.parse(parsedJson.value);
+    return { status: 202, body: await input.companionActionApp.batchTailor(parsed) };
+  }
+
+  if (input.method === 'POST' && url.pathname === '/api/fill/quick') {
+    if (!input.companionActionApp || !input.browserManager) return todoRoute(input.method, url.pathname);
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+    const parsed = QuickFillRequestSchema.parse(parsedJson.value);
+    const page = await input.browserManager.getPage(String(parsed.tabId ?? ''));
+    return { status: 202, body: await input.companionActionApp.quickFill({ ...parsed, page }) };
+  }
+
+  if (input.method === 'GET' && url.pathname === '/api/config') {
+    if (!input.configApp) return todoRoute(input.method, url.pathname);
+    return {
+      status: 200,
+      body: {
+        defaultProfile: await input.configApp.get('default'),
+        maxStagehandSessions: 3,
+        browserMode: 'wolf persistent profile',
+        aiModel: await input.configApp.get('tailor.model'),
+      },
+    };
+  }
+
+  if (input.method === 'POST' && url.pathname === '/api/config') {
+    if (!input.configApp) return todoRoute(input.method, url.pathname);
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+    const body = parsedJson.value as Record<string, unknown>;
+    if (typeof body.defaultProfile === 'string') {
+      await input.configApp.set('default', body.defaultProfile);
+    }
+    return { status: 200, body: { status: 'saved' } };
+  }
+
+  if (input.method === 'GET' && url.pathname === '/api/status') {
+    if (!input.statusApp) return todoRoute(input.method, url.pathname);
+    return { status: 200, body: await input.statusApp.getSummary() };
+  }
+
+  if (input.method === 'GET' && url.pathname === '/api/profile') {
+    if (!input.profileApp) return todoRoute(input.method, url.pathname);
+    return { status: 200, body: await input.profileApp.list() };
+  }
 
   if (isCommandSurfaceStub(input.method, url.pathname)) {
     return todoRoute(input.method, url.pathname);
@@ -417,6 +577,41 @@ function todoRouteSpec(method: string, pathname: string): { todo: string; nextSt
   return specs.find((spec) => spec.matches) ?? null;
 }
 
+async function companionReadyJobs(
+  jobRepository: JobRepository,
+  companyRepository: CompanyRepository,
+): Promise<Array<{ id: string; jobId: string; title: string; company: string; url: string; tabId: string; windowId: null }>> {
+  const jobs = await jobRepository.query({ limit: 50 });
+  const result = [];
+  for (const job of jobs) {
+    const company = await companyRepository.get(job.companyId);
+    result.push({
+      id: job.id,
+      jobId: job.id,
+      title: job.title,
+      company: company?.name ?? 'Unknown company',
+      url: job.url,
+      tabId: `job-${job.id}`,
+      windowId: null,
+    });
+  }
+  return result;
+}
+
+async function focusCompanionTab(
+  tabId: string,
+  browserManager: ServeBrowserManager,
+  jobRepository?: JobRepository,
+) {
+  if (tabId.startsWith('job-') && jobRepository) {
+    const jobId = tabId.slice('job-'.length);
+    const job = await jobRepository.get(jobId);
+    if (!job) throw new Error(`Job not found: ${jobId}`);
+    return browserManager.openUrl(job.url);
+  }
+  return browserManager.focusTab(tabId);
+}
+
 async function readRequestBody(req: http.IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -446,4 +641,17 @@ function writeJson(res: http.ServerResponse, status: number, body: unknown): voi
   res.setHeader('content-type', 'application/json; charset=utf-8');
   res.writeHead(status);
   res.end(JSON.stringify(body));
+}
+
+function writeResult(res: http.ServerResponse, result: HttpRouteResult): void {
+  if (result.raw) {
+    writeCors(res);
+    for (const [key, value] of Object.entries(result.headers ?? {})) {
+      res.setHeader(key, value);
+    }
+    res.writeHead(result.status);
+    res.end(result.body as Buffer);
+    return;
+  }
+  writeJson(res, result.status, result.body);
 }

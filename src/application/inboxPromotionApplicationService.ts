@@ -8,9 +8,10 @@ export interface InboxPromoteOptions {
 
 export interface InboxPromoteResult {
   batchId: string | null;
-  status: 'empty' | 'queued';
+  status: 'empty' | 'queued' | 'completed';
   itemCount: number;
   shardCount: number;
+  jobIds?: string[];
 }
 
 export interface InboxPromotionApplicationService {

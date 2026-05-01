@@ -6,8 +6,9 @@ import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
 import type { BackgroundAiBatchRepository } from '../../repository/backgroundAiBatchRepository.js';
 import type { InboxItem, InboxRepository } from '../../repository/inboxRepository.js';
 
-// Inbox promotion is paid work, so it must be explicitly requested and stored
-// as background AI batch state rather than happening automatically on capture.
+// Inbox promotion is explicit user-triggered work. It may be backed by paid AI
+// batch state, but the local companion MVP can promote simple manual pages
+// directly into jobs without running provider batch plumbing.
 describe('InboxPromotionApplicationServiceImpl', () => {
   // Logging tests install a live pino sink, so reset the shared facade between
   // examples.
@@ -30,8 +31,8 @@ describe('InboxPromotionApplicationServiceImpl', () => {
     };
   }
 
-  // Empty raw queues should not create a fake paid batch. The UI can report
-  // that there is nothing to promote.
+  // Empty raw queues should not create a fake batch. The UI can report that
+  // there is nothing to process.
   it('returns empty when no raw inbox items are available', async () => {
     const inboxRepo = {
       listByStatus: vi.fn(async () => []),
@@ -47,8 +48,8 @@ describe('InboxPromotionApplicationServiceImpl', () => {
     expect(batchRepo.saveBatch).not.toHaveBeenCalled();
   });
 
-  // One user request creates a durable batch, shards of at most 20 items, and
-  // item records that point back to inbox_items via subject_id.
+  // Without a direct job-creation service, one user request creates durable
+  // batch state and item records that point back to inbox_items via subject_id.
   it('creates queued background AI batch state for raw inbox items', async () => {
     const rawItems = [makeItem('a'), makeItem('b'), makeItem('c')];
     const inboxRepo = {
@@ -112,6 +113,43 @@ describe('InboxPromotionApplicationServiceImpl', () => {
       batchId: result.batchId,
       itemCount: 1,
       shardCount: 1,
+    });
+  });
+
+  // When the companion has AddApplicationService available, Process Inbox is
+  // usable without waiting for provider batch plumbing: raw manual pages become
+  // tracked jobs and the inbox item is marked promoted.
+  it('can promote raw manual pages directly into jobs', async () => {
+    const rawItems = [makeItem('a')];
+    const inboxRepo = {
+      listByStatus: vi.fn(async () => rawItems),
+      updateStatus: vi.fn(async () => undefined),
+    } as unknown as InboxRepository;
+    const batchRepo = {
+      saveBatch: vi.fn(async () => undefined),
+      saveShard: vi.fn(async () => undefined),
+      saveItem: vi.fn(async () => undefined),
+    } as unknown as BackgroundAiBatchRepository;
+    const addApp = {
+      add: vi.fn(async () => ({ jobId: 'job-1' })),
+    };
+    const app = new InboxPromotionApplicationServiceImpl(inboxRepo, batchRepo, addApp);
+
+    const result = await app.promoteRawInbox({ limit: 20, provider: 'anthropic', shardSize: 20 });
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      jobIds: ['job-1'],
+    });
+    expect(addApp.add).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Role a',
+      url: 'https://example.com/jobs/a',
+      jdText: 'a',
+    }));
+    expect(inboxRepo.updateStatus).toHaveBeenCalledWith('a', {
+      status: 'promoted',
+      jobId: 'job-1',
+      error: null,
     });
   });
 });

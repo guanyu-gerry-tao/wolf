@@ -1,5 +1,6 @@
 import type { BackgroundAiBatchStatus } from '../../repository/backgroundAiBatchRepository.js';
 import type { BackgroundAiBatchRepository } from '../../repository/backgroundAiBatchRepository.js';
+import type { CompanionActionApplicationService } from '../companionActionApplicationService.js';
 import type {
   CompanionRunStatus,
   RunStatusApplicationService,
@@ -7,10 +8,16 @@ import type {
 } from '../runStatusApplicationService.js';
 
 export class RunStatusApplicationServiceImpl implements RunStatusApplicationService {
-  constructor(private readonly backgroundAiBatchRepository: BackgroundAiBatchRepository) {}
+  constructor(
+    private readonly backgroundAiBatchRepository: BackgroundAiBatchRepository,
+    private readonly companionActionApplicationService?: CompanionActionApplicationService,
+  ) {}
 
   /** @inheritdoc */
   async getRunStatus(runId: string): Promise<RunStatusResult> {
+    const localRun = await this.companionActionApplicationService?.getRunStatus(runId);
+    if (localRun) return localRun;
+
     const batch = await this.backgroundAiBatchRepository.getBatch(runId);
     if (!batch) {
       return {
