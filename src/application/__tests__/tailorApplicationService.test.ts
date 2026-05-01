@@ -208,7 +208,6 @@ function makeSvc(overrides: {
     overrides.rewriteSvc ?? makeRewriteSvc(),
     overrides.briefSvc ?? makeBriefSvc(),
     DEFAULT_AI,
-    'professional',
   );
 }
 
@@ -245,7 +244,6 @@ describe('TailorApplicationService', () => {
       expect.any(String),
       FAKE_PROFILE,
       FAKE_BRIEF,
-      'professional',
       DEFAULT_AI,
     );
   });

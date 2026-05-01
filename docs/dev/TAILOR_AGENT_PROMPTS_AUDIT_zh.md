@@ -225,13 +225,12 @@ HTML 会被注入到一个已经加载 Inter 字体和基础 CSS 的页面。
 
 ## Agent 3 - Cover Letter Writer
 
-> 审计事实：运行时调用 `ResumeCoverLetterServiceImpl.generateCoverLetter(resumePool, jdText, profile, brief, tone, aiConfig)`。
+> 审计事实：运行时调用 `ResumeCoverLetterServiceImpl.generateCoverLetter(resumePool, jdText, profile, brief, aiConfig)`。
 > 这个 agent 实际收到的是：
 > - `brief`：Agent 1 生成并写入 `src/tailoring-brief.md` 的 Markdown brief。
 > - `resumePool`：从 `profiles/<name>/profile.toml` 渲染出来的 Markdown resume pool，不是旧版独立 `resume_pool.md` 文件。
 > - `jdText`：job 的 raw JD prose，也就是 `description_md` / `--jd-text` 保存下来的完整 JD 正文。
 > - `profile`：`Profile { name, md }`，其中 `md` 是从 `profile.toml` 渲染出来的 Markdown profile view，不是旧版独立 `profile.md` 文件。
-> - `tone`：`wolf.toml` 中的 `tailor.defaultCoverLetterTone`。
 > - `aiConfig`：本次 tailor 使用的 provider/model。
 >
 > 审计事实：这个 agent 当前**没有**收到单独的 canonical job metadata section。
@@ -250,8 +249,6 @@ HTML 会被注入到一个已经加载 Inter 字体和基础 CSS 的页面。
    - `# Identity > Preferred name`（如果为空则 fallback 到 `Legal first name`）+ `Legal last name` -> header 和 sign-off 中的 display name
    - `# Contact > Email`、`# Contact > Phone`
    忽略其他所有 section。Address / demographics / job preferences / clearance / links 不属于 cover letter。
-5. 一个 tone
-
 brief 已经决定了 angle。执行它。和另一个 writer 用同一份 brief 产出的并行 resume 保持一致。
 
 只输出 cover letter 的 HTML body - 不要 `<html>`、`<head>` 或 `<body>` 标签。
@@ -286,7 +283,7 @@ Required HTML structure:
 
 - 正好写 3 个短段落：opening（使用 brief 的 Cover Letter Angle）、body（brief 的 2-3 个 Core Themes）、closing（call to action）。
 - 目标 250-300 词。通常目标是一页；短信底部留白也可以，内容真的需要流到第二页也可以。renderer 不压缩也不填充 - 按自然长度写，相信布局。
-- 匹配请求的 tone。
+- 使用 professional、concise、clear 的默认语气；不要 flatter employer，也不要过度 enthusiastic。
 - 引用具体 JD requirements - 不要写泛泛而谈的 letter。
 - 不要编造 resume pool 中不存在的 skill、title 或 company。
 - 只输出 raw HTML - 不要 markdown fence，不要解释文本。

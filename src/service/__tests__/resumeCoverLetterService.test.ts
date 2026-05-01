@@ -93,13 +93,12 @@ describe('ResumeCoverLetterServiceImpl', () => {
     expect(options).toEqual({ provider: 'openai', model: 'gpt-4o' });
   });
 
-  const TONE = 'professional';
-
-  // Cover letter: prompt must include brief, JD, profile, and tone.
+  // Cover letter: prompt must include brief, JD, and profile. Voice defaults
+  // live in the built-in cover-letter protocol prompt, not in wolf.toml.
   it('calls aiClient with prompt containing brief, JD and profile for cover letter', async () => {
     vi.mocked(aiClient).mockResolvedValue('<p>Dear Hiring Manager, I am excited...</p>');
     const svc = new ResumeCoverLetterServiceImpl();
-    const result = await svc.generateCoverLetter(RESUME_POOL, JD_TEXT, PROFILE, BRIEF, TONE, AI_CONFIG);
+    const result = await svc.generateCoverLetter(RESUME_POOL, JD_TEXT, PROFILE, BRIEF, AI_CONFIG);
     expect(result).toContain('Dear Hiring Manager');
     const [prompt, systemPrompt] = vi.mocked(aiClient).mock.calls[0];
     expect(prompt).toContain(JD_TEXT);
@@ -108,15 +107,16 @@ describe('ResumeCoverLetterServiceImpl', () => {
     expect(prompt).toContain('Alex');
     expect(prompt).toContain('Rivera');
     expect(prompt).toContain(BRIEF);
-    expect(prompt).toContain(TONE);
+    expect(prompt).not.toContain('## Tone');
     expect(systemPrompt).toContain('cover letter');
+    expect(systemPrompt).toContain('professional, concise, clear voice');
   });
 
   it('throws if aiClient returns empty string for cover letter', async () => {
     vi.mocked(aiClient).mockResolvedValue('');
     const svc = new ResumeCoverLetterServiceImpl();
     await expect(
-      svc.generateCoverLetter(RESUME_POOL, JD_TEXT, PROFILE, BRIEF, TONE, AI_CONFIG),
+      svc.generateCoverLetter(RESUME_POOL, JD_TEXT, PROFILE, BRIEF, AI_CONFIG),
     ).rejects.toThrow('empty');
   });
 

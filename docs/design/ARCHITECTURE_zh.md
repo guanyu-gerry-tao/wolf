@@ -186,7 +186,7 @@ CLI 解析 --job abc123 [--hint "focus on ML ops"]
                   → Anthropic API → 返回 HTML body
                   → [服务层] RenderService.renderPdf(html)       # Playwright + fit() 二分搜索
                   → 写入 data/jobs/<dir>/{src/resume.html, resume.pdf}
-              → [服务层] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+              → [服务层] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, ai)
                   → Anthropic API → 返回 HTML body
                   → [服务层] RenderService.renderCoverLetterPdf(html)  # Playwright，自然布局（不走 fit）
                   → 写入 data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
@@ -504,7 +504,7 @@ CLI 解析参数
           → Claude → HTML body
           → RenderService.renderPdf(html)  # Playwright + fit() 二分搜索
           → 写入 data/jobs/<dir>/{src/resume.html, resume.pdf}
-        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, ai)
           → Claude → HTML body
           → RenderService.renderCoverLetterPdf(html)  # Playwright，自然布局（不走 fit）
           → 写入 data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}

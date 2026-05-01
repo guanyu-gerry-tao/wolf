@@ -33,7 +33,6 @@ export interface ResumeCoverLetterService {
    * @param jdText - Full job description text
    * @param profile - Candidate identity (name + profile.md content)
    * @param brief - Markdown tailoring brief produced by TailoringBriefService
-   * @param tone - e.g. "professional", "conversational"
    * @param aiConfig - Resolved provider and model for this call
    * @returns HTML body string (no <html>/<head>/<body> tags)
    * @throws if the AI returns an empty response
@@ -43,7 +42,6 @@ export interface ResumeCoverLetterService {
     jdText: string,
     profile: Profile,
     brief: string,
-    tone: string,
     aiConfig: AiConfig,
   ): Promise<string>;
 }

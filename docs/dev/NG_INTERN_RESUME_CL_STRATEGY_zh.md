@@ -567,6 +567,8 @@ userPrompt =
 
 ## Workplan：去掉项目里的 tone，写死默认 CL 语气
 
+状态：已执行。
+
 目标：删除 `wolf.toml` / runtime 调用链里的 `defaultCoverLetterTone`，不再把 `## Tone` 作为一个
 独立 prompt section 注入。默认 cover letter 语气由内置协议 prompt 写死；用户若要调整风格，改
 `profiles/<name>/prompts/cover-letter-strategy.md`。
@@ -578,13 +580,13 @@ userPrompt =
 - `cover-letter-strategy.md` 是用户可编辑的 tone / voice / naming / length surface。
 - `## Tone` 从 prompt 清单、当前 runtime prompt 和目标 prompt map 中移除。
 
-现有但计划删除的旧输入：
+已删除的旧输入：
 
-| Prompt / section | 当前代码位置 | 当前触发时机 | 删除理由 |
+| Prompt / section | 原代码位置 | 原触发时机 | 删除理由 |
 |---|---|---|---|
-| `## Tone` | `generateCoverLetter(...)` 中 `toneLine` | CL AI call 前，从 `wolf.toml` 读取 `tailor.defaultCoverLetterTone` | 信息量低；应改为内置默认语气 + `cover-letter-strategy.md` |
+| `## Tone` | `generateCoverLetter(...)` 中 `toneLine` | CL AI call 前，从 `wolf.toml` 读取 `tailor.defaultCoverLetterTone` | 信息量低；已改为内置默认语气 + `cover-letter-strategy.md` |
 
-需要修改：
+已修改：
 
 1. `src/utils/types/index.ts` 或当前 `AppConfig` 类型定义
    - 删除 `tailor.defaultCoverLetterTone`。

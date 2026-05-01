@@ -127,7 +127,6 @@ function wireContext(
   profileRepository: ProfileRepository,
   workspaceDir: string,
   defaultAiConfig: AiConfig,
-  defaultCoverLetterTone: string,
 ): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
@@ -148,7 +147,7 @@ function wireContext(
   const briefService = new TailoringBriefServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
     jobRepo, profileRepository, renderService, rewriteService, briefService,
-    defaultAiConfig, defaultCoverLetterTone,
+    defaultAiConfig,
   );
 
   // Each entry here is one module's contribution to the `wolf status`
@@ -232,10 +231,9 @@ export function createAppContext(): AppContext {
   // Load config synchronously so default-parameter pattern in commands works.
   const config = loadConfigSync();
   const defaultAiConfig: AiConfig = parseModelRef(config.tailor.model);
-  const defaultCoverLetterTone = config.tailor.defaultCoverLetterTone;
 
   return wireContext(
-    sqlite, profileRepository, workspaceDir, defaultAiConfig, defaultCoverLetterTone,
+    sqlite, profileRepository, workspaceDir, defaultAiConfig,
   );
 }
 
@@ -255,6 +253,6 @@ export function createTestAppContext(): AppContext {
   const profileRepository = new InMemoryProfileRepositoryImpl();
   const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
   return wireContext(
-    sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, 'professional',
+    sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig,
   );
 }

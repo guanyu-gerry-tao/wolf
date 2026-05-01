@@ -271,7 +271,7 @@ Write guidance / notes as plain Markdown below the alert header.
 
 ### wolf.toml — workspace settings
 
-Controls AI model, scoring thresholds, and tone defaults.
+Controls AI models and scoring thresholds.
 Location: `wolf.toml` in this directory.
 
 <details>
@@ -287,7 +287,6 @@ maxResults = 50
 
 [tailor]
 model = "anthropic/claude-sonnet-4-6"
-defaultCoverLetterTone = "professional"
 
 [score]
 model = "anthropic/claude-sonnet-4-6"

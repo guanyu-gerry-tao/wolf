@@ -192,7 +192,7 @@ CLI parses --job abc123 [--hint "focus on ML ops"]
                   → Anthropic API → returns HTML body
                   → [Service] RenderService.renderPdf(html)       # Playwright + fit() binary search
                   → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
-              → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+              → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, ai)
                   → Anthropic API → returns HTML body
                   → [Service] RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
                   → writeFile data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
@@ -546,7 +546,7 @@ CLI parses args
           → Claude → HTML body
           → RenderService.renderPdf(html)  # Playwright + fit() binary search
           → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
-        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, ai)
           → Claude → HTML body
           → RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
           → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}

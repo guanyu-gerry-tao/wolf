@@ -228,7 +228,7 @@ Actor 为"User"（通过 CLI 操作的人类用户）或"Agent"（通过 MCP 操
 - 5 - **简历 writer**（并行分支 2a） —— Claude 消费 pool + JD + profile + brief，返回 HTML body，wolf 写入 `data/jobs/<dir>/src/resume.html`。
 - 6 - wolf 通过 Playwright Chromium 把 `resume.html` 渲染成 PDF，使用确定性的 **fit-loop**：对 CSS 变量（`--font-size`、`--line-height`、`--margin-in`）做二分搜索，把版面压缩（或扩张）到刚好填满一张 Letter，受配置好的下界/上界约束。PDF 写入 `data/jobs/<dir>/resume.pdf`。
    - 6.1 - 若连 floor 参数都装不下 → 抛 `CannotFitError`，要求用户手动删减内容。整条流水线**不依赖任何系统级工具**（无 xelatex / pdfinfo 等）—— Playwright 自带 Chromium。
-- 7 - **求职信 writer**（并行分支 2b） —— Claude 消费 pool + JD + profile + brief + tone，返回 HTML body，wolf 写入 `data/jobs/<dir>/src/cover_letter.html`。
+- 7 - **求职信 writer**（并行分支 2b） —— Claude 消费 pool + JD + profile + brief，返回 HTML body，wolf 写入 `data/jobs/<dir>/src/cover_letter.html`。
 - 8 - wolf 通过 Playwright Chromium 把 `cover_letter.html` 渲染成 PDF，**自然 CSS 布局**（不跑 fit-loop；多页输出可接受）。PDF 写入 `data/jobs/<dir>/cover_letter.pdf`。
    - 8.1 - 若设置了 `--no-cover-letter` → 跳过步骤 7–8。
 - 9 - wolf 把 resume PDF 路径和 cover letter PDF 路径写回 Job 行，然后打印每条职位的产物路径汇总。Tailor 失败以抛错形式上抛，错误码为 `tailor_resume_error` / `tailor_cover_letter_error`，由调用方决定如何记录。（Tailor 自身**不修改** `Job.status` —— 那个字段由应用生命周期管理。）

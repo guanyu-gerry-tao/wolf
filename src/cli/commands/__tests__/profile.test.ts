@@ -19,7 +19,7 @@ const CONFIG: AppConfig = {
   schemaVersion: 1,
   default: 'default',
   hunt: { minScore: 0.5, maxResults: 50 },
-  tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
+  tailor: { model: 'anthropic/claude-sonnet-4-6' },
   score: { model: 'anthropic/claude-sonnet-4-6' },
   reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
   fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
