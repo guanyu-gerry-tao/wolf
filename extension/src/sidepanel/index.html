@@ -13,8 +13,19 @@
           <p class="eyebrow">wolf companion</p>
           <h1>Apply Console</h1>
         </div>
-        <span id="connectionBadge" class="status-badge status-badge--idle">Offline</span>
+        <div class="top-actions">
+          <button id="configButton" class="ghost-button" type="button">Config</button>
+          <span id="connectionBadge" class="status-badge status-badge--idle">Offline</span>
+        </div>
       </header>
+
+      <aside id="runtimeOverlay" class="runtime-overlay" hidden aria-live="polite">
+        <div class="runtime-overlay-card">
+          <p class="runtime-warning">⚠️ wolf browser is not ready</p>
+          <p id="runtimeOverlayDetail">Start the browser from wolf serve, then reconnect.</p>
+          <p id="runtimeOverlayStatus" class="muted">Current status: not_started</p>
+        </div>
+      </aside>
 
       <section class="panel connection-panel" aria-label="daemon connection">
         <label class="field-label" for="portInput">Port</label>
@@ -26,7 +37,7 @@
         <p id="connectionDetail" class="muted">Waiting for local wolf serve.</p>
       </section>
 
-      <section class="panel current-panel" aria-label="current page actions">
+      <section id="currentPanel" class="panel current-panel" aria-label="current page actions">
         <div class="section-title">
           <h2>Current Page</h2>
           <span id="currentTabLabel" class="muted">No tab bound</span>
@@ -34,10 +45,73 @@
         <p id="duplicateNotice" class="page-notice" hidden></p>
         <div class="action-grid">
           <button id="importCurrentPageButton" type="button">Import Page</button>
-          <button id="promoteInboxButton" type="button">Promote with AI</button>
+          <button id="processInboxButton" type="button">Process Inbox</button>
           <button id="previewResumeButton" type="button">Resume</button>
           <button id="previewCoverLetterButton" type="button">Cover Letter</button>
+          <button id="tailorInstantButton" type="button">Tailor this job instantly</button>
+          <button id="refreshRunStatusButton" type="button">Refresh status</button>
+          <button id="batchTailorButton" type="button">Batch Tailor</button>
+          <button id="autofillQuickButton" type="button">Autofill this page</button>
         </div>
+        <div id="tailorPromptBox" class="prompt-box" hidden>
+          <label class="field-label" for="tailorPromptInput">Tailor instructions</label>
+          <textarea id="tailorPromptInput" rows="4" placeholder="Optional: emphasize backend systems, keep education short, target internship tone..."></textarea>
+          <p class="prompt-help">Optional one-shot instructions. Editing does not remember previous requests, so include all requirements and changes in this message.</p>
+        </div>
+        <div id="fillPromptBox" class="prompt-box" hidden>
+          <label class="field-label" for="fillPromptInput">Autofill instructions</label>
+          <textarea id="fillPromptInput" rows="4" placeholder="Optional: prefer San Francisco, use work authorization answer from profile..."></textarea>
+          <p class="prompt-help">Optional page-specific instructions. wolf will fill the form but will not submit it.</p>
+        </div>
+      </section>
+
+      <section id="artifactEditPanel" class="panel edit-panel" aria-label="artifact edit" hidden>
+        <div class="panel-heading-row">
+          <div>
+            <p class="eyebrow">Artifact Editor</p>
+            <h2 id="artifactEditTitle">Edit Resume</h2>
+          </div>
+          <button id="backToCurrentButton" class="ghost-button" type="button">Back</button>
+        </div>
+        <p class="prompt-warning">One-shot edit only. This editor does not remember previous changes. Include the exact edits and requirements you want in this message.</p>
+        <label class="field-label" for="artifactEditPromptInput">Edit instructions</label>
+        <textarea id="artifactEditPromptInput" rows="7" placeholder="Example: make the project bullets more backend-heavy, remove coursework, and keep it one page."></textarea>
+        <button id="regenerateArtifactButton" type="button">Regenerate Resume</button>
+      </section>
+
+      <section id="configPanel" class="panel config-panel" aria-label="wolf companion config" hidden>
+        <div class="panel-heading-row">
+          <div>
+            <p class="eyebrow">Settings</p>
+            <h2>Companion Config</h2>
+          </div>
+          <button id="closeConfigButton" class="ghost-button" type="button">Back</button>
+        </div>
+        <div class="form-section">
+          <label class="field-label" for="configPortInput">Serve port</label>
+          <input id="configPortInput" inputmode="numeric" maxlength="5" pattern="[0-9]{4,5}" value="47823" />
+          <p class="form-help">Copy the port printed by wolf serve. Saving also updates the quick-connect field above.</p>
+        </div>
+        <div class="form-section">
+          <label class="field-label" for="defaultProfileInput">Default profile</label>
+          <input id="defaultProfileInput" value="default" />
+          <p class="form-help">Profile write support is TODO; this field is kept visible so the final HTTP shape is clear.</p>
+        </div>
+        <div class="form-section">
+          <label class="field-label" for="stagehandSessionsInput">Max parallel Stagehand sessions</label>
+          <input id="stagehandSessionsInput" inputmode="numeric" maxlength="2" value="3" />
+          <p class="form-help">Default is 3. Future serve config may allow up to 10 local sessions.</p>
+        </div>
+        <div class="form-section">
+          <label class="field-label" for="browserModeInput">Browser instance mode</label>
+          <input id="browserModeInput" value="wolf persistent profile" />
+          <p class="form-help">wolf should automate only the wolf-controlled Chrome instance, not the user's main Chrome profile.</p>
+        </div>
+        <div class="form-section">
+          <p class="field-label">AI provider/model</p>
+          <p id="aiProviderDisplay" class="form-static">Not loaded yet.</p>
+        </div>
+        <button id="saveConfigButton" type="button">Save Config</button>
       </section>
 
       <section class="queue" aria-label="application queue">

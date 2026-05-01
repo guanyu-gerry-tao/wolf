@@ -2,6 +2,7 @@ const chromeApi = globalThis.chrome;
 const hasChromeApi = Boolean(chromeApi?.runtime?.id);
 const DEFAULT_DAEMON_PORT = '47823';
 const HEARTBEAT_MS = 5_000;
+const RUN_POLL_MS = 5_000;
 const IMPORT_PAGE_LABEL = 'Import Page';
 const AGGREGATOR_PLATFORMS = [
   {
@@ -28,35 +29,69 @@ const AGGREGATOR_PLATFORMS = [
 const state = {
   port: DEFAULT_DAEMON_PORT,
   connection: { status: 'idle', detail: 'Waiting for local wolf serve.' },
+  runtime: {
+    browser: {
+      status: 'unknown',
+      detail: 'Connect to wolf serve first.',
+      requiredAction: 'Start wolf serve, then reconnect.',
+    },
+  },
   currentTab: null,
   currentPageStatus: { kind: 'normal', detail: null },
   currentJobId: 'demo-ready-1',
+  view: 'main',
+  activeArtifactKind: null,
+  activeRunId: null,
+  runPollTimer: null,
+  artifacts: {
+    resume: { status: 'not_ready', url: null },
+    coverLetter: { status: 'not_ready', url: null },
+  },
   cursors: { filling: 0, ready: 0, stuck: 0 },
   queues: {
-    filling: [
-      { id: 'demo-fill-1', title: 'Frontend Engineer', company: 'Northstar Labs', tabId: null, windowId: null },
-      { id: 'demo-fill-2', title: 'AI Product Intern', company: 'Fieldnote Systems', tabId: null, windowId: null },
-    ],
-    ready: [
-      { id: 'demo-ready-1', title: 'Software Engineer', company: 'Riverline Health', tabId: null, windowId: null },
-    ],
-    stuck: [
-      { id: 'demo-stuck-1', title: 'Platform Engineer', company: 'Tandem Works', tabId: null, windowId: null },
-    ],
+    filling: [],
+    ready: [],
+    stuck: [],
   },
 };
 
 const els = {
+  configButton: document.querySelector('#configButton'),
+  currentPanel: document.querySelector('#currentPanel'),
+  artifactEditPanel: document.querySelector('#artifactEditPanel'),
+  artifactEditTitle: document.querySelector('#artifactEditTitle'),
+  artifactEditPromptInput: document.querySelector('#artifactEditPromptInput'),
+  regenerateArtifactButton: document.querySelector('#regenerateArtifactButton'),
+  backToCurrentButton: document.querySelector('#backToCurrentButton'),
+  configPanel: document.querySelector('#configPanel'),
+  closeConfigButton: document.querySelector('#closeConfigButton'),
+  configPortInput: document.querySelector('#configPortInput'),
+  defaultProfileInput: document.querySelector('#defaultProfileInput'),
+  stagehandSessionsInput: document.querySelector('#stagehandSessionsInput'),
+  browserModeInput: document.querySelector('#browserModeInput'),
+  aiProviderDisplay: document.querySelector('#aiProviderDisplay'),
+  saveConfigButton: document.querySelector('#saveConfigButton'),
   portInput: document.querySelector('#portInput'),
   reconnectButton: document.querySelector('#reconnectButton'),
   connectionBadge: document.querySelector('#connectionBadge'),
   connectionDetail: document.querySelector('#connectionDetail'),
+  runtimeOverlay: document.querySelector('#runtimeOverlay'),
+  runtimeOverlayDetail: document.querySelector('#runtimeOverlayDetail'),
+  runtimeOverlayStatus: document.querySelector('#runtimeOverlayStatus'),
   currentTabLabel: document.querySelector('#currentTabLabel'),
   duplicateNotice: document.querySelector('#duplicateNotice'),
   importCurrentPageButton: document.querySelector('#importCurrentPageButton'),
-  promoteInboxButton: document.querySelector('#promoteInboxButton'),
+  processInboxButton: document.querySelector('#processInboxButton'),
   previewResumeButton: document.querySelector('#previewResumeButton'),
   previewCoverLetterButton: document.querySelector('#previewCoverLetterButton'),
+  tailorInstantButton: document.querySelector('#tailorInstantButton'),
+  refreshRunStatusButton: document.querySelector('#refreshRunStatusButton'),
+  batchTailorButton: document.querySelector('#batchTailorButton'),
+  autofillQuickButton: document.querySelector('#autofillQuickButton'),
+  tailorPromptBox: document.querySelector('#tailorPromptBox'),
+  tailorPromptInput: document.querySelector('#tailorPromptInput'),
+  fillPromptBox: document.querySelector('#fillPromptBox'),
+  fillPromptInput: document.querySelector('#fillPromptInput'),
   activityLog: document.querySelector('#activityLog'),
   columns: {
     filling: {
@@ -113,11 +148,22 @@ async function storePort(port) {
 }
 
 function wireEvents() {
+  els.configButton.addEventListener('click', openConfig);
+  els.closeConfigButton.addEventListener('click', showMainView);
+  els.saveConfigButton.addEventListener('click', saveConfig);
+  els.backToCurrentButton.addEventListener('click', showMainView);
+  els.regenerateArtifactButton.addEventListener('click', regenerateArtifact);
   els.reconnectButton.addEventListener('click', reconnect);
   els.importCurrentPageButton.addEventListener('click', importCurrentPage);
-  els.promoteInboxButton.addEventListener('click', promoteInboxWithAi);
+  els.processInboxButton.addEventListener('click', processInboxWithAi);
   els.previewResumeButton.addEventListener('click', () => openPreview('resume'));
   els.previewCoverLetterButton.addEventListener('click', () => openPreview('cover-letter'));
+  els.tailorInstantButton.addEventListener('click', tailorThisJobInstantly);
+  els.refreshRunStatusButton.addEventListener('click', refreshActiveRunOrArtifacts);
+  els.batchTailorButton.addEventListener('click', batchTailor);
+  els.autofillQuickButton.addEventListener('click', autofillThisPage);
+  els.tailorPromptInput.addEventListener('input', renderTailorPromptState);
+  els.fillPromptInput.addEventListener('input', renderFillPromptState);
 
   document.querySelectorAll('[data-next-column]').forEach((button) => {
     button.addEventListener('click', () => focusNext(button.dataset.nextColumn));
@@ -145,6 +191,9 @@ async function reconnect() {
   try {
     const body = await pingDaemon(nonce);
     setConnection('connected', `Connected: wolf ${body.version ?? 'unknown'}`);
+    await refreshRuntimeStatus();
+    await refreshArtifactStatus();
+    await refreshQueues();
     await refreshCurrentPageStatus();
   } catch (err) {
     setConnection('disconnected', err instanceof Error ? err.message : String(err));
@@ -164,10 +213,22 @@ async function pingDaemon(nonce = Math.random().toString(36).slice(2)) {
 function startHeartbeat() {
   setInterval(() => {
     if (state.connection.status !== 'connected') return;
-    pingDaemon().catch(() => {
-      setConnection('disconnected', 'Lost connection to wolf serve.');
-    });
+    pingDaemon()
+      .then(() => refreshRuntimeStatus())
+      .catch(() => {
+        setConnection('disconnected', 'Lost connection to wolf serve.');
+      });
   }, HEARTBEAT_MS);
+}
+
+async function refreshRuntimeStatus() {
+  const res = await fetchWithTimeout(`${daemonBase()}/api/runtime/status`, {
+    method: 'GET',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const runtime = await res.json();
+  state.runtime = runtime;
+  renderConnection();
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -182,12 +243,21 @@ async function fetchWithTimeout(url, options = {}) {
 
 function setConnection(status, detail) {
   state.connection = { status, detail };
+  if (status !== 'connected') {
+    state.runtime.browser = {
+      status: 'unknown',
+      detail: 'Connect to wolf serve first.',
+      requiredAction: 'Start wolf serve, then reconnect.',
+    };
+    stopRunPolling();
+  }
   renderConnection();
   log(detail);
 }
 
 function renderAll() {
   renderConnection();
+  renderView();
   renderCurrentTab();
   renderQueues();
 }
@@ -201,14 +271,17 @@ function renderConnection() {
   }[state.connection.status];
   els.connectionDetail.textContent = state.connection.detail;
   renderDaemonActionState();
+  renderBatchTailorState();
+  renderArtifactButtons();
   renderCurrentPageStatus();
+  renderRuntimeOverlay();
 }
 
 function renderDaemonActionState() {
-  const connected = state.connection.status === 'connected';
-  const title = connected ? '' : 'Connect to wolf serve first.';
+  const ready = isRuntimeReady();
+  const title = ready ? '' : runtimeBlockReason();
   for (const button of daemonActionButtons()) {
-    button.disabled = !connected;
+    button.disabled = !ready;
     button.title = title;
   }
 }
@@ -216,10 +289,108 @@ function renderDaemonActionState() {
 function daemonActionButtons() {
   return [
     els.importCurrentPageButton,
-    els.promoteInboxButton,
+    els.processInboxButton,
     els.previewResumeButton,
     els.previewCoverLetterButton,
+    els.tailorInstantButton,
+    els.refreshRunStatusButton,
+    els.batchTailorButton,
+    els.autofillQuickButton,
+    els.regenerateArtifactButton,
   ];
+}
+
+function isRuntimeReady() {
+  return state.connection.status === 'connected' && state.runtime.browser.status === 'ready';
+}
+
+function runtimeBlockReason() {
+  if (state.connection.status !== 'connected') return 'Connect to wolf serve first.';
+  return state.runtime.browser.requiredAction ?? 'Start the browser from wolf serve, then reconnect.';
+}
+
+function renderRuntimeOverlay() {
+  const shouldShow = state.connection.status === 'connected' && state.runtime.browser.status !== 'ready';
+  els.runtimeOverlay.hidden = !shouldShow;
+  els.runtimeOverlayDetail.textContent = state.runtime.browser.requiredAction ??
+    'Start the browser from wolf serve, then reconnect.';
+  els.runtimeOverlayStatus.textContent = `Current status: ${state.runtime.browser.status}`;
+}
+
+function renderArtifactButtons() {
+  renderArtifactButton(els.previewResumeButton, 'Resume', state.artifacts.resume);
+  renderArtifactButton(els.previewCoverLetterButton, 'Cover Letter', state.artifacts.coverLetter);
+}
+
+function renderArtifactButton(button, label, artifact) {
+  button.classList.toggle('button-success', artifact.status === 'ready');
+  if (artifact.status === 'ready') {
+    button.textContent = label;
+    button.disabled = !isRuntimeReady();
+    button.title = isRuntimeReady() ? '' : runtimeBlockReason();
+    return;
+  }
+
+  button.textContent = `${label} Not Ready`;
+  button.disabled = true;
+  button.title = `${label} is not ready yet.`;
+}
+
+function renderTailorPromptState() {
+  if (els.tailorPromptBox.hidden) {
+    els.tailorInstantButton.textContent = 'Tailor this job instantly';
+    return;
+  }
+  els.tailorInstantButton.textContent = els.tailorPromptInput.value.trim()
+    ? 'Send'
+    : 'Tailor this job instantly';
+}
+
+function renderFillPromptState() {
+  if (els.fillPromptBox.hidden) {
+    els.autofillQuickButton.textContent = 'Autofill this page';
+    return;
+  }
+  els.autofillQuickButton.textContent = els.fillPromptInput.value.trim()
+    ? 'Send'
+    : 'Autofill this page';
+}
+
+function renderView() {
+  els.currentPanel.hidden = state.view !== 'main';
+  els.artifactEditPanel.hidden = state.view !== 'artifact-edit';
+  els.configPanel.hidden = state.view !== 'config';
+}
+
+function showMainView() {
+  state.view = 'main';
+  state.activeArtifactKind = null;
+  renderView();
+}
+
+async function openConfig() {
+  state.view = 'config';
+  els.configPortInput.value = state.port;
+  renderView();
+  if (state.connection.status !== 'connected') {
+    els.aiProviderDisplay.textContent = 'Connect to wolf serve to load runtime config.';
+    return;
+  }
+
+  try {
+    const body = await getJson('/api/config');
+    if (body.status === 'todo') {
+      els.aiProviderDisplay.textContent = body.todo ?? 'Config service is not implemented yet.';
+      log(body.todo ?? 'Config service is not implemented yet.');
+      return;
+    }
+    els.defaultProfileInput.value = body.defaultProfile ?? els.defaultProfileInput.value;
+    els.stagehandSessionsInput.value = String(body.maxStagehandSessions ?? els.stagehandSessionsInput.value);
+    els.browserModeInput.value = body.browserMode ?? els.browserModeInput.value;
+    els.aiProviderDisplay.textContent = body.aiModel ?? 'No AI model configured.';
+  } catch (err) {
+    els.aiProviderDisplay.textContent = err instanceof Error ? err.message : String(err);
+  }
 }
 
 function renderCurrentTab() {
@@ -239,7 +410,7 @@ function renderCurrentPageStatus() {
   els.duplicateNotice.className = 'page-notice';
   els.duplicateNotice.textContent = '';
 
-  if (state.connection.status !== 'connected') {
+  if (!isRuntimeReady()) {
     els.importCurrentPageButton.textContent = IMPORT_PAGE_LABEL;
     return;
   }
@@ -271,8 +442,9 @@ function renderQueues() {
   for (const column of Object.keys(state.queues)) {
     const items = state.queues[column];
     els.columns[column].count.textContent = String(items.length);
-    els.columns[column].list.replaceChildren(...items.map(renderQueueItem));
+    els.columns[column].list.replaceChildren(...(items.length > 0 ? items.map(renderQueueItem) : [renderEmptyQueueItem(column)]));
   }
+  renderBatchTailorState();
 }
 
 function renderQueueItem(item) {
@@ -285,6 +457,73 @@ function renderQueueItem(item) {
   meta.textContent = item.company;
   li.append(title, meta);
   return li;
+}
+
+function renderEmptyQueueItem(column) {
+  const li = document.createElement('li');
+  li.className = 'empty-state';
+  li.textContent = {
+    filling: 'No filling pages yet.',
+    ready: 'No ready jobs yet.',
+    stuck: 'No stuck jobs yet.',
+  }[column] ?? 'No items yet.';
+  return li;
+}
+
+function renderBatchTailorState() {
+  const hasJobs = collectKnownJobIds().length > 0;
+  if (!hasJobs) {
+    els.batchTailorButton.disabled = true;
+    els.batchTailorButton.title = 'No eligible jobs yet.';
+    return;
+  }
+  if (isRuntimeReady()) {
+    els.batchTailorButton.disabled = false;
+    els.batchTailorButton.title = '';
+  }
+}
+
+async function refreshQueues() {
+  if (state.connection.status !== 'connected') {
+    state.queues = { filling: [], ready: [], stuck: [] };
+    renderQueues();
+    return;
+  }
+
+  try {
+    const body = await getJson('/api/tabs');
+    if (body.status === 'todo') {
+      state.queues = { filling: [], ready: [], stuck: [] };
+      renderQueues();
+      log(body.todo ?? 'Wolf browser tab registry is not implemented yet.');
+      return;
+    }
+    state.queues = normalizeQueues(body.queues ?? body.tabs ?? {});
+  } catch (err) {
+    state.queues = { filling: [], ready: [], stuck: [] };
+    log(`Queue refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    renderQueues();
+  }
+}
+
+function normalizeQueues(rawQueues) {
+  return {
+    filling: normalizeQueueItems(rawQueues.filling),
+    ready: normalizeQueueItems(rawQueues.ready),
+    stuck: normalizeQueueItems(rawQueues.stuck),
+  };
+}
+
+function normalizeQueueItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((item, index) => ({
+    id: item.id ?? item.jobId ?? `item-${index}`,
+    title: item.title ?? 'Untitled job',
+    company: item.company ?? item.source ?? 'Unknown company',
+    tabId: item.tabId ?? null,
+    windowId: item.windowId ?? null,
+  }));
 }
 
 async function refreshCurrentTab() {
@@ -308,7 +547,7 @@ async function refreshCurrentTab() {
 async function refreshCurrentPageStatus() {
   const requestId = ++pageStatusRequestSeq;
   const currentUrl = state.currentTab?.url;
-  if (!currentUrl || state.connection.status !== 'connected') {
+  if (!currentUrl || !isRuntimeReady()) {
     setCurrentPageStatus({ kind: 'normal', detail: null });
     return;
   }
@@ -383,24 +622,27 @@ async function focusNext(column) {
   state.cursors[column] += 1;
   const item = items[index];
   state.currentJobId = item.id;
+  await refreshArtifactStatus();
 
-  if (!hasChromeApi || typeof item.tabId !== 'number') {
-    log(`Demo: ${item.company} - ${item.title}`);
+  const targetTabId = item.tabId ?? item.id;
+  const result = await postJson(`/api/tabs/${encodeURIComponent(targetTabId)}/focus`, {});
+  if (result.status === 'todo') {
+    log(result.todo ?? 'Wolf browser tab focus is not implemented yet.');
     return;
   }
-
-  if (typeof item.windowId === 'number') {
-    await chrome.windows.update(item.windowId, { focused: true });
-  }
-  await chrome.tabs.update(item.tabId, { active: true });
   log(`Focused ${item.company} - ${item.title}`);
 }
 
 async function openPreview(kind) {
-  if (!ensureConnected()) return;
+  if (!ensureReady()) return;
+  const artifact = kind === 'resume' ? state.artifacts.resume : state.artifacts.coverLetter;
+  if (artifact.status !== 'ready') {
+    log(kind === 'resume' ? 'Resume is not ready yet.' : 'Cover letter is not ready yet.');
+    return;
+  }
   const jobId = state.currentJobId;
-  const path = kind === 'resume' ? '/api/preview/resume' : '/api/preview/cover-letter';
-  const url = `${daemonBase()}${path}?jobId=${encodeURIComponent(jobId)}`;
+  const artifactPath = kind === 'resume' ? 'resume' : 'cover-letter';
+  const url = artifact.url ?? `${daemonBase()}/api/jobs/${encodeURIComponent(jobId)}/artifacts/${artifactPath}`;
 
   if (hasChromeApi) {
     await chromeApi.tabs.create({ url });
@@ -408,10 +650,55 @@ async function openPreview(kind) {
     window.open(url, '_blank', 'noopener');
   }
   log(kind === 'resume' ? 'Opened resume preview.' : 'Opened cover letter preview.');
+  setArtifactEditMode(kind);
+}
+
+function setArtifactEditMode(kind) {
+  state.view = 'artifact-edit';
+  state.activeArtifactKind = kind;
+  const label = kind === 'resume' ? 'Resume' : 'Cover Letter';
+  els.artifactEditTitle.textContent = `Edit ${label}`;
+  els.regenerateArtifactButton.textContent = `Regenerate ${label}`;
+  els.artifactEditPromptInput.value = '';
+  renderView();
+}
+
+async function refreshArtifactStatus() {
+  if (state.connection.status !== 'connected' || !state.currentJobId) {
+    state.artifacts = {
+      resume: { status: 'not_ready', url: null },
+      coverLetter: { status: 'not_ready', url: null },
+    };
+    renderArtifactButtons();
+    return;
+  }
+
+  try {
+    const res = await fetchWithTimeout(
+      `${daemonBase()}/api/jobs/${encodeURIComponent(state.currentJobId)}/artifacts`,
+      { method: 'GET' },
+    );
+    const body = await res.json().catch(() => ({}));
+    state.artifacts = {
+      resume: body.resume ?? { status: 'not_ready', url: null },
+      coverLetter: body.coverLetter ?? { status: 'not_ready', url: null },
+    };
+    if (!res.ok && body.status === 'todo') {
+      log(body.todo ?? 'Artifact readiness is not implemented yet.');
+    }
+  } catch (err) {
+    state.artifacts = {
+      resume: { status: 'not_ready', url: null },
+      coverLetter: { status: 'not_ready', url: null },
+    };
+    log(`Artifact readiness check failed: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    renderArtifactButtons();
+  }
 }
 
 async function importCurrentPage() {
-  if (!ensureConnected()) return;
+  if (!ensureReady()) return;
   if (state.currentPageStatus.kind === 'duplicate') {
     log(state.currentPageStatus.detail ?? 'Duplicate page detected. Import skipped.');
     return;
@@ -501,37 +788,258 @@ function importErrorMessage(err) {
   return message;
 }
 
-async function promoteInboxWithAi() {
-  if (!ensureConnected()) return;
+async function processInboxWithAi() {
+  if (!ensureReady()) return;
   const confirmed = window.confirm(
-    'Promote raw inbox items with AI? This may use paid batch API calls.',
+    'Process raw inbox items with AI? This may use paid batch API calls.',
   );
   if (!confirmed) {
-    log('AI promote cancelled.');
+    log('Inbox processing cancelled.');
     return;
   }
 
-  setButtonState(els.promoteInboxButton, 'Queueing...', true);
+  setButtonState(els.processInboxButton, 'Queueing...', true);
   try {
-    const result = await postJson('/api/inbox/promote', { limit: 20, shardSize: 20 });
+    const result = await postJson('/api/inbox/process', { limit: 20, shardSize: 20 });
     if (result.status === 'empty') {
-      setButtonState(els.promoteInboxButton, 'Nothing to Promote', false);
-      log('No raw inbox items to promote.');
+      setButtonState(els.processInboxButton, 'Nothing to Process', false);
+      log('No raw inbox items to process.');
       return;
     }
-    setButtonState(els.promoteInboxButton, 'Queued', false);
-    log(`AI promote queued: ${result.itemCount ?? 0} item(s), ${result.shardCount ?? 0} shard(s).`);
+    setButtonState(els.processInboxButton, 'Queued', false);
+    log(`Inbox processing queued: ${result.itemCount ?? 0} item(s), ${result.shardCount ?? 0} shard(s).`);
   } catch (err) {
-    setButtonState(els.promoteInboxButton, 'Queue Failed', false);
+    setButtonState(els.processInboxButton, 'Queue Failed', false);
     setConnection('disconnected', err instanceof Error ? err.message : String(err));
   } finally {
-    resetButtonLabelLater(els.promoteInboxButton, 'Promote with AI');
+    resetButtonLabelLater(els.processInboxButton, 'Process Inbox');
   }
 }
 
-function ensureConnected() {
-  if (state.connection.status === 'connected') return true;
-  log('Connect to wolf serve first.');
+async function batchTailor() {
+  if (!ensureReady()) return;
+  const jobIds = collectKnownJobIds();
+  if (jobIds.length === 0) {
+    log('No eligible jobs for batch tailor yet.');
+    return;
+  }
+  const confirmed = window.confirm(
+    `Batch tailor ${jobIds.length} job(s)? This may use paid batch API calls and will run in the background.`,
+  );
+  if (!confirmed) {
+    log('Batch tailor cancelled.');
+    return;
+  }
+
+  setButtonState(els.batchTailorButton, 'Queueing...', true);
+  try {
+    const result = await postJson('/api/tailor/batch', { jobIds });
+    if (result.status === 'todo') {
+      setButtonState(els.batchTailorButton, 'Batch TODO', false);
+      log(result.todo ?? 'Batch tailor is not implemented yet.');
+      return;
+    }
+    setButtonState(els.batchTailorButton, 'Batch Queued', false);
+    log(`Batch tailor started: ${result.runId ?? 'run pending'}`);
+    if (result.runId) startRunPolling(result.runId);
+  } catch (err) {
+    setButtonState(els.batchTailorButton, 'Batch Failed', false);
+    log(`Batch tailor failed: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    resetButtonLabelLater(els.batchTailorButton, 'Batch Tailor');
+  }
+}
+
+async function tailorThisJobInstantly() {
+  if (!ensureReady()) return;
+
+  if (els.tailorPromptBox.hidden) {
+    els.tailorPromptBox.hidden = false;
+    els.tailorPromptInput.focus();
+    renderTailorPromptState();
+    return;
+  }
+
+  const userPrompt = els.tailorPromptInput.value.trim();
+  setButtonState(els.tailorInstantButton, 'Sending...', true);
+  try {
+    const result = await postJson('/api/tailor/quick', {
+      jobId: state.currentJobId,
+      userPrompt,
+      artifactTargets: ['resume', 'cover_letter'],
+    });
+    els.tailorPromptBox.hidden = true;
+    els.tailorPromptInput.value = '';
+    setButtonState(els.tailorInstantButton, 'Tailoring...', true);
+    log(`Instant tailor started: ${result.runId ?? 'run pending'}`);
+    if (result.runId) startRunPolling(result.runId);
+  } catch (err) {
+    els.tailorPromptBox.hidden = true;
+    const message = err instanceof Error ? err.message : String(err);
+    setButtonState(els.tailorInstantButton, 'Tailor TODO', false);
+    log(`Instant tailor unavailable: ${message}`);
+  } finally {
+    resetButtonLabelLater(els.tailorInstantButton, 'Tailor this job instantly');
+  }
+}
+
+async function autofillThisPage() {
+  if (!ensureReady()) return;
+
+  if (els.fillPromptBox.hidden) {
+    els.fillPromptBox.hidden = false;
+    els.fillPromptInput.focus();
+    renderFillPromptState();
+    log('wolf will fill this page only. It will not submit the application.');
+    return;
+  }
+
+  const userPrompt = els.fillPromptInput.value.trim();
+  setButtonState(els.autofillQuickButton, 'Sending...', true);
+  try {
+    const result = await postJson('/api/fill/quick', {
+      jobId: state.currentJobId,
+      tabId: state.currentTab?.id ?? null,
+      userPrompt,
+    });
+    els.fillPromptBox.hidden = true;
+    els.fillPromptInput.value = '';
+    setButtonState(els.autofillQuickButton, 'Filling...', true);
+    log(`Autofill started with no auto-submit: ${result.runId ?? 'run pending'}`);
+    if (result.runId) startRunPolling(result.runId);
+  } catch (err) {
+    els.fillPromptBox.hidden = true;
+    const message = err instanceof Error ? err.message : String(err);
+    setButtonState(els.autofillQuickButton, 'Autofill TODO', false);
+    log(`Autofill unavailable: ${message}`);
+  } finally {
+    resetButtonLabelLater(els.autofillQuickButton, 'Autofill this page');
+  }
+}
+
+async function regenerateArtifact() {
+  if (!ensureReady()) return;
+  const kind = state.activeArtifactKind;
+  if (kind !== 'resume' && kind !== 'cover-letter') {
+    log('Open a resume or cover letter before regenerating.');
+    return;
+  }
+  const userPrompt = els.artifactEditPromptInput.value.trim();
+  if (!userPrompt) {
+    log('Add edit instructions before regenerating.');
+    return;
+  }
+
+  const label = kind === 'resume' ? 'Resume' : 'Cover Letter';
+  setButtonState(els.regenerateArtifactButton, 'Sending...', true);
+  try {
+    const result = await postJson('/api/artifacts/regenerate', {
+      jobId: state.currentJobId,
+      artifactType: kind === 'resume' ? 'resume' : 'cover_letter',
+      existingArtifactText: '',
+      userPrompt,
+    });
+    setButtonState(els.regenerateArtifactButton, 'Regenerating...', true);
+    log(`${label} regeneration started: ${result.runId ?? 'run pending'}`);
+    if (result.runId) startRunPolling(result.runId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    setButtonState(els.regenerateArtifactButton, 'Regenerate TODO', false);
+    log(`${label} regeneration unavailable: ${message}`);
+  } finally {
+    resetButtonLabelLater(els.regenerateArtifactButton, `Regenerate ${label}`);
+  }
+}
+
+async function refreshActiveRunOrArtifacts() {
+  if (state.activeRunId) {
+    await pollRunStatus(state.activeRunId);
+    return;
+  }
+  await refreshArtifactStatus();
+}
+
+function startRunPolling(runId) {
+  state.activeRunId = runId;
+  if (state.runPollTimer) clearInterval(state.runPollTimer);
+  state.runPollTimer = setInterval(() => {
+    pollRunStatus(runId).catch((err) => {
+      log(`Run status check failed: ${err instanceof Error ? err.message : String(err)}`);
+    });
+  }, RUN_POLL_MS);
+}
+
+async function pollRunStatus(runId) {
+  const res = await fetchWithTimeout(`${daemonBase()}/api/runs/${encodeURIComponent(runId)}`, {
+    method: 'GET',
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok && body.status === 'todo') {
+    log(body.todo ?? 'Run polling is not implemented yet.');
+    stopRunPolling();
+    return;
+  }
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  log(`Run ${runId}: ${body.status ?? 'unknown'}`);
+  if (body.artifacts) {
+    state.artifacts = {
+      resume: body.artifacts.resume ?? state.artifacts.resume,
+      coverLetter: body.artifacts.coverLetter ?? state.artifacts.coverLetter,
+    };
+    renderArtifactButtons();
+  }
+  if (['ready', 'failed'].includes(body.status)) {
+    stopRunPolling();
+    await refreshArtifactStatus();
+  }
+}
+
+function stopRunPolling() {
+  if (state.runPollTimer) clearInterval(state.runPollTimer);
+  state.runPollTimer = null;
+  state.activeRunId = null;
+}
+
+async function saveConfig() {
+  const port = els.configPortInput.value.trim();
+  if (!/^[0-9]{4,5}$/.test(port)) {
+    log('Config port must be 4-5 digits.');
+    return;
+  }
+
+  await storePort(port);
+  els.portInput.value = port;
+  setButtonState(els.saveConfigButton, 'Saving...', true);
+  try {
+    const result = await postJson('/api/config', {
+      port,
+      defaultProfile: els.defaultProfileInput.value.trim() || 'default',
+      maxStagehandSessions: Number(els.stagehandSessionsInput.value || 3),
+      browserMode: els.browserModeInput.value.trim(),
+    });
+    if (result.status === 'todo') {
+      log(result.todo ?? 'Config write is not implemented yet.');
+    } else {
+      log('Config saved.');
+    }
+  } catch (err) {
+    log(`Config save unavailable: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    setButtonState(els.saveConfigButton, 'Save Config', false);
+  }
+}
+
+function collectKnownJobIds() {
+  return Object.values(state.queues)
+    .flat()
+    .map((item) => item.id)
+    .filter(Boolean);
+}
+
+function ensureReady() {
+  if (isRuntimeReady()) return true;
+  log(runtimeBlockReason());
   return false;
 }
 
@@ -544,6 +1052,8 @@ function resetButtonLabelLater(button, label) {
   setTimeout(() => {
     button.textContent = label;
     button.disabled = false;
+    renderDaemonActionState();
+    renderArtifactButtons();
   }, 1_800);
 }
 
@@ -561,11 +1071,24 @@ async function postJson(path, body) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
+  const parsed = await res.json().catch(() => null);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status}${text ? `: ${text}` : ''}`);
+    if (parsed?.status === 'todo') return parsed;
+    throw new Error(parsed?.error ?? parsed?.todo ?? `HTTP ${res.status}`);
   }
-  return res.json().catch(() => ({}));
+  return parsed ?? {};
+}
+
+async function getJson(path) {
+  const res = await fetchWithTimeout(`${daemonBase()}${path}`, {
+    method: 'GET',
+  });
+  const parsed = await res.json().catch(() => null);
+  if (!res.ok) {
+    if (parsed?.status === 'todo') return parsed;
+    throw new Error(parsed?.error ?? parsed?.todo ?? `HTTP ${res.status}`);
+  }
+  return parsed ?? {};
 }
 
 function log(message) {

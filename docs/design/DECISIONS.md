@@ -349,7 +349,7 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **2026-04-30 — `wolf serve` is a parallel HTTP transport, not the new CLI backend**
 **Me:** The companion extension needs a persistent local daemon, but should that make the whole project HTTP-first, with CLI/MCP becoming HTTP clients?
 **AI:** Keep CLI, MCP, and HTTP as peer entry points. `wolf serve` is a long-running local HTTP daemon for browser extension calls, but it delegates to the same application services through `AppContext`; it does not replace the in-process CLI/MCP path. The CLI still runs without requiring a daemon, preserving one-shot command ergonomics and the existing workspace semantics.
-**Result:** Adopted. `src/transport/http/` holds the local HTTP layer, `ServeApplicationService` owns the daemon lifecycle, and `src/cli/commands/serve.ts` remains a thin wrapper. The initial route is `GET /api/ping`, which echoes a nonce for the companion extension connection check.
+**Result:** Adopted. `src/serve/` holds the local HTTP daemon interface, `ServeApplicationService` owns the daemon lifecycle, and `src/cli/commands/serve.ts` remains a thin wrapper. The initial route is `GET /api/ping`, which echoes a nonce for the companion extension connection check.
 
 ---
 

@@ -32,6 +32,35 @@ describe('NodeHttpServerImpl', () => {
     expect(res.body).toMatchObject({ error: 'missing nonce' });
   });
 
+  // Runtime status lets the side panel block automation until wolf owns a
+  // dedicated browser instance instead of quietly operating on the user's main
+  // Chrome profile.
+  it('serves GET /api/runtime/status with browser readiness details', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/runtime/status',
+      version: '0.1.0',
+      workspacePath: '/tmp/wolf-test/workspace',
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      version: '0.1.0',
+      workspacePath: '/tmp/wolf-test/workspace',
+      browser: {
+        status: 'not_started',
+        detail: 'Wolf browser launch is not implemented yet.',
+        requiredAction: 'Start the browser from wolf serve, then reconnect.',
+      },
+      profile: {
+        status: 'unknown',
+      },
+      features: {
+        browserInstance: false,
+      },
+    });
+  });
+
   // The side panel's "Import current page" route stores raw DOM only. The HTTP
   // layer validates the wire payload, then lets the inbox application own SQLite.
   it('routes POST /api/inbox/items to the inbox application', async () => {
@@ -134,12 +163,12 @@ describe('NodeHttpServerImpl', () => {
     });
   });
 
-  // Promote is the explicit paid step: the daemon creates background batch
+  // Process Inbox is the explicit paid step: the daemon creates background batch
   // state and returns 202 rather than doing synchronous AI/job creation.
-  it('routes POST /api/inbox/promote to the inbox promotion application', async () => {
+  it('routes POST /api/inbox/process to the inbox promotion application', async () => {
     const res = await dispatchHttpRequest({
       method: 'POST',
-      url: '/api/inbox/promote',
+      url: '/api/inbox/process',
       version: '0.1.0',
       body: JSON.stringify({ limit: 20, shardSize: 20 }),
       inboxPromotionApp: {
@@ -161,25 +190,122 @@ describe('NodeHttpServerImpl', () => {
     });
   });
 
-  // HTTP-first is being introduced as a visible surface before every command
-  // is migrated. Unwired routes should fail predictably with 501.
-  it.each([
-    ['GET', '/api/jobs'],
-    ['GET', '/api/jobs/job-1'],
-    ['POST', '/api/tailor'],
-    ['POST', '/api/score'],
-    ['POST', '/api/fill'],
-    ['GET', '/api/status'],
-    ['GET', '/api/profile'],
-  ])('returns 501 for %s %s until the command is wired', async (method, url) => {
+  // Keep the earlier MVP route as a compatibility alias while the side panel
+  // moves from "Promote" language to "Process Inbox".
+  it('keeps POST /api/inbox/promote as a compatibility alias', async () => {
     const res = await dispatchHttpRequest({
-      method,
-      url,
+      method: 'POST',
+      url: '/api/inbox/promote',
+      version: '0.1.0',
+      body: JSON.stringify({ limit: 20, shardSize: 20 }),
+      inboxPromotionApp: {
+        promoteRawInbox: async (input) => ({
+          batchId: 'batch-1',
+          status: 'queued',
+          itemCount: input.limit,
+          shardCount: 1,
+        }),
+      },
+    });
+
+    expect(res.status).toBe(202);
+    expect(res.body).toMatchObject({ batchId: 'batch-1', status: 'queued' });
+  });
+
+  // Artifact readiness has a stable response shape before the actual artifact
+  // service lands, so the side panel can render clear Not Ready buttons.
+  it('serves TODO artifact readiness with not-ready artifact slots', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/jobs/job-1/artifacts',
+      version: '0.1.0',
+    });
+
+    expect(res.status).toBe(501);
+    expect(res.body).toMatchObject({
+      status: 'todo',
+      jobId: 'job-1',
+      resume: { status: 'not_ready', url: null },
+      coverLetter: { status: 'not_ready', url: null },
+    });
+  });
+
+  // Run polling uses one shared route for inbox processing, tailor, regenerate,
+  // and fill so the side panel does not need one polling mechanism per feature.
+  it('routes GET /api/runs/:runId to the run status application when available', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/runs/run-1',
+      version: '0.1.0',
+      runStatusApp: {
+        getRunStatus: async (runId) => ({
+          runId,
+          status: 'waiting_ai',
+          type: 'tailor',
+          itemCount: 2,
+        }),
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runId: 'run-1',
+      status: 'waiting_ai',
+      type: 'tailor',
+      itemCount: 2,
+    });
+  });
+
+  // Even while quick tailor is a TODO backend, the HTTP boundary should reject
+  // malformed companion payloads instead of accepting an unusable run request.
+  it('validates prompt-powered TODO request bodies before returning TODO', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/tailor/quick',
       version: '0.1.0',
       body: '{}',
     });
 
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: 'invalid quick tailor request' });
+  });
+
+  // The companion UI is allowed to depend on stable HTTP paths before every
+  // underlying service exists. Missing services must return structured TODO
+  // responses, not vague 404s or one-off error strings.
+  it.each([
+    ['POST', '/api/browser/open', '{}'],
+    ['GET', '/api/tabs', '{}'],
+    ['POST', '/api/tabs/tab-1/focus', '{}'],
+    ['GET', '/api/runs/run-1', '{}'],
+    ['GET', '/api/jobs', '{}'],
+    ['GET', '/api/jobs/job-1', '{}'],
+    ['GET', '/api/jobs/job-1/artifacts/resume', '{}'],
+    ['GET', '/api/jobs/job-1/artifacts/cover-letter', '{}'],
+    ['POST', '/api/tailor/quick', '{"jobId":"job-1"}'],
+    ['POST', '/api/tailor/batch', '{"jobIds":["job-1"]}'],
+    ['POST', '/api/artifacts/regenerate', '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"","userPrompt":"tighten bullets"}'],
+    ['POST', '/api/fill/quick', '{"jobId":"job-1","tabId":"tab-1"}'],
+    ['GET', '/api/config', '{}'],
+    ['POST', '/api/config', '{}'],
+    ['POST', '/api/tailor', '{}'],
+    ['POST', '/api/score', '{}'],
+    ['POST', '/api/fill', '{}'],
+    ['GET', '/api/status', '{}'],
+    ['GET', '/api/profile', '{}'],
+  ])('returns 501 for %s %s until the command is wired', async (method, url, body) => {
+    const res = await dispatchHttpRequest({
+      method,
+      url,
+      version: '0.1.0',
+      body,
+    });
+
     expect(res.status).toBe(501);
-    expect(res.body).toMatchObject({ error: 'not implemented' });
+    expect(res.body).toMatchObject({
+      status: 'todo',
+      todo: expect.any(String),
+      nextStep: expect.any(String),
+    });
   });
 });

@@ -349,7 +349,7 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **2026-04-30 — `wolf serve` 是平行 HTTP transport，不是新的 CLI 后端**
 **我：** Companion extension 需要一个常驻本地 daemon，但这是否意味着整个项目都应该 HTTP-first，让 CLI/MCP 都变成 HTTP client？
 **AI：** 保持 CLI、MCP、HTTP 三个入口平行。`wolf serve` 是给浏览器扩展调用的本地常驻 HTTP daemon，但它通过 `AppContext` 委托给同一套 application service；它不替代现有 CLI/MCP 的进程内调用路径。CLI 仍然可以不启动 daemon 就直接运行，保留一次性命令体验和现有 workspace 语义。
-**结果：** 采用。`src/transport/http/` 承载本地 HTTP 层，`ServeApplicationService` 拥有 daemon 生命周期，`src/cli/commands/serve.ts` 继续保持薄 wrapper。初始 route 是 `GET /api/ping`，通过 echo nonce 支撑 companion extension 的连接检查。
+**结果：** 采用。`src/serve/` 承载本地 HTTP daemon interface，`ServeApplicationService` 拥有 daemon 生命周期，`src/cli/commands/serve.ts` 继续保持薄 wrapper。初始 route 是 `GET /api/ping`，通过 echo nonce 支撑 companion extension 的连接检查。
 
 ---
 

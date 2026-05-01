@@ -1,6 +1,6 @@
 import type { ServeApplicationService, ServeOptions } from '../serveApplicationService.js';
 import type { BackgroundAiBatchWorker } from '../backgroundAiBatchWorker.js';
-import type { HttpServer } from '../../transport/http/httpServer.js';
+import type { HttpServer } from '../../serve/httpServer.js';
 
 const BACKGROUND_WORKER_TICK_MS = 30_000;
 

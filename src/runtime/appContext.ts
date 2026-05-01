@@ -53,10 +53,11 @@ import { ServeApplicationServiceImpl } from '../application/impl/serveApplicatio
 import { InboxApplicationServiceImpl } from '../application/impl/inboxApplicationServiceImpl.js';
 import { InboxPromotionApplicationServiceImpl } from '../application/impl/inboxPromotionApplicationServiceImpl.js';
 import { BackgroundAiBatchWorkerImpl } from '../application/impl/backgroundAiBatchWorkerImpl.js';
+import { RunStatusApplicationServiceImpl } from '../application/impl/runStatusApplicationServiceImpl.js';
 import { FillServiceImpl } from '../service/impl/fillServiceImpl.js';
 import { SqliteInboxRepositoryImpl } from '../repository/impl/sqliteInboxRepositoryImpl.js';
 import { SqliteBackgroundAiBatchRepositoryImpl } from '../repository/impl/sqliteBackgroundAiBatchRepositoryImpl.js';
-import { NodeHttpServerImpl } from '../transport/http/impl/nodeHttpServerImpl.js';
+import { NodeHttpServerImpl } from '../serve/impl/nodeHttpServerImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
@@ -95,9 +96,10 @@ import type { ContextApplicationService } from '../application/contextApplicatio
 import type { InboxApplicationService } from '../application/inboxApplicationService.js';
 import type { InboxPromotionApplicationService } from '../application/inboxPromotionApplicationService.js';
 import type { BackgroundAiBatchWorker } from '../application/backgroundAiBatchWorker.js';
+import type { RunStatusApplicationService } from '../application/runStatusApplicationService.js';
 import type { FillService } from '../service/fillService.js';
 import type { ServeApplicationService } from '../application/serveApplicationService.js';
-import type { HttpServer } from '../transport/http/httpServer.js';
+import type { HttpServer } from '../serve/httpServer.js';
 import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
@@ -134,6 +136,7 @@ export interface AppContext {
   inboxApp: InboxApplicationService;
   inboxPromotionApp: InboxPromotionApplicationService;
   backgroundAiBatchWorker: BackgroundAiBatchWorker;
+  runStatusApp: RunStatusApplicationService;
   serveApp: ServeApplicationService;
   fillService: FillService;
   // config
@@ -192,7 +195,14 @@ function wireContext(
   const inboxApp = new InboxApplicationServiceImpl(inboxRepo);
   const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(inboxRepo, backgroundAiBatchRepo);
   const backgroundAiBatchWorker = new BackgroundAiBatchWorkerImpl(backgroundAiBatchRepo);
-  const httpServer = new NodeHttpServerImpl({ version: WOLF_VERSION, inboxApp, inboxPromotionApp });
+  const runStatusApp = new RunStatusApplicationServiceImpl(backgroundAiBatchRepo);
+  const httpServer = new NodeHttpServerImpl({
+    version: WOLF_VERSION,
+    workspacePath: workspaceDir,
+    inboxApp,
+    inboxPromotionApp,
+    runStatusApp,
+  });
   const configApp = new ConfigApplicationServiceImpl();
   const envApp = new EnvApplicationServiceImpl();
   const profileApp = new ProfileApplicationServiceImpl();
@@ -238,6 +248,7 @@ function wireContext(
     inboxApp,
     inboxPromotionApp,
     backgroundAiBatchWorker,
+    runStatusApp,
     serveApp,
     fillService,
     defaultAiConfig,

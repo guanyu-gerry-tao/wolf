@@ -49,7 +49,7 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Presentation  src/cli/  src/mcp/  src/transport/    │
+│  Presentation  src/cli/  src/mcp/  src/serve/        │
 │  Parse args/protocol, format output. CLI and HTTP    │
 │  wrappers delegate to application services.          │
 ├──────────────────────────────────────────────────────┤
@@ -70,10 +70,10 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 │  in the dependency sense — anything may import it.   │
 └──────────────────────────────────────────────────────┘
 
-AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI, MCP, and HTTP.
+AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI, MCP, and serve HTTP.
 ```
 
-**Layer dependency direction:** `cli / mcp / transport → application → service → repository → utils`
+**Layer dependency direction:** `cli / mcp / serve → application → service → repository → utils`
 
 ### Layer responsibilities
 
@@ -83,11 +83,11 @@ AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI, M
 | **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | Contain business logic or call other layers |
 | **Service** | `src/service/` (incl. `service/ai/`) | Single-responsibility operations (AI provider registry + clients, external API fetch, rendering, batch submit) | Orchestrate multi-step flows or access DB directly |
 | **Application** | `src/application/` | Orchestrate every use-case — even one-line ones like config get/set or env list. Owns init templates. | Know about CLI options, MCP schemas, or terminal formatting |
-| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/`, `src/transport/` | Parse input/protocol, format output, hold inquirer prompts, expose local HTTP routes | Contain logic beyond argument mapping, protocol mapping, and formatting |
+| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/`, `src/serve/` | Parse input/protocol, format output, hold inquirer prompts, expose local HTTP routes | Contain logic beyond argument mapping, protocol mapping, and formatting |
 
 ### Dependency injection — AppContext
 
-All concrete implementations are constructed in `src/runtime/appContext.ts`. `src/cli/`, `src/mcp/`, and `src/transport/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
+All concrete implementations are constructed in `src/runtime/appContext.ts`. `src/cli/`, `src/mcp/`, and `src/serve/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
 
 ```typescript
 // src/runtime/appContext.ts
@@ -150,10 +150,10 @@ src/
 │       ├── job/                            # multi-subcommand verbs get a folder
 │       └── __tests__/                      # CLI-edge tests
 ├── mcp/                                # Presentation — MCP SDK (shares AppContext)
-├── transport/                          # Presentation — local HTTP daemon
-│   └── http/
-│       ├── httpServer.ts                   # Interface for wolf serve
-│       └── impl/nodeHttpServerImpl.ts      # Node HTTP implementation
+├── serve/                              # Presentation — local HTTP daemon
+│   ├── httpServer.ts                       # Interface for wolf serve
+│   ├── protocol.ts                         # HTTP request/response schemas
+│   └── impl/nodeHttpServerImpl.ts          # Node HTTP implementation
 ├── runtime/
 │   └── appContext.ts                       # Manual DI — wires every repo + service + app
 ├── application/                        # Use-case orchestration

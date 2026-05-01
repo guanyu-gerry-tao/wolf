@@ -49,7 +49,7 @@ wolf 分为五层，每层只能依赖其下方的层——不允许横向或向
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  表现层  src/cli/  src/mcp/  src/transport/            │
+│  表现层  src/cli/  src/mcp/  src/serve/                │
 │  解析参数 / 协议、格式化输出。CLI 和 HTTP wrapper       │
 │  都委托给 application service。                         │
 ├──────────────────────────────────────────────────────┤
@@ -69,10 +69,10 @@ wolf 分为五层，每层只能依赖其下方的层——不允许横向或向
 │  任何层都可 import。                                   │
 └──────────────────────────────────────────────────────┘
 
-AppContext（src/runtime/appContext.ts）— 手动 DI 容器，CLI、MCP、HTTP 共用。
+AppContext（src/runtime/appContext.ts）— 手动 DI 容器，CLI、MCP、serve HTTP 共用。
 ```
 
-**层依赖方向：** `cli / mcp / transport → application → service → repository → utils`
+**层依赖方向：** `cli / mcp / serve → application → service → repository → utils`
 
 ### 各层职责
 
@@ -82,11 +82,11 @@ AppContext（src/runtime/appContext.ts）— 手动 DI 容器，CLI、MCP、HTTP
 | **仓储层** | `src/repository/` | 读写 SQLite（通过 Drizzle）和工作区文件（`profile.md`、`resume_pool.md`、`standard_questions.md`、`attachments/`） | 业务逻辑或调用其他层 |
 | **服务层** | `src/service/`（含 `service/ai/`） | 单一职责操作（AI provider 注册表 + 客户端、外部 API 抓取、渲染、批次提交） | 编排多步骤流程或直接访问 DB |
 | **应用层** | `src/application/` | 编排每个用例——包括 config get/set、env list 这类一行命令。拥有 init 模板。 | 感知 CLI 参数、MCP schema 或终端格式化 |
-| **表现层** | `src/cli/`（`index.ts` + `commands/<verb>.ts`）、`src/mcp/`、`src/transport/` | 解析输入 / 协议、格式化输出、承载 inquirer 提示、暴露本地 HTTP route | 参数映射、协议映射和格式化以外的任何逻辑 |
+| **表现层** | `src/cli/`（`index.ts` + `commands/<verb>.ts`）、`src/mcp/`、`src/serve/` | 解析输入 / 协议、格式化输出、承载 inquirer 提示、暴露本地 HTTP route | 参数映射、协议映射和格式化以外的任何逻辑 |
 
 ### 依赖注入——AppContext
 
-所有具体实现都在 `src/runtime/appContext.ts` 中构建。`src/cli/`、`src/mcp/` 和 `src/transport/` 共用同一个 `AppContext`。其他任何地方都不直接实例化 repository 或 service。这是唯一的替换点：将真实实现换成 mock，只需修改 `appContext.ts`，其他文件一概不变。
+所有具体实现都在 `src/runtime/appContext.ts` 中构建。`src/cli/`、`src/mcp/` 和 `src/serve/` 共用同一个 `AppContext`。其他任何地方都不直接实例化 repository 或 service。这是唯一的替换点：将真实实现换成 mock，只需修改 `appContext.ts`，其他文件一概不变。
 
 ```typescript
 // src/runtime/appContext.ts
@@ -144,10 +144,10 @@ src/
 │       ├── job/                            # 多子命令的 verb 用文件夹承载
 │       └── __tests__/                      # CLI 边界测试
 ├── mcp/                                # 表现层 — MCP SDK（共用同一个 AppContext）
-├── transport/                          # 表现层 — 本地 HTTP daemon
-│   └── http/
-│       ├── httpServer.ts                   # wolf serve 接口
-│       └── impl/nodeHttpServerImpl.ts      # Node HTTP 实现
+├── serve/                              # 表现层 — 本地 HTTP daemon
+│   ├── httpServer.ts                       # wolf serve 接口
+│   ├── protocol.ts                         # HTTP request/response schema
+│   └── impl/nodeHttpServerImpl.ts          # Node HTTP 实现
 ├── runtime/
 │   └── appContext.ts                       # 手动 DI——连接所有 repo + service + app
 ├── application/                        # 用例编排

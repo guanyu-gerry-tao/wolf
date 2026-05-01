@@ -20,6 +20,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   width: 100%;
@@ -33,6 +37,10 @@ body {
 
 button,
 input {
+  font: inherit;
+}
+
+textarea {
   font: inherit;
 }
 
@@ -87,6 +95,7 @@ input:focus-visible {
 }
 
 .shell {
+  position: relative;
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -104,6 +113,58 @@ input:focus-visible {
 
 .topbar > div {
   min-width: 0;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghost-button {
+  min-height: 30px;
+  border-color: var(--line);
+  color: var(--ink);
+  background: #fffdfa;
+}
+
+.ghost-button:hover {
+  background: #fff;
+}
+
+.runtime-overlay {
+  position: absolute;
+  z-index: 10;
+  inset: 64px 10px 10px;
+  display: grid;
+  place-items: start stretch;
+  padding: 10px;
+  border: 1px solid #d0b878;
+  border-radius: 10px;
+  background: rgba(244, 241, 234, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.runtime-overlay-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 2px solid var(--amber);
+  border-radius: 9px;
+  color: #402900;
+  background: #fff8e4;
+  box-shadow: 0 12px 28px rgba(31, 37, 35, 0.16);
+}
+
+.runtime-overlay-card p {
+  margin: 0;
+}
+
+.runtime-warning {
+  color: #4e3300;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
 .eyebrow,
@@ -239,8 +300,68 @@ h2 {
 }
 
 #importCurrentPageButton,
-#promoteInboxButton {
+#processInboxButton,
+#tailorInstantButton,
+#refreshRunStatusButton,
+#batchTailorButton,
+#autofillQuickButton {
   grid-column: 1 / -1;
+}
+
+.prompt-box,
+.edit-panel,
+.config-panel {
+  display: grid;
+  gap: 7px;
+}
+
+.prompt-box {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff8e8;
+}
+
+.prompt-box textarea,
+.edit-panel textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #c9b98f;
+  border-radius: 6px;
+  padding: 9px;
+  color: var(--ink);
+  background: #fffdfa;
+  font: inherit;
+  line-height: 1.35;
+}
+
+.edit-panel textarea {
+  min-height: 150px;
+}
+
+.panel-heading-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.prompt-warning {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #d0b878;
+  border-radius: 8px;
+  color: #4e3300;
+  background: #fff8e4;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.prompt-help {
+  margin: 0;
+  color: var(--amber);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .page-notice {
@@ -272,6 +393,31 @@ h2 {
 
 .page-notice a:hover {
   color: #123d62;
+}
+
+.form-section {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.form-section input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.form-help,
+.form-static {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .queue {
@@ -377,6 +523,12 @@ h2 {
   font-size: 11px;
   text-overflow: ellipsis;
   overflow-wrap: anywhere;
+}
+
+.job-list .empty-state {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
 }
 
 @media (max-width: 380px) {

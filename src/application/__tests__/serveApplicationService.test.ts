@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ServeApplicationServiceImpl } from '../impl/serveApplicationServiceImpl.js';
-import type { HttpServer } from '../../transport/http/httpServer.js';
+import type { HttpServer } from '../../serve/httpServer.js';
 
 describe('ServeApplicationServiceImpl', () => {
   afterEach(() => vi.restoreAllMocks());
