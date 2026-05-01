@@ -271,7 +271,7 @@ Write guidance / notes as plain Markdown below the alert header.
 
 ### wolf.toml — workspace settings
 
-Controls AI model, scoring thresholds, and tone defaults.
+Controls AI models and scoring thresholds.
 Location: `wolf.toml` in this directory.
 
 <details>
@@ -287,7 +287,6 @@ maxResults = 50
 
 [tailor]
 model = "anthropic/claude-sonnet-4-6"
-defaultCoverLetterTone = "professional"
 
 [score]
 model = "anthropic/claude-sonnet-4-6"
@@ -306,7 +305,7 @@ comments and other fields).
 
 </details>
 
-### profiles/<name>/ — single profile.toml + attachments
+### profiles/<name>/ — profile.toml + attachments + strategy prompts
 
 A profile is a directory; the directory name IS the profile identifier
 (`appliedProfileId` on jobs and `wolf.toml.default` both store the dirname).
@@ -316,8 +315,9 @@ profiles/default/
 ├── profile.toml          ← single source of truth: identity / contact / address /
 │                            preferences / demographics / clearance / form_answers /
 │                            documents / skills / experience / project / education / story
-└── attachments/          ← drop transcript, reference letter, portfolio sample, etc.
-                              (NOT immigration / work-auth documents — those are post-offer, out of scope)
+├── attachments/          ← drop transcript, reference letter, portfolio sample, etc.
+│                            (NOT immigration / work-auth documents — those are post-offer, out of scope)
+└── prompts/              ← editable strategy prompt pack; file names are stable
 ```
 
 **`profile.toml`** uses TOML tables for structured fields and `[[experience]]
@@ -330,6 +330,14 @@ prompt builders strip them out before sending to the model.
 live directly in this folder; subdirectories or absolute paths are rejected.
 If a file referenced in `documents.*` is missing, `__WOLF_BIN__ fill` pauses
 and asks you to drop it in.
+
+**`prompts/`** — optional strategy prompts. These are NOT runtime protocol
+prompts: do not put output-format, section-name, parser, renderer, or JSON/HTML
+contract rules here. Edit strategy only: positioning, tone, conservative vs
+aggressive tailoring, cover-letter naming preferences, and fill-answer strategy.
+Keep filenames unchanged. Empty strategy files are valid and mean wolf uses
+its bundled defaults. Run `__WOLF_BIN__ profile prompts list` to inspect the
+pack and `__WOLF_BIN__ profile prompts repair` to recreate missing skeleton files.
 
 ## API keys
 

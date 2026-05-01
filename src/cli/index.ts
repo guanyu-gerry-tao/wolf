@@ -15,6 +15,7 @@ import { configGet, configSet } from './commands/config.js';
 import {
   profileList, profileCreate, profileUse, profileDelete,
   profileShow, profileGet, profileSet, profileAdd, profileAddQuestion, profileRemove, profileFields,
+  profilePromptsList, profilePromptsPath, profilePromptsRepair,
 } from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
 import { context } from './commands/context.js';
@@ -453,6 +454,22 @@ profileCmd
   .action(async (pathArg: string | undefined, opts: { required?: boolean; json?: boolean }) => {
     await profileFields(pathArg, opts);
   });
+const profilePromptsCmd = new Command('prompts')
+  .description('Inspect or repair the active profile prompt-pack skeleton');
+profilePromptsCmd
+  .command('path')
+  .description('Print profiles/<name>/prompts path')
+  .action(async () => { await profilePromptsPath(); });
+profilePromptsCmd
+  .command('list')
+  .description('List prompt-pack files and whether each is empty, custom, or missing')
+  .option('--json', 'Output JSON for AI / MCP consumers')
+  .action(async (opts: { json?: boolean }) => { await profilePromptsList(opts); });
+profilePromptsCmd
+  .command('repair')
+  .description('Create missing prompt-pack files without overwriting edits')
+  .action(async () => { await profilePromptsRepair(); });
+profileCmd.addCommand(profilePromptsCmd);
 program.addCommand(profileCmd);
 
 const envCmd = new Command('env').description('Manage WOLF_ environment variables (API keys)');

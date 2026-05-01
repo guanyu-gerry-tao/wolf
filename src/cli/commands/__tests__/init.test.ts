@@ -94,6 +94,21 @@ describe('init()', () => {
       );
       expect(attachmentsReadme).toContain('attachments/');
 
+      // prompts/ is a strategy-only customization surface. The seeded
+      // strategy files contain editable policy, while fill remains blank
+      // until that milestone has a real strategy surface.
+      const promptsReadme = await fs.readFile(path.join(profileDir, 'prompts', 'README.md'), 'utf-8');
+      expect(promptsReadme).toContain('strategy prompts');
+      const tailoringStrategy = await fs.readFile(path.join(profileDir, 'prompts', 'tailoring-strategy.md'), 'utf-8');
+      const resumeStrategy = await fs.readFile(path.join(profileDir, 'prompts', 'resume-strategy.md'), 'utf-8');
+      const coverStrategy = await fs.readFile(path.join(profileDir, 'prompts', 'cover-letter-strategy.md'), 'utf-8');
+      const fillStrategy = await fs.readFile(path.join(profileDir, 'prompts', 'fill-strategy.md'), 'utf-8');
+      expect(tailoringStrategy).toContain('defensible stretch');
+      expect(tailoringStrategy).not.toContain('Canonical Job Metadata');
+      expect(resumeStrategy).toContain('Tailor aggressively but defensibly');
+      expect(coverStrategy).toContain('Default to generic employer wording');
+      expect(fillStrategy).toBe('');
+
       // .gitignore should exclude both data/ and profiles/ to protect PII.
       const gitignore = await fs.readFile(path.join(dir, '.gitignore'), 'utf-8');
       expect(gitignore).toContain('data/');
@@ -181,6 +196,7 @@ describe('init()', () => {
 
       await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
       await expect(fs.access(path.join(profileDir, 'attachments'))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(profileDir, 'prompts', 'README.md'))).resolves.toBeUndefined();
 
       // Crucially: no prompt of any kind in --empty mode.
       expect(input).not.toHaveBeenCalled();

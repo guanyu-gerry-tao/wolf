@@ -12,6 +12,11 @@ import {
 } from '../../utils/profileFields.js';
 import { parseProfileToml, getByPath } from '../../utils/profileToml.js';
 import {
+  PROFILE_PROMPTS_DIR,
+  ensureProfilePromptPack,
+  getProfilePromptPackStatus,
+} from '../../utils/profilePromptPack.js';
+import {
   setMultilineString,
   setMultilineStringInArrayMember,
   appendArrayMember,
@@ -24,6 +29,8 @@ import type {
   ProfileSetResult,
   ProfileAddEntryResult,
   ProfileFieldRow,
+  ProfilePromptsResult,
+  ProfilePromptsRepairResult,
 } from '../profileApplicationService.js';
 
 /** v2 profile sub-files cloned by `create()`. As of β only profile.toml. */
@@ -164,6 +171,18 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
         { recursive: true },
       );
     } catch { /* source had no attachments dir; skip */ }
+
+    try {
+      await fs.cp(
+        path.join(srcDir, PROFILE_PROMPTS_DIR),
+        path.join(targetDir, PROFILE_PROMPTS_DIR),
+        { recursive: true },
+      );
+    } catch {
+      // Older source profiles may not have prompts/ yet. Create the empty
+      // strategy-pack skeleton so new profiles always have the modern shape.
+      await ensureProfilePromptPack(targetDir);
+    }
 
     return { name, from: srcName, targetDir };
   }
@@ -437,6 +456,29 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
       rows = rows.filter((f) => f.required);
     }
     return rows.map((f) => ({ ...f }));
+  }
+
+  /** @inheritdoc */
+  async prompts(): Promise<ProfilePromptsResult> {
+    const profileName = await resolveActiveProfileName();
+    const status = await getProfilePromptPackStatus(profileDir(profileName));
+    return {
+      profileName,
+      dir: status.dir,
+      files: status.files.map((f) => ({ ...f })),
+    };
+  }
+
+  /** @inheritdoc */
+  async repairPrompts(): Promise<ProfilePromptsRepairResult> {
+    const profileName = await resolveActiveProfileName();
+    const result = await ensureProfilePromptPack(profileDir(profileName));
+    return {
+      profileName,
+      dir: result.dir,
+      created: [...result.created],
+      preserved: [...result.preserved],
+    };
   }
 }
 

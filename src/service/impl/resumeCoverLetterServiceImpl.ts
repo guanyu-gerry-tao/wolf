@@ -59,18 +59,18 @@ export class ResumeCoverLetterServiceImpl implements ResumeCoverLetterService {
     jdText: string,
     profile: Profile,
     brief: string,
-    tone: string,
     aiConfig: AiConfig,
   ): Promise<string> {
-    // Same prompt shape as the resume path, plus a Tone line appended.
+    // Same prompt shape as the resume path, using the cover-letter protocol
+    // prompt for the default voice. Profile strategy prompts can later
+    // override style details without a separate config scalar.
     const profileSection = buildProfileSection(profile);
     const briefSection = buildBriefSection(brief);
     const poolSection = buildResumePoolSection(resumePool);
     const jdSection = buildJdSection(jdText);
-    const toneLine = `## Tone\n${tone}`;
     const instruction = "Produce the cover letter HTML body now, following the brief's angle and themes. Use the candidate's name and contact details from the Candidate Profile section.";
 
-    const userPrompt = [profileSection, briefSection, poolSection, jdSection, toneLine, instruction].join('\n\n');
+    const userPrompt = [profileSection, briefSection, poolSection, jdSection, instruction].join('\n\n');
 
     // Bracket the AI call with start/done events — same shape as the resume path.
     log.debug('ai.cover.start', {

@@ -75,7 +75,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly rewriteService: ResumeCoverLetterService,
     private readonly briefService: TailoringBriefService,
     private readonly defaultAiConfig: AiConfig,
-    private readonly defaultCoverLetterTone: string,
   ) {}
 
   /** @inheritdoc */
@@ -309,7 +308,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       ctx.jdText,
       ctx.profile,
       brief,
-      this.defaultCoverLetterTone,
       ctx.aiConfig,
     );
     await writeFile(ctx.coverLetterHtmlPath, html);

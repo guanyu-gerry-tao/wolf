@@ -28,6 +28,32 @@ export interface ProfileFieldRow {
   help: string;
 }
 
+/** One file in `profiles/<name>/prompts/`. Strategy files may be empty;
+ *  empty means "use wolf defaults". */
+export interface ProfilePromptFileRow {
+  filename: string;
+  path: string;
+  exists: boolean;
+  empty: boolean;
+  kind: 'readme' | 'strategy';
+}
+
+/** Status for the active profile's prompt pack. */
+export interface ProfilePromptsResult {
+  profileName: string;
+  dir: string;
+  files: ProfilePromptFileRow[];
+}
+
+/** Result of repairing the prompt pack skeleton. Existing files are never
+ *  overwritten; missing files are created. */
+export interface ProfilePromptsRepairResult {
+  profileName: string;
+  dir: string;
+  created: string[];
+  preserved: string[];
+}
+
 /**
  * `list()` result — distinguishes "no profiles dir at all" (run `wolf init`),
  * "dir exists but empty" (run `wolf profile create`), and the populated case.
@@ -167,4 +193,16 @@ export interface ProfileApplicationService {
    * entry by `opts.path` for `wolf profile fields <path>`.
    */
   fields(opts?: { requiredOnly?: boolean; path?: string }): Promise<ProfileFieldRow[]>;
+
+  /**
+   * Reports the prompt-pack skeleton for the active profile. This is a
+   * strategy-only customization surface; runtime protocol prompts stay bundled.
+   */
+  prompts(): Promise<ProfilePromptsResult>;
+
+  /**
+   * Creates any missing prompt-pack files for the active profile without
+   * overwriting user-edited strategy files.
+   */
+  repairPrompts(): Promise<ProfilePromptsRepairResult>;
 }

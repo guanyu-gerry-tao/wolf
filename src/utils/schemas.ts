@@ -35,8 +35,7 @@ export const AppConfigSchema = z.object({
   }).default({ minScore: 0.5, maxResults: 50 }),
   tailor: z.object({
     model: ModelRefSchema.default(DEFAULT_SONNET),
-    defaultCoverLetterTone: z.string().default('professional'),
-  }).default({ model: DEFAULT_SONNET, defaultCoverLetterTone: 'professional' }),
+  }).default({ model: DEFAULT_SONNET }),
   score: z.object({
     model: ModelRefSchema.default(DEFAULT_SONNET),
   }).default({ model: DEFAULT_SONNET }),

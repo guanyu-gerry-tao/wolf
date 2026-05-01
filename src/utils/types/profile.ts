@@ -48,7 +48,6 @@ export interface AppConfig {
   };
   tailor: {
     model: ModelRef;                   // default "anthropic/claude-sonnet-4-6"
-    defaultCoverLetterTone: string;    // e.g. "professional", "conversational"
   };
   score: {
     model: ModelRef;                   // default "anthropic/claude-sonnet-4-6"
