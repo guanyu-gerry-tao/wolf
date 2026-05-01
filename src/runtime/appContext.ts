@@ -49,16 +49,26 @@ import { ScoreApplicationServiceImpl } from '../application/impl/scoreApplicatio
 import { FillApplicationServiceImpl } from '../application/impl/fillApplicationServiceImpl.js';
 import { ReachApplicationServiceImpl } from '../application/impl/reachApplicationServiceImpl.js';
 import { ContextApplicationServiceImpl } from '../application/impl/contextApplicationServiceImpl.js';
+import { ServeApplicationServiceImpl } from '../application/impl/serveApplicationServiceImpl.js';
+import { InboxApplicationServiceImpl } from '../application/impl/inboxApplicationServiceImpl.js';
+import { InboxPromotionApplicationServiceImpl } from '../application/impl/inboxPromotionApplicationServiceImpl.js';
+import { BackgroundAiBatchWorkerImpl } from '../application/impl/backgroundAiBatchWorkerImpl.js';
 import { FillServiceImpl } from '../service/impl/fillServiceImpl.js';
+import { SqliteInboxRepositoryImpl } from '../repository/impl/sqliteInboxRepositoryImpl.js';
+import { SqliteBackgroundAiBatchRepositoryImpl } from '../repository/impl/sqliteBackgroundAiBatchRepositoryImpl.js';
+import { NodeHttpServerImpl } from '../transport/http/impl/nodeHttpServerImpl.js';
 import { loadConfigSync } from '../utils/config.js';
 import { resolveWorkspaceDir } from '../utils/instance.js';
 import { createDefaultLogger, createSilentLogger, setDefaultLogger } from '../utils/logger.js';
 import { parseModelRef } from '../utils/parseModelRef.js';
+import { WOLF_VERSION } from '../utils/version.js';
 
 import type { JobRepository } from '../repository/jobRepository.js';
 import type { CompanyRepository } from '../repository/companyRepository.js';
 import type { BatchRepository } from '../repository/batchRepository.js';
 import type { BatchItemRepository } from '../repository/batchItemRepository.js';
+import type { BackgroundAiBatchRepository } from '../repository/backgroundAiBatchRepository.js';
+import type { InboxRepository } from '../repository/inboxRepository.js';
 import type { ProfileRepository } from '../repository/profileRepository.js';
 import type { BatchService } from '../service/batchService.js';
 import type { JobProvider } from '../service/jobProvider.js';
@@ -82,7 +92,12 @@ import type { ScoreApplicationService } from '../application/scoreApplicationSer
 import type { FillApplicationService } from '../application/fillApplicationService.js';
 import type { ReachApplicationService } from '../application/reachApplicationService.js';
 import type { ContextApplicationService } from '../application/contextApplicationService.js';
+import type { InboxApplicationService } from '../application/inboxApplicationService.js';
+import type { InboxPromotionApplicationService } from '../application/inboxPromotionApplicationService.js';
+import type { BackgroundAiBatchWorker } from '../application/backgroundAiBatchWorker.js';
 import type { FillService } from '../service/fillService.js';
+import type { ServeApplicationService } from '../application/serveApplicationService.js';
+import type { HttpServer } from '../transport/http/httpServer.js';
 import type { AiConfig } from '../utils/types/index.js';
 
 export interface AppContext {
@@ -91,6 +106,8 @@ export interface AppContext {
   companyRepository: CompanyRepository;
   batchRepository: BatchRepository;
   batchItemRepository: BatchItemRepository;
+  backgroundAiBatchRepository: BackgroundAiBatchRepository;
+  inboxRepository: InboxRepository;
   profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
@@ -98,6 +115,7 @@ export interface AppContext {
   renderService: RenderService;
   rewriteService: ResumeCoverLetterService;
   briefService: TailoringBriefService;
+  httpServer: HttpServer;
   // application services
   tailorApp: TailorApplicationService;
   statusApp: StatusApplicationService;
@@ -113,6 +131,10 @@ export interface AppContext {
   fillApp: FillApplicationService;
   reachApp: ReachApplicationService;
   contextApp: ContextApplicationService;
+  inboxApp: InboxApplicationService;
+  inboxPromotionApp: InboxPromotionApplicationService;
+  backgroundAiBatchWorker: BackgroundAiBatchWorker;
+  serveApp: ServeApplicationService;
   fillService: FillService;
   // config
   defaultAiConfig: AiConfig;
@@ -140,6 +162,8 @@ function wireContext(
   const jobRepo = new SqliteJobRepositoryImpl(db, companyRepo, workspaceDir);
   const batchRepo = new SqliteBatchRepositoryImpl(db);
   const batchItemRepo = new SqliteBatchItemRepositoryImpl(db);
+  const backgroundAiBatchRepo = new SqliteBackgroundAiBatchRepositoryImpl(db);
+  const inboxRepo = new SqliteInboxRepositoryImpl(db);
 
   // Services don't take `logger` through constructors — they import the `log`
   // facade directly from src/utils/logger.ts. The default logger was installed
@@ -165,6 +189,10 @@ function wireContext(
   ];
   const statusApp = new StatusApplicationServiceImpl(statusCounters);
   const addApp = new AddApplicationServiceImpl(jobRepo, companyRepo);
+  const inboxApp = new InboxApplicationServiceImpl(inboxRepo);
+  const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(inboxRepo, backgroundAiBatchRepo);
+  const backgroundAiBatchWorker = new BackgroundAiBatchWorkerImpl(backgroundAiBatchRepo);
+  const httpServer = new NodeHttpServerImpl({ version: WOLF_VERSION, inboxApp, inboxPromotionApp });
   const configApp = new ConfigApplicationServiceImpl();
   const envApp = new EnvApplicationServiceImpl();
   const profileApp = new ProfileApplicationServiceImpl();
@@ -176,6 +204,7 @@ function wireContext(
   const fillApp = new FillApplicationServiceImpl();
   const reachApp = new ReachApplicationServiceImpl();
   const contextApp = new ContextApplicationServiceImpl(profileRepository);
+  const serveApp = new ServeApplicationServiceImpl(httpServer, backgroundAiBatchWorker);
   const fillService = new FillServiceImpl();
 
   return {
@@ -183,12 +212,15 @@ function wireContext(
     companyRepository: companyRepo,
     batchRepository: batchRepo,
     batchItemRepository: batchItemRepo,
+    backgroundAiBatchRepository: backgroundAiBatchRepo,
+    inboxRepository: inboxRepo,
     profileRepository,
     batchService,
     jobProviders: [],
     renderService,
     rewriteService,
     briefService,
+    httpServer,
     tailorApp,
     statusApp,
     addApp,
@@ -203,6 +235,10 @@ function wireContext(
     fillApp,
     reachApp,
     contextApp,
+    inboxApp,
+    inboxPromotionApp,
+    backgroundAiBatchWorker,
+    serveApp,
     fillService,
     defaultAiConfig,
   };

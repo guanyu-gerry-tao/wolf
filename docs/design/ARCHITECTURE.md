@@ -2,19 +2,19 @@
 
 ## Overview
 
-wolf is a dual-interface application: it runs as both a **CLI tool** (for human users) and an **MCP server** (for AI agents like OpenClaw). Both interfaces share the same core command logic, ensuring consistent behavior regardless of how wolf is invoked.
+wolf is a multi-interface application: it runs as a **CLI tool** (for human users), an **MCP server** (for AI agents like OpenClaw), and a local **HTTP daemon** (`wolf serve`) for the companion browser extension. All interfaces share the same application services, ensuring consistent behavior regardless of how wolf is invoked.
 
 ```
-        Human (terminal)          AI Agent (OpenClaw)
+        Human (terminal)          AI Agent (OpenClaw)       Browser Extension
                │                          │
                v                          v
-        ┌─────────────┐          ┌────────────────┐
-        │  CLI Layer  │          │   MCP Layer    │   Presentation
-        │ commander.js│          │   MCP SDK      │
-        └──────┬──────┘          └───────┬────────┘
-               └────────────┬────────────┘
-                            │
-                            v
+        ┌─────────────┐          ┌────────────────┐          ┌──────────────┐
+        │  CLI Layer  │          │   MCP Layer    │          │ HTTP Layer   │   Presentation
+        │ commander.js│          │   MCP SDK      │          │ wolf serve   │
+        └──────┬──────┘          └───────┬────────┘          └──────┬───────┘
+               └────────────┬────────────┴────────────┬────────────┘
+                            │                         │
+                            v                         v
                ┌────────────────────────┐
                │       Commands         │   Commands
                │  tailor / hunt / score │
@@ -49,9 +49,9 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Presentation  src/cli/index.ts  src/mcp/            │
-│  Parse args, format output. Each src/cli/commands/   │
-│  <verb>.ts is one delegate line + a formatter.       │
+│  Presentation  src/cli/  src/mcp/  src/transport/    │
+│  Parse args/protocol, format output. CLI and HTTP    │
+│  wrappers delegate to application services.          │
 ├──────────────────────────────────────────────────────┤
 │  Application   src/application/                      │
 │  Use-case orchestration. Multi-step pipelines.       │
@@ -70,10 +70,10 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 │  in the dependency sense — anything may import it.   │
 └──────────────────────────────────────────────────────┘
 
-AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI and MCP.
+AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI, MCP, and HTTP.
 ```
 
-**Layer dependency direction:** `cli → application → service → repository → utils`
+**Layer dependency direction:** `cli / mcp / transport → application → service → repository → utils`
 
 ### Layer responsibilities
 
@@ -83,11 +83,11 @@ AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI an
 | **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | Contain business logic or call other layers |
 | **Service** | `src/service/` (incl. `service/ai/`) | Single-responsibility operations (AI provider registry + clients, external API fetch, rendering, batch submit) | Orchestrate multi-step flows or access DB directly |
 | **Application** | `src/application/` | Orchestrate every use-case — even one-line ones like config get/set or env list. Owns init templates. | Know about CLI options, MCP schemas, or terminal formatting |
-| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/` | Parse input, format output, hold inquirer prompts | Contain logic beyond argument mapping + formatting |
+| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/`, `src/transport/` | Parse input/protocol, format output, hold inquirer prompts, expose local HTTP routes | Contain logic beyond argument mapping, protocol mapping, and formatting |
 
 ### Dependency injection — AppContext
 
-All concrete implementations are constructed in `src/runtime/appContext.ts`. Both `src/cli/` and `src/mcp/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
+All concrete implementations are constructed in `src/runtime/appContext.ts`. `src/cli/`, `src/mcp/`, and `src/transport/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
 
 ```typescript
 // src/runtime/appContext.ts
@@ -96,9 +96,12 @@ export interface AppContext {
   jobRepository: JobRepository;
   companyRepository: CompanyRepository;
   batchRepository: BatchRepository;
+  backgroundAiBatchRepository: BackgroundAiBatchRepository;
+  inboxRepository: InboxRepository;
   profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
+  httpServer: HttpServer;
   // ...renderService, rewriteService, briefService, fillService, ...
   // application services (one per CLI verb)
   addApp: AddApplicationService;
@@ -114,6 +117,10 @@ export interface AppContext {
   scoreApp: ScoreApplicationService;
   statusApp: StatusApplicationService;
   tailorApp: TailorApplicationService;
+  inboxApp: InboxApplicationService;
+  inboxPromotionApp: InboxPromotionApplicationService;
+  backgroundAiBatchWorker: BackgroundAiBatchWorker;
+  serveApp: ServeApplicationService;
 }
 ```
 
@@ -143,6 +150,10 @@ src/
 │       ├── job/                            # multi-subcommand verbs get a folder
 │       └── __tests__/                      # CLI-edge tests
 ├── mcp/                                # Presentation — MCP SDK (shares AppContext)
+├── transport/                          # Presentation — local HTTP daemon
+│   └── http/
+│       ├── httpServer.ts                   # Interface for wolf serve
+│       └── impl/nodeHttpServerImpl.ts      # Node HTTP implementation
 ├── runtime/
 │   └── appContext.ts                       # Manual DI — wires every repo + service + app
 ├── application/                        # Use-case orchestration
@@ -610,7 +621,7 @@ This design aligns with how AI agents work: Claude Code's working context is the
 ├── .gitignore          # Auto-generated by wolf init
 ├── credentials/        # OAuth tokens (Gmail) — gitignored
 └── data/               # Generated artifacts — gitignored
-    ├── wolf.sqlite      # Structured metadata + JD prose in jobs.description_md (β.7+)
+    ├── wolf.sqlite      # Structured metadata, raw inbox, background AI batches
     ├── jobs/
     │   └── <company>_<title>_<jobIdShort>/
     │       ├── src/
@@ -624,6 +635,13 @@ This design aligns with how AI agents work: Claude Code's working context is the
         └── <company>_<companyIdShort>/
             └── info.md             # Free-form employer notes
 ```
+
+Raw inbox data lives in SQLite `inbox_items`, not per-capture folders. The
+table stores only original manual-page or hunt-result payloads plus processing
+state (`raw`, `queued`, `promoted`, `failed`, etc.). Explicit user actions can
+create `background_ai_batches` / shards / items for paid processing. Successful
+AI output is applied immediately to canonical job state; only short-lived debug
+payloads remain in `background_ai_batch_items`.
 
 > API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env show` / `wolf env clear` to manage.
 

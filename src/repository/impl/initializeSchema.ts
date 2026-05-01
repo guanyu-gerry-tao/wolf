@@ -114,4 +114,77 @@ export function initializeSchema(db: DrizzleDb): void {
       completed_at  TEXT
     )
   `);
+
+  // ---------------------------------------------------------------------------
+  // inbox_items
+  // ---------------------------------------------------------------------------
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS inbox_items (
+      id          TEXT NOT NULL PRIMARY KEY,
+      kind        TEXT NOT NULL,
+      source      TEXT NOT NULL,
+      url         TEXT,
+      title       TEXT,
+      raw_json    TEXT NOT NULL,
+      raw_sha256  TEXT NOT NULL,
+      status      TEXT NOT NULL,
+      job_id      TEXT,
+      received_at TEXT NOT NULL,
+      updated_at  TEXT NOT NULL,
+      error       TEXT
+    )
+  `);
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_inbox_items_status ON inbox_items(status)`);
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_inbox_items_url ON inbox_items(url)`);
+  db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_items_raw_sha256 ON inbox_items(raw_sha256)`);
+
+  // ---------------------------------------------------------------------------
+  // background_ai_batches
+  // ---------------------------------------------------------------------------
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS background_ai_batches (
+      id          TEXT NOT NULL PRIMARY KEY,
+      type        TEXT NOT NULL,
+      status      TEXT NOT NULL,
+      input_json  TEXT NOT NULL,
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL,
+      deadline_at TEXT,
+      error       TEXT
+    )
+  `);
+
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS background_ai_batch_shards (
+      id                     TEXT    NOT NULL PRIMARY KEY,
+      background_ai_batch_id TEXT    NOT NULL,
+      provider               TEXT    NOT NULL,
+      provider_batch_id      TEXT,
+      status                 TEXT    NOT NULL,
+      item_count             INTEGER NOT NULL,
+      next_poll_at           TEXT,
+      submitted_at           TEXT,
+      completed_at           TEXT,
+      error                  TEXT,
+      FOREIGN KEY(background_ai_batch_id) REFERENCES background_ai_batches(id)
+    )
+  `);
+
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS background_ai_batch_items (
+      id                     TEXT NOT NULL PRIMARY KEY,
+      background_ai_batch_id TEXT NOT NULL,
+      shard_id               TEXT,
+      subject_type           TEXT NOT NULL,
+      subject_id             TEXT NOT NULL,
+      status                 TEXT NOT NULL,
+      ai_input_json          TEXT NOT NULL,
+      debug_json             TEXT,
+      debug_expires_at       TEXT,
+      target_id              TEXT,
+      error                  TEXT,
+      FOREIGN KEY(background_ai_batch_id) REFERENCES background_ai_batches(id),
+      FOREIGN KEY(shard_id) REFERENCES background_ai_batch_shards(id)
+    )
+  `);
 }

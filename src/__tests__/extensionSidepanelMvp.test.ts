@@ -19,6 +19,7 @@ describe('companion side panel MVP', () => {
       background?: { service_worker?: string; type?: string };
       permissions?: string[];
       host_permissions?: string[];
+      optional_host_permissions?: string[];
     };
 
     expect(manifest.manifest_version).toBe(3);
@@ -37,6 +38,10 @@ describe('companion side panel MVP', () => {
       'http://127.0.0.1/*',
       'http://localhost/*',
     ]));
+    expect(manifest.optional_host_permissions).toEqual(expect.arrayContaining([
+      'http://*/*',
+      'https://*/*',
+    ]));
   });
 
   // The side panel must expose the actual MVP controls instead of being just a
@@ -47,8 +52,12 @@ describe('companion side panel MVP', () => {
 
     expect(html).toContain('id="portInput"');
     expect(html).toContain('id="reconnectButton"');
+    expect(html).toContain('value="47823"');
+    expect(html).toContain('Start <strong>wolf serve</strong>');
+    expect(html).toContain('id="duplicateNotice"');
     expect(html).toContain('id="importCurrentPageButton"');
-    expect(html).toContain('id="batchWriteButton"');
+    expect(html).toContain('id="promoteInboxButton"');
+    expect(html).toContain('Promote with AI');
     expect(html).toContain('id="previewResumeButton"');
     expect(html).toContain('id="previewCoverLetterButton"');
     expect(html).toContain('data-column="filling"');
@@ -58,18 +67,54 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('chrome.tabs.update');
     expect(js).toContain('chrome.windows.update');
     expect(js).toContain('/api/ping');
-    expect(js).toContain('/api/inbox/current-page');
-    expect(js).toContain('/api/inbox/batch-write');
+    expect(js).toContain('/api/inbox/items');
+    expect(js).toContain('/api/inbox/promote');
+    expect(js).toContain('/api/inbox/duplicate-check');
+    expect(js).toContain('paid batch API calls');
+    expect(js).toContain('Importing...');
+    expect(js).toContain('Already Imported');
+    expect(js).toContain('Please check');
+    expect(js).toContain(`document.createElement('a')`);
+    expect(js).toContain('noopener noreferrer');
+    expect(js).toContain('company application page');
+    expect(js).toContain('Imported page to wolf inbox');
+    expect(js).toContain('Aggregator listing detected');
+    expect(js).toContain('LinkedIn');
+    expect(js).toContain('Handshake');
+    expect(js).toContain('chromeApi.permissions.request');
+    expect(js).toContain('Import failed:');
+    expect(js).toContain('Chrome runtime said');
+    expect(js).toContain('Cannot import this tab');
+    expect(js).toContain('Connect to wolf serve first.');
+    expect(js).toContain('Lost connection to wolf serve.');
+    expect(js).toContain('HEARTBEAT_MS');
     expect(js).toContain('/api/preview/resume');
     expect(js).toContain('/api/preview/cover-letter');
   });
 
-  // The queue should read as a compact kanban board: three columns side by
-  // side, not three stacked sections.
-  it('styles the queue as a three-column kanban board', async () => {
+  // The queue should read as a compact kanban board without forcing the whole
+  // Chrome side panel to horizontally scroll on narrow widths.
+  it('styles the queue as a responsive three-column kanban board', async () => {
     const css = await readText('src/sidepanel/styles.css');
 
-    expect(css).toContain('grid-template-columns: repeat(3, minmax(112px, 1fr))');
+    expect(css).toContain('overflow-x: hidden');
+    expect(css).toContain('grid-template-columns: repeat(3, minmax(124px, 1fr))');
     expect(css).toContain('grid-template-rows: auto 1fr');
+    expect(css).toContain('scroll-snap-type: x proximity');
+    expect(css).toContain('overflow-x: auto');
+    expect(css).toContain('grid-template-columns: 74px minmax(0, 1fr)');
+    expect(css).toContain('-webkit-line-clamp: 3');
+    expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(css).toContain('white-space: nowrap');
+    expect(css).toContain('#importCurrentPageButton');
+    expect(css).toContain('#promoteInboxButton');
+    expect(css).toContain('grid-column: 1 / -1');
+    expect(css).toContain('button:disabled');
+    expect(css).toContain('button.button-warning');
+    expect(css).toContain('button.button-success');
+    expect(css).toContain('.page-notice--success');
+    expect(css).toContain('.page-notice--warning');
+    expect(css).toContain('.page-notice a');
+    expect(css).toContain('text-decoration: underline');
   });
 });

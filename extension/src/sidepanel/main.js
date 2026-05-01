@@ -1,10 +1,35 @@
 const chromeApi = globalThis.chrome;
 const hasChromeApi = Boolean(chromeApi?.runtime?.id);
+const DEFAULT_DAEMON_PORT = '47823';
+const HEARTBEAT_MS = 5_000;
+const IMPORT_PAGE_LABEL = 'Import Page';
+const AGGREGATOR_PLATFORMS = [
+  {
+    name: 'LinkedIn',
+    matches: (url) => hostnameEndsWith(url.hostname, 'linkedin.com') && url.pathname.includes('/jobs/'),
+  },
+  {
+    name: 'Handshake',
+    matches: (url) => hostnameEndsWith(url.hostname, 'joinhandshake.com') &&
+      (url.pathname.includes('/job-search') || url.pathname.includes('/jobs/')),
+  },
+  {
+    name: 'Indeed',
+    matches: (url) => hostnameEndsWith(url.hostname, 'indeed.com') &&
+      (url.pathname.includes('/viewjob') || url.pathname.includes('/jobs')),
+  },
+  {
+    name: 'Glassdoor',
+    matches: (url) => hostnameEndsWith(url.hostname, 'glassdoor.com') &&
+      (url.pathname.toLowerCase().includes('/job') || url.searchParams.has('jl')),
+  },
+];
 
 const state = {
-  port: '47823',
+  port: DEFAULT_DAEMON_PORT,
   connection: { status: 'idle', detail: 'Waiting for local wolf serve.' },
   currentTab: null,
+  currentPageStatus: { kind: 'normal', detail: null },
   currentJobId: 'demo-ready-1',
   cursors: { filling: 0, ready: 0, stuck: 0 },
   queues: {
@@ -27,8 +52,9 @@ const els = {
   connectionBadge: document.querySelector('#connectionBadge'),
   connectionDetail: document.querySelector('#connectionDetail'),
   currentTabLabel: document.querySelector('#currentTabLabel'),
+  duplicateNotice: document.querySelector('#duplicateNotice'),
   importCurrentPageButton: document.querySelector('#importCurrentPageButton'),
-  batchWriteButton: document.querySelector('#batchWriteButton'),
+  promoteInboxButton: document.querySelector('#promoteInboxButton'),
   previewResumeButton: document.querySelector('#previewResumeButton'),
   previewCoverLetterButton: document.querySelector('#previewCoverLetterButton'),
   activityLog: document.querySelector('#activityLog'),
@@ -48,9 +74,12 @@ const els = {
   },
 };
 
+let pageStatusRequestSeq = 0;
+
 await loadStoredPort();
 wireEvents();
 renderAll();
+startHeartbeat();
 await refreshCurrentTab();
 
 function daemonBase() {
@@ -60,11 +89,18 @@ function daemonBase() {
 async function loadStoredPort() {
   if (hasChromeApi) {
     const stored = await chromeApi.storage.local.get('wolfServePort');
-    state.port = stored.wolfServePort ?? state.port;
+    state.port = normalizeStoredPort(stored.wolfServePort);
+    await chromeApi.storage.local.set({ wolfServePort: state.port });
   } else {
-    state.port = localStorage.getItem('wolfServePort') ?? state.port;
+    state.port = normalizeStoredPort(localStorage.getItem('wolfServePort'));
+    localStorage.setItem('wolfServePort', state.port);
   }
   els.portInput.value = state.port;
+}
+
+function normalizeStoredPort(port) {
+  if (!port) return DEFAULT_DAEMON_PORT;
+  return port;
 }
 
 async function storePort(port) {
@@ -79,7 +115,7 @@ async function storePort(port) {
 function wireEvents() {
   els.reconnectButton.addEventListener('click', reconnect);
   els.importCurrentPageButton.addEventListener('click', importCurrentPage);
-  els.batchWriteButton.addEventListener('click', batchWriteInbox);
+  els.promoteInboxButton.addEventListener('click', promoteInboxWithAi);
   els.previewResumeButton.addEventListener('click', () => openPreview('resume'));
   els.previewCoverLetterButton.addEventListener('click', () => openPreview('cover-letter'));
 
@@ -107,16 +143,31 @@ async function reconnect() {
   const nonce = Math.random().toString(36).slice(2);
 
   try {
-    const res = await fetchWithTimeout(`${daemonBase()}/api/ping?nonce=${encodeURIComponent(nonce)}`, {
-      method: 'GET',
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.json();
-    if (body.nonce !== nonce) throw new Error('nonce mismatch');
+    const body = await pingDaemon(nonce);
     setConnection('connected', `Connected: wolf ${body.version ?? 'unknown'}`);
+    await refreshCurrentPageStatus();
   } catch (err) {
     setConnection('disconnected', err instanceof Error ? err.message : String(err));
   }
+}
+
+async function pingDaemon(nonce = Math.random().toString(36).slice(2)) {
+  const res = await fetchWithTimeout(`${daemonBase()}/api/ping?nonce=${encodeURIComponent(nonce)}`, {
+    method: 'GET',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const body = await res.json();
+  if (body.nonce !== nonce) throw new Error('nonce mismatch');
+  return body;
+}
+
+function startHeartbeat() {
+  setInterval(() => {
+    if (state.connection.status !== 'connected') return;
+    pingDaemon().catch(() => {
+      setConnection('disconnected', 'Lost connection to wolf serve.');
+    });
+  }, HEARTBEAT_MS);
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -149,14 +200,71 @@ function renderConnection() {
     idle: 'Idle',
   }[state.connection.status];
   els.connectionDetail.textContent = state.connection.detail;
+  renderDaemonActionState();
+  renderCurrentPageStatus();
+}
+
+function renderDaemonActionState() {
+  const connected = state.connection.status === 'connected';
+  const title = connected ? '' : 'Connect to wolf serve first.';
+  for (const button of daemonActionButtons()) {
+    button.disabled = !connected;
+    button.title = title;
+  }
+}
+
+function daemonActionButtons() {
+  return [
+    els.importCurrentPageButton,
+    els.promoteInboxButton,
+    els.previewResumeButton,
+    els.previewCoverLetterButton,
+  ];
 }
 
 function renderCurrentTab() {
   if (!state.currentTab) {
     els.currentTabLabel.textContent = hasChromeApi ? 'Reading...' : 'Demo mode';
+    setCurrentPageStatus({ kind: 'normal', detail: null });
     return;
   }
-  els.currentTabLabel.textContent = state.currentTab.title || state.currentTab.url || 'Current tab';
+  const title = state.currentTab.title || 'Current tab';
+  const url = state.currentTab.url ? ` - ${state.currentTab.url}` : '';
+  els.currentTabLabel.textContent = `${title}${url}`;
+}
+
+function renderCurrentPageStatus() {
+  els.importCurrentPageButton.classList.remove('button-success', 'button-warning');
+  els.duplicateNotice.hidden = true;
+  els.duplicateNotice.className = 'page-notice';
+  els.duplicateNotice.textContent = '';
+
+  if (state.connection.status !== 'connected') {
+    els.importCurrentPageButton.textContent = IMPORT_PAGE_LABEL;
+    return;
+  }
+
+  if (state.currentPageStatus.kind === 'duplicate') {
+    els.importCurrentPageButton.classList.add('button-success');
+    els.importCurrentPageButton.textContent = 'Already Imported';
+    els.duplicateNotice.hidden = false;
+    els.duplicateNotice.classList.add('page-notice--success');
+    renderDuplicateNotice(state.currentPageStatus.detail);
+    return;
+  }
+
+  if (state.currentPageStatus.kind === 'aggregator') {
+    els.importCurrentPageButton.classList.add('button-warning');
+    els.importCurrentPageButton.textContent = IMPORT_PAGE_LABEL;
+    els.duplicateNotice.hidden = false;
+    els.duplicateNotice.classList.add('page-notice--warning');
+    els.duplicateNotice.textContent = state.currentPageStatus.detail;
+    return;
+  }
+
+  if (!els.importCurrentPageButton.disabled) {
+    els.importCurrentPageButton.textContent = IMPORT_PAGE_LABEL;
+  }
 }
 
 function renderQueues() {
@@ -194,6 +302,74 @@ async function refreshCurrentTab() {
   const [tab] = await chromeApi.tabs.query({ active: true, currentWindow: true });
   state.currentTab = tab ?? null;
   renderCurrentTab();
+  await refreshCurrentPageStatus();
+}
+
+async function refreshCurrentPageStatus() {
+  const requestId = ++pageStatusRequestSeq;
+  const currentUrl = state.currentTab?.url;
+  if (!currentUrl || state.connection.status !== 'connected') {
+    setCurrentPageStatus({ kind: 'normal', detail: null });
+    return;
+  }
+
+  const aggregator = detectAggregatorPlatform(currentUrl);
+  try {
+    const res = await fetchWithTimeout(
+      `${daemonBase()}/api/inbox/duplicate-check?url=${encodeURIComponent(currentUrl)}`,
+      { method: 'GET' },
+    );
+    if (requestId !== pageStatusRequestSeq) return;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    if (result.duplicate) {
+      setCurrentPageStatus({
+        kind: 'duplicate',
+        detail: {
+          title: result.title ?? 'Untitled page',
+          url: result.url ?? currentUrl,
+        },
+      });
+      return;
+    }
+  } catch (err) {
+    if (requestId !== pageStatusRequestSeq) return;
+    log(`Duplicate check failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  if (aggregator) {
+    setCurrentPageStatus({
+      kind: 'aggregator',
+      detail: `This looks like a ${aggregator.name} listing. If possible, open the company application page and import that page instead.`,
+    });
+    return;
+  }
+
+  setCurrentPageStatus({ kind: 'normal', detail: null });
+}
+
+function setCurrentPageStatus(nextStatus) {
+  state.currentPageStatus = nextStatus;
+  renderCurrentPageStatus();
+}
+
+function renderDuplicateNotice(detail) {
+  const title = typeof detail?.title === 'string' ? detail.title : 'Untitled page';
+  const url = typeof detail?.url === 'string' ? detail.url : state.currentTab?.url;
+  els.duplicateNotice.textContent = 'Already imported. Please check ';
+
+  if (!url) {
+    els.duplicateNotice.append(title);
+    return;
+  }
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.textContent = title;
+  link.title = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  els.duplicateNotice.append(link);
 }
 
 async function focusNext(column) {
@@ -221,6 +397,7 @@ async function focusNext(column) {
 }
 
 async function openPreview(kind) {
+  if (!ensureConnected()) return;
   const jobId = state.currentJobId;
   const path = kind === 'resume' ? '/api/preview/resume' : '/api/preview/cover-letter';
   const url = `${daemonBase()}${path}?jobId=${encodeURIComponent(jobId)}`;
@@ -234,12 +411,35 @@ async function openPreview(kind) {
 }
 
 async function importCurrentPage() {
-  const snapshot = await collectCurrentPageSnapshot();
+  if (!ensureConnected()) return;
+  if (state.currentPageStatus.kind === 'duplicate') {
+    log(state.currentPageStatus.detail ?? 'Duplicate page detected. Import skipped.');
+    return;
+  }
+  if (state.currentPageStatus.kind === 'aggregator') {
+    log('Aggregator listing detected. Import is allowed, but the company application page is usually better.');
+  }
+
+  setButtonState(els.importCurrentPageButton, 'Importing...', true);
   try {
-    await postJson('/api/inbox/current-page', snapshot);
-    log('Sent current page to wolf inbox.');
+    const snapshot = await collectCurrentPageSnapshot();
+    const result = await postJson('/api/inbox/items', {
+      kind: 'manual_page',
+      source: 'wolf_companion',
+      ...snapshot,
+    });
+    const imported = result.status === 'duplicate' ? 'Already Imported' : 'Imported';
+    setButtonState(els.importCurrentPageButton, imported, false);
+    log(result.status === 'duplicate'
+      ? `Already in wolf inbox: ${result.inboxId ?? 'existing item'}`
+      : `Imported page to wolf inbox: ${result.inboxId ?? 'new item'}`);
+    await refreshCurrentPageStatus();
   } catch (err) {
-    setConnection('disconnected', err instanceof Error ? err.message : String(err));
+    const message = importErrorMessage(err);
+    setButtonState(els.importCurrentPageButton, 'Import Failed', false);
+    log(`Import failed: ${message}`);
+  } finally {
+    resetImportButtonLater();
   }
 }
 
@@ -254,6 +454,8 @@ async function collectCurrentPageSnapshot() {
     };
   }
 
+  await requestTabPermission(state.currentTab.url);
+
   const [result] = await chromeApi.scripting.executeScript({
     target: { tabId: state.currentTab.id },
     func: () => ({
@@ -267,13 +469,90 @@ async function collectCurrentPageSnapshot() {
   return result.result;
 }
 
-async function batchWriteInbox() {
-  try {
-    await postJson('/api/inbox/batch-write', { limit: 25 });
-    log('Requested JD batch write.');
-  } catch (err) {
-    setConnection('disconnected', err instanceof Error ? err.message : String(err));
+async function requestTabPermission(url) {
+  const originPattern = hostPermissionPattern(url);
+  if (!originPattern) {
+    throw new Error('Cannot import this tab. Open an http/https page and try again.');
   }
+
+  const granted = await chromeApi.permissions.request({ origins: [originPattern] });
+  if (!granted) {
+    throw new Error(`Site access was not granted for ${originPattern}`);
+  }
+}
+
+function hostPermissionPattern(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return `${parsed.protocol}//${parsed.host}/*`;
+  } catch {
+    return null;
+  }
+}
+
+function importErrorMessage(err) {
+  const message = err instanceof Error ? err.message : String(err);
+  const runtimeMessage = chromeApi?.runtime?.lastError?.message;
+  if (message.includes('Cannot access contents of url')) {
+    return `Cannot import this tab after site access was granted. Chrome said: ${message}`;
+  }
+  if (runtimeMessage) return `${message} Chrome runtime said: ${runtimeMessage}`;
+  return message;
+}
+
+async function promoteInboxWithAi() {
+  if (!ensureConnected()) return;
+  const confirmed = window.confirm(
+    'Promote raw inbox items with AI? This may use paid batch API calls.',
+  );
+  if (!confirmed) {
+    log('AI promote cancelled.');
+    return;
+  }
+
+  setButtonState(els.promoteInboxButton, 'Queueing...', true);
+  try {
+    const result = await postJson('/api/inbox/promote', { limit: 20, shardSize: 20 });
+    if (result.status === 'empty') {
+      setButtonState(els.promoteInboxButton, 'Nothing to Promote', false);
+      log('No raw inbox items to promote.');
+      return;
+    }
+    setButtonState(els.promoteInboxButton, 'Queued', false);
+    log(`AI promote queued: ${result.itemCount ?? 0} item(s), ${result.shardCount ?? 0} shard(s).`);
+  } catch (err) {
+    setButtonState(els.promoteInboxButton, 'Queue Failed', false);
+    setConnection('disconnected', err instanceof Error ? err.message : String(err));
+  } finally {
+    resetButtonLabelLater(els.promoteInboxButton, 'Promote with AI');
+  }
+}
+
+function ensureConnected() {
+  if (state.connection.status === 'connected') return true;
+  log('Connect to wolf serve first.');
+  return false;
+}
+
+function setButtonState(button, label, disabled) {
+  button.textContent = label;
+  button.disabled = disabled;
+}
+
+function resetButtonLabelLater(button, label) {
+  setTimeout(() => {
+    button.textContent = label;
+    button.disabled = false;
+  }, 1_800);
+}
+
+function resetImportButtonLater() {
+  setTimeout(() => {
+    els.importCurrentPageButton.disabled = false;
+    renderDaemonActionState();
+    renderCurrentPageStatus();
+  }, 1_800);
 }
 
 async function postJson(path, body) {
@@ -282,7 +561,10 @@ async function postJson(path, body) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}${text ? `: ${text}` : ''}`);
+  }
   return res.json().catch(() => ({}));
 }
 
@@ -293,4 +575,17 @@ function log(message) {
   while (els.activityLog.children.length > 6) {
     els.activityLog.lastElementChild?.remove();
   }
+}
+
+function detectAggregatorPlatform(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return AGGREGATOR_PLATFORMS.find((platform) => platform.matches(url)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function hostnameEndsWith(hostname, suffix) {
+  return hostname === suffix || hostname.endsWith(`.${suffix}`);
 }

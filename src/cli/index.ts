@@ -19,6 +19,7 @@ import {
 } from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
 import { context } from './commands/context.js';
+import { serve } from './commands/serve.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild, currentBinaryName } from '../utils/instance.js';
 import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
@@ -251,11 +252,28 @@ program
     await context(opts.for);
   });
 
+program
+  .command('serve')
+  .description('Start the local HTTP daemon for the wolf companion extension')
+  .option('-p, --port <port>', 'Port to listen on (default 47823)', parsePort)
+  .option('--no-browser', 'Do not launch the Wolf Browser window')
+  .action(async (opts: { port?: number; browser?: boolean }) => {
+    await serve({ port: opts.port, browser: opts.browser });
+  });
+
 // Commander's collector for repeatable flags. Each occurrence of --search
 // appends one term to the accumulator. Needs to live at module scope so the
 // initial empty array is captured per option definition.
 function collectSearchTerms(value: string, previous: string[]): string[] {
   return [...previous, value];
+}
+
+function parsePort(value: string): number {
+  const port = Number.parseInt(value, 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid port "${value}". Expected 1-65535.`);
+  }
+  return port;
 }
 
 const jobCmd = new Command('job').description('Inspect tracked jobs');

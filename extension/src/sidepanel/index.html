@@ -22,6 +22,7 @@
           <input id="portInput" inputmode="numeric" maxlength="5" pattern="[0-9]{4,5}" value="47823" />
           <button id="reconnectButton" type="button">Reconnect</button>
         </div>
+        <p class="port-help">Start <strong>wolf serve</strong>, then copy the printed port here.</p>
         <p id="connectionDetail" class="muted">Waiting for local wolf serve.</p>
       </section>
 
@@ -30,9 +31,10 @@
           <h2>Current Page</h2>
           <span id="currentTabLabel" class="muted">No tab bound</span>
         </div>
+        <p id="duplicateNotice" class="page-notice" hidden></p>
         <div class="action-grid">
           <button id="importCurrentPageButton" type="button">Import Page</button>
-          <button id="batchWriteButton" type="button">Write JDs</button>
+          <button id="promoteInboxButton" type="button">Promote with AI</button>
           <button id="previewResumeButton" type="button">Resume</button>
           <button id="previewCoverLetterButton" type="button">Cover Letter</button>
         </div>

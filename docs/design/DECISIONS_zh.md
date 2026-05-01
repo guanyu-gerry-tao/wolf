@@ -343,3 +343,17 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** 我想要一个所有未来 batch workflow 都能复用的底层 AI batch 层（`score`、input extraction、tailor 等），而不是一个 score 专用实现。难点在 provider polling 之后：不同 service 可能在不同时间 poll 或消费结果，而且一批里可能部分成功、部分失败。
 **AI：** 把 batch 生命周期和业务解释拆开。`BatchService` 只负责 provider 提交、provider 轮询，以及把标准化结果持久化。每个 provider batch 在 `batches` 里一行；每个 request/result 在 `batch_items` 里一行。`batch_items` 记录 `custom_id`、item 状态、标准化文本输出或错误，以及 `consumed_at`。底层 batch 层不解析 score JSON、不验证 resume HTML、不更新 job fields；application services 后续消费成功的 `batch_items`，再写自己的业务状态。Provider-specific API 通过 adapter 隔离，例如 Anthropic Message Batches adapter 把 `custom_id`、provider status、JSONL row、content block、provider error 转成 wolf 自己的类型。
 **结果：** 采用为 base batch runtime 的边界。这样 polling 很 dumb 且可恢复，支持部分 item 失败，进程重启不丢结果，也避免 batch 层耦合 score/tailor/input 语义。未来业务 service 应把 `batch_items.result_text` 当作输入，只有在自己的业务写入成功之后才把 item 标记为 consumed。
+
+---
+
+**2026-04-30 — `wolf serve` 是平行 HTTP transport，不是新的 CLI 后端**
+**我：** Companion extension 需要一个常驻本地 daemon，但这是否意味着整个项目都应该 HTTP-first，让 CLI/MCP 都变成 HTTP client？
+**AI：** 保持 CLI、MCP、HTTP 三个入口平行。`wolf serve` 是给浏览器扩展调用的本地常驻 HTTP daemon，但它通过 `AppContext` 委托给同一套 application service；它不替代现有 CLI/MCP 的进程内调用路径。CLI 仍然可以不启动 daemon 就直接运行，保留一次性命令体验和现有 workspace 语义。
+**结果：** 采用。`src/transport/http/` 承载本地 HTTP 层，`ServeApplicationService` 拥有 daemon 生命周期，`src/cli/commands/serve.ts` 继续保持薄 wrapper。初始 route 是 `GET /api/ping`，通过 echo nonce 支撑 companion extension 的连接检查。
+
+---
+
+**2026-04-30 — Inbox 只做 raw landing zone**
+**我：** Inbox 要同时接用户手动保存的页面和大规模 hunt 结果，不能变成另一套处理后的 job workspace。
+**AI：** Inbox 保持 raw-only，但放进 SQLite `inbox_items`，不再使用 `data/inbox/` 文件夹；手动 capture 和大规模 hunt 结果共享同一个 durable queue。
+**结果：** 采用。Inbox 不存清洗后的 JD、解析字段、tailor 产物、去重结果或 fill 快照。用户显式触发付费处理时创建 `background_ai_batches`；成功的 AI 输出会立刻应用到 canonical job state，只短期保留 debug payload。

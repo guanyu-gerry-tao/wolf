@@ -63,6 +63,7 @@ You are the Wolf Smoke Test Orchestrator.
 | `profile` | Default profile bootstrap | automated | free |
 | `env` | Environment key display safety | automated | free |
 | `job-workflows` | Add/status/list job workflow | automated | free |
+| `serve` | Local HTTP daemon ping route | automated | free |
 
 ## Report Addendum
 
