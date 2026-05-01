@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "wolf companion",
+  "version": "0.0.1",
+  "description": "Window-scoped side panel for the local wolf daemon.",
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "src/background/index.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "action": {
+    "default_title": "Open wolf companion"
+  }
+}

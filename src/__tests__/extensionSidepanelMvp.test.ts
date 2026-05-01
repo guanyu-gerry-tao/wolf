@@ -1,0 +1,75 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const extensionRoot = path.resolve(process.cwd(), 'extension');
+
+async function readText(relativePath: string): Promise<string> {
+  return fs.readFile(path.join(extensionRoot, relativePath), 'utf-8');
+}
+
+describe('companion side panel MVP', () => {
+  // Pins the unpacked-extension contract: Chrome should be able to load the
+  // source directory directly while the Phase 1 MVP is still buildless.
+  it('declares a MV3 side panel and global action entry', async () => {
+    const manifest = JSON.parse(await readText('manifest.json')) as {
+      manifest_version: number;
+      side_panel?: { default_path?: string };
+      action?: { default_title?: string };
+      background?: { service_worker?: string; type?: string };
+      permissions?: string[];
+      host_permissions?: string[];
+    };
+
+    expect(manifest.manifest_version).toBe(3);
+    expect(manifest.side_panel?.default_path).toBe('src/sidepanel/index.html');
+    expect(manifest.action?.default_title).toContain('wolf');
+    expect(manifest.background?.service_worker).toBe('src/background/index.js');
+    expect(manifest.background?.type).toBe('module');
+    expect(manifest.permissions).toEqual(expect.arrayContaining([
+      'sidePanel',
+      'tabs',
+      'activeTab',
+      'scripting',
+      'storage',
+    ]));
+    expect(manifest.host_permissions).toEqual(expect.arrayContaining([
+      'http://127.0.0.1/*',
+      'http://localhost/*',
+    ]));
+  });
+
+  // The side panel must expose the actual MVP controls instead of being just a
+  // placeholder shell.
+  it('renders connection, queue, import, batch, and preview controls', async () => {
+    const html = await readText('src/sidepanel/index.html');
+    const js = await readText('src/sidepanel/main.js');
+
+    expect(html).toContain('id="portInput"');
+    expect(html).toContain('id="reconnectButton"');
+    expect(html).toContain('id="importCurrentPageButton"');
+    expect(html).toContain('id="batchWriteButton"');
+    expect(html).toContain('id="previewResumeButton"');
+    expect(html).toContain('id="previewCoverLetterButton"');
+    expect(html).toContain('data-column="filling"');
+    expect(html).toContain('data-column="ready"');
+    expect(html).toContain('data-column="stuck"');
+
+    expect(js).toContain('chrome.tabs.update');
+    expect(js).toContain('chrome.windows.update');
+    expect(js).toContain('/api/ping');
+    expect(js).toContain('/api/inbox/current-page');
+    expect(js).toContain('/api/inbox/batch-write');
+    expect(js).toContain('/api/preview/resume');
+    expect(js).toContain('/api/preview/cover-letter');
+  });
+
+  // The queue should read as a compact kanban board: three columns side by
+  // side, not three stacked sections.
+  it('styles the queue as a three-column kanban board', async () => {
+    const css = await readText('src/sidepanel/styles.css');
+
+    expect(css).toContain('grid-template-columns: repeat(3, minmax(112px, 1fr))');
+    expect(css).toContain('grid-template-rows: auto 1fr');
+  });
+});

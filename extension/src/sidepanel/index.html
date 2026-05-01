@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>wolf companion</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">wolf companion</p>
+          <h1>Apply Console</h1>
+        </div>
+        <span id="connectionBadge" class="status-badge status-badge--idle">Offline</span>
+      </header>
+
+      <section class="panel connection-panel" aria-label="daemon connection">
+        <label class="field-label" for="portInput">Port</label>
+        <div class="port-row">
+          <input id="portInput" inputmode="numeric" maxlength="5" pattern="[0-9]{4,5}" value="47823" />
+          <button id="reconnectButton" type="button">Reconnect</button>
+        </div>
+        <p id="connectionDetail" class="muted">Waiting for local wolf serve.</p>
+      </section>
+
+      <section class="panel current-panel" aria-label="current page actions">
+        <div class="section-title">
+          <h2>Current Page</h2>
+          <span id="currentTabLabel" class="muted">No tab bound</span>
+        </div>
+        <div class="action-grid">
+          <button id="importCurrentPageButton" type="button">Import Page</button>
+          <button id="batchWriteButton" type="button">Write JDs</button>
+          <button id="previewResumeButton" type="button">Resume</button>
+          <button id="previewCoverLetterButton" type="button">Cover Letter</button>
+        </div>
+      </section>
+
+      <section class="queue" aria-label="application queue">
+        <article class="queue-column" data-column="filling">
+          <div class="column-head">
+            <div>
+              <p>Filling</p>
+              <strong id="fillingCount">0</strong>
+            </div>
+            <button class="next-button" type="button" data-next-column="filling">Next</button>
+          </div>
+          <ol id="fillingList" class="job-list"></ol>
+        </article>
+
+        <article class="queue-column" data-column="ready">
+          <div class="column-head">
+            <div>
+              <p>Ready</p>
+              <strong id="readyCount">0</strong>
+            </div>
+            <button class="next-button" type="button" data-next-column="ready">Next</button>
+          </div>
+          <ol id="readyList" class="job-list"></ol>
+        </article>
+
+        <article class="queue-column" data-column="stuck">
+          <div class="column-head">
+            <div>
+              <p>Stuck</p>
+              <strong id="stuckCount">0</strong>
+            </div>
+            <button class="next-button" type="button" data-next-column="stuck">Next</button>
+          </div>
+          <ol id="stuckList" class="job-list"></ol>
+        </article>
+      </section>
+
+      <footer class="activity">
+        <p class="field-label">Activity</p>
+        <ul id="activityLog"></ul>
+      </footer>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
