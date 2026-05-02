@@ -34,10 +34,10 @@ export class SqliteBatchRepositoryImpl implements BatchRepository {
   }
 
   /** @inheritdoc */
-  async markFailed(id: string): Promise<void> {
+  async markFailed(id: string, errorMessage?: string): Promise<void> {
     await this.db
       .update(batches)
-      .set({ status: 'failed' })
+      .set({ status: 'failed', errorMessage: errorMessage ?? undefined })
       .where(eq(batches.id, id));
   }
 }
@@ -54,8 +54,10 @@ function rowToBatch(row: BatchRow): Batch {
     batchId: row.batchId,
     type: row.type,
     aiProvider: row.aiProvider,
+    model: row.model ?? null,
     profileId: row.profileId,
     status: row.status,
+    errorMessage: row.errorMessage ?? null,
     submittedAt: row.submittedAt,
     completedAt: row.completedAt ?? null,
   };
@@ -67,8 +69,10 @@ function batchToRow(batch: Batch): typeof batches.$inferInsert {
     batchId: batch.batchId,
     type: batch.type,
     aiProvider: batch.aiProvider,
+    model: batch.model ?? undefined,
     profileId: batch.profileId,
     status: batch.status,
+    errorMessage: batch.errorMessage ?? undefined,
     submittedAt: batch.submittedAt,
     completedAt: batch.completedAt ?? undefined,
   };

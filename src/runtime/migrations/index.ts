@@ -4,6 +4,7 @@ import { parse } from 'smol-toml';
 import { loadConfig, saveConfig } from '../../utils/config.js';
 import { log } from '../../utils/logger.js';
 import { v1ToV2 } from './v1ToV2.js';
+import { v2ToV3 } from './v2ToV3.js';
 
 /**
  * Workspace schema migration runtime.
@@ -73,7 +74,7 @@ export interface Migration {
  * recorded schemaVersion is greater than this means the user is running
  * an older binary against a newer workspace — refuse to run.
  */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 /**
  * Ordered registry of migrations. v1 → v2 (profile .md trio → single
@@ -85,7 +86,7 @@ export const CURRENT_SCHEMA_VERSION = 2;
  * the framework can be exercised without coupling to whatever real
  * migrations have been added.
  */
-export const MIGRATIONS: ReadonlyArray<Migration> = [v1ToV2];
+export const MIGRATIONS: ReadonlyArray<Migration> = [v1ToV2, v2ToV3];
 
 /**
  * Reads the workspace's recorded `schemaVersion` from `wolf.toml`.

@@ -80,10 +80,38 @@ export function initializeSchema(db: DrizzleDb): void {
       batch_id     TEXT NOT NULL,
       type         TEXT NOT NULL,
       ai_provider  TEXT NOT NULL,
+      model        TEXT,
       profile_id   TEXT NOT NULL,
       status       TEXT NOT NULL,
+      error_message TEXT,
       submitted_at TEXT NOT NULL,
       completed_at TEXT
+    )
+  `);
+
+  try {
+    db.run(sql`ALTER TABLE batches ADD COLUMN model TEXT`);
+  } catch {
+    /* column already present — nothing to do */
+  }
+
+  try {
+    db.run(sql`ALTER TABLE batches ADD COLUMN error_message TEXT`);
+  } catch {
+    /* column already present — nothing to do */
+  }
+
+  db.run(sql`
+    CREATE TABLE IF NOT EXISTS batch_items (
+      id            TEXT NOT NULL PRIMARY KEY,
+      batch_id      TEXT NOT NULL,
+      custom_id     TEXT NOT NULL,
+      status        TEXT NOT NULL,
+      result_text   TEXT,
+      error_message TEXT,
+      consumed_at   TEXT,
+      created_at    TEXT NOT NULL,
+      completed_at  TEXT
     )
   `);
 }

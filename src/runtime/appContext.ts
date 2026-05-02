@@ -28,6 +28,7 @@ import { initializeSchema } from '../repository/impl/initializeSchema.js';
 import { SqliteJobRepositoryImpl } from '../repository/impl/sqliteJobRepositoryImpl.js';
 import { SqliteCompanyRepositoryImpl } from '../repository/impl/sqliteCompanyRepositoryImpl.js';
 import { SqliteBatchRepositoryImpl } from '../repository/impl/sqliteBatchRepositoryImpl.js';
+import { SqliteBatchItemRepositoryImpl } from '../repository/impl/sqliteBatchItemRepositoryImpl.js';
 import { FileProfileRepositoryImpl } from '../repository/impl/fileProfileRepositoryImpl.js';
 import { InMemoryProfileRepositoryImpl } from '../repository/impl/inMemoryProfileRepositoryImpl.js';
 import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
@@ -57,6 +58,7 @@ import { parseModelRef } from '../utils/parseModelRef.js';
 import type { JobRepository } from '../repository/jobRepository.js';
 import type { CompanyRepository } from '../repository/companyRepository.js';
 import type { BatchRepository } from '../repository/batchRepository.js';
+import type { BatchItemRepository } from '../repository/batchItemRepository.js';
 import type { ProfileRepository } from '../repository/profileRepository.js';
 import type { BatchService } from '../service/batchService.js';
 import type { JobProvider } from '../service/jobProvider.js';
@@ -88,6 +90,7 @@ export interface AppContext {
   jobRepository: JobRepository;
   companyRepository: CompanyRepository;
   batchRepository: BatchRepository;
+  batchItemRepository: BatchItemRepository;
   profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
@@ -136,12 +139,13 @@ function wireContext(
   const companyRepo = new SqliteCompanyRepositoryImpl(db, workspaceDir);
   const jobRepo = new SqliteJobRepositoryImpl(db, companyRepo, workspaceDir);
   const batchRepo = new SqliteBatchRepositoryImpl(db);
+  const batchItemRepo = new SqliteBatchItemRepositoryImpl(db);
 
   // Services don't take `logger` through constructors — they import the `log`
   // facade directly from src/utils/logger.ts. The default logger was installed
   // via setDefaultLogger() in createAppContext / createTestAppContext before
   // we got here.
-  const batchService = new BatchServiceImpl(batchRepo, jobRepo);
+  const batchService = new BatchServiceImpl(batchRepo, batchItemRepo, jobRepo);
   const renderService = new RenderServiceImpl();
   const rewriteService = new ResumeCoverLetterServiceImpl();
   const briefService = new TailoringBriefServiceImpl();
@@ -178,6 +182,7 @@ function wireContext(
     jobRepository: jobRepo,
     companyRepository: companyRepo,
     batchRepository: batchRepo,
+    batchItemRepository: batchItemRepo,
     profileRepository,
     batchService,
     jobProviders: [],

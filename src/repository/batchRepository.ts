@@ -14,8 +14,10 @@ export interface Batch {
   batchId: string;
   type: BatchType;
   aiProvider: BatchAiProvider;
+  model: string | null;
   profileId: string;
   status: BatchStatus;
+  errorMessage: string | null;
   /** ISO 8601 — when wolf submitted the batch. */
   submittedAt: string;
   /** ISO 8601 — when the provider reported completion; null while pending. */
@@ -35,5 +37,5 @@ export interface BatchRepository {
   /** Marks a batch complete and stamps `completedAt`. */
   markComplete(id: string, completedAt: string): Promise<void>;
   /** Marks a batch failed (terminal state — no retry by design). */
-  markFailed(id: string): Promise<void>;
+  markFailed(id: string, errorMessage?: string): Promise<void>;
 }

@@ -336,3 +336,10 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** 我希望用户和 AI assistant 能自定义某个 profile 的包装策略，但不能因为改 prompt 而破坏 tailor/fill 流水线。不能暴露的是流程/协议类 prompt：输入 section 叫什么、输出 schema 是什么、HTML/JSON 契约是什么、parser/renderer 依赖哪些规则。真正该暴露的是策略：保守还是激进、resume 风格、cover letter 是否写公司名、form answer 策略等。
 **AI：** 把 prompt 分成两层。运行时协议 prompt 继续内置在代码里，负责机器契约：prompt section 存在哪些、名字是什么、模型必须输出什么形状、renderer/parser 依赖什么约束。每个 profile 下面新增一个可选策略 prompt pack：`profiles/<name>/prompts/`，文件名稳定，默认空文件：`tailoring-strategy.md`、`resume-strategy.md`、`cover-letter-strategy.md`、`fill-strategy.md`，外加 README 说明边界。空策略文件表示"使用 wolf 默认策略"。用户可以改内容，但不能改文件名。工具只暴露骨架：`wolf profile prompts path`、`wolf profile prompts list`、`wolf profile prompts repair`；repair 只创建缺失文件，不覆盖已有编辑。
 **结果：** 采用为设计方向。初始实现提交 `01fdab8` 创建了 prompt-pack 骨架和 CLI 查看/修复工具，但还没有把策略文件注入运行时 AI 调用，也没有 seed 任何带立场的策略内容。后续接 runtime 时，应只把非空策略文件作为 user strategy section 注入，协议 prompt 仍然保持内置。
+
+---
+
+**2026-05-01 — Base AI batch 先持久化标准化 item 结果，再由业务消费**
+**我：** 我想要一个所有未来 batch workflow 都能复用的底层 AI batch 层（`score`、input extraction、tailor 等），而不是一个 score 专用实现。难点在 provider polling 之后：不同 service 可能在不同时间 poll 或消费结果，而且一批里可能部分成功、部分失败。
+**AI：** 把 batch 生命周期和业务解释拆开。`BatchService` 只负责 provider 提交、provider 轮询，以及把标准化结果持久化。每个 provider batch 在 `batches` 里一行；每个 request/result 在 `batch_items` 里一行。`batch_items` 记录 `custom_id`、item 状态、标准化文本输出或错误，以及 `consumed_at`。底层 batch 层不解析 score JSON、不验证 resume HTML、不更新 job fields；application services 后续消费成功的 `batch_items`，再写自己的业务状态。Provider-specific API 通过 adapter 隔离，例如 Anthropic Message Batches adapter 把 `custom_id`、provider status、JSONL row、content block、provider error 转成 wolf 自己的类型。
+**结果：** 采用为 base batch runtime 的边界。这样 polling 很 dumb 且可恢复，支持部分 item 失败，进程重启不丢结果，也避免 batch 层耦合 score/tailor/input 语义。未来业务 service 应把 `batch_items.result_text` 当作输入，只有在自己的业务写入成功之后才把 item 标记为 consumed。
