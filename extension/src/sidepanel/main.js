@@ -44,6 +44,7 @@ const state = {
   view: 'main',
   activeArtifactKind: null,
   activeRunId: null,
+  activeRunUi: null,
   runPollTimer: null,
   artifacts: {
     resume: { status: 'not_ready', url: null },
@@ -907,13 +908,19 @@ async function tailorThisJobInstantly() {
     els.tailorPromptInput.value = '';
     setButtonState(els.tailorInstantButton, 'Tailoring...', true);
     log(`Instant tailor started: ${result.runId ?? 'run pending'}`);
-    if (result.runId) startRunPolling(result.runId);
+    if (result.runId) {
+      startRunPolling(result.runId, {
+        button: els.tailorInstantButton,
+        completeLabel: 'Tailored',
+        failedLabel: 'Tailor Failed',
+        resetLabel: 'Tailor this job instantly',
+      });
+    }
   } catch (err) {
     els.tailorPromptBox.hidden = true;
     const message = err instanceof Error ? err.message : String(err);
     setButtonState(els.tailorInstantButton, 'Tailor TODO', false);
     log(`Instant tailor unavailable: ${message}`);
-  } finally {
     resetButtonLabelLater(els.tailorInstantButton, 'Tailor this job instantly');
   }
 }
@@ -994,8 +1001,9 @@ async function refreshActiveRunOrArtifacts() {
   await refreshArtifactStatus();
 }
 
-function startRunPolling(runId) {
+function startRunPolling(runId, ui = null) {
   state.activeRunId = runId;
+  state.activeRunUi = ui;
   if (state.runPollTimer) clearInterval(state.runPollTimer);
   state.runPollTimer = setInterval(() => {
     pollRunStatus(runId).catch((err) => {
@@ -1025,15 +1033,28 @@ async function pollRunStatus(runId) {
     renderArtifactButtons();
   }
   if (['ready', 'failed'].includes(body.status)) {
+    renderCompletedRunUi(body.status);
     stopRunPolling();
     await refreshArtifactStatus();
   }
+}
+
+function renderCompletedRunUi(status) {
+  const ui = state.activeRunUi;
+  if (!ui?.button) return;
+  if (status === 'ready') {
+    setButtonState(ui.button, ui.completeLabel ?? 'Ready', true);
+    return;
+  }
+  setButtonState(ui.button, ui.failedLabel ?? 'Failed', false);
+  resetButtonLabelLater(ui.button, ui.resetLabel ?? currentButtonText(ui.button));
 }
 
 function stopRunPolling() {
   if (state.runPollTimer) clearInterval(state.runPollTimer);
   state.runPollTimer = null;
   state.activeRunId = null;
+  state.activeRunUi = null;
 }
 
 async function saveConfig() {
