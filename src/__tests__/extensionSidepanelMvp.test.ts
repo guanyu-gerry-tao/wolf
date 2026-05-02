@@ -104,7 +104,7 @@ describe('companion side panel MVP', () => {
     expect(html).toContain('queue--disabled');
     expect(html).toContain('Application queue is not implemented yet. Coming soon.');
 
-    expect(js).not.toContain('/api/tabs');
+    expect(js).toContain('/api/tabs');
     expect(js).not.toContain('/focus');
     expect(js).toContain('/api/ping');
     expect(js).toContain('/api/runtime/status');
@@ -130,6 +130,9 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('stopRunPolling');
     expect(js).toContain('Run polling is not implemented yet.');
     expect(js).toContain('Batch tailor started');
+    expect(js).toContain('No Ready jobs yet. Process Inbox first, then try Batch Tailor.');
+    expect(js).toContain('For failed tailor jobs, open the job and use Tailor this job instantly.');
+    expect(js).toContain('For failed inbox items, import that page again, then run Process Inbox.');
     expect(js).toContain('Not implemented yet');
     expect(js).toContain('Application queue is not implemented yet. Coming soon.');
     expect(js).toContain('Autofill is not implemented yet.');

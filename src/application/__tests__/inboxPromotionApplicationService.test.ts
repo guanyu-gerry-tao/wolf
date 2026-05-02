@@ -5,6 +5,7 @@ import { InboxPromotionApplicationServiceImpl } from '../impl/inboxPromotionAppl
 import { createSilentLogger, setDefaultLogger } from '../../utils/logger.js';
 import type { BackgroundAiBatchRepository } from '../../repository/backgroundAiBatchRepository.js';
 import type { InboxItem, InboxRepository } from '../../repository/inboxRepository.js';
+import type { BatchService } from '../../service/batchService.js';
 
 // Inbox promotion is explicit user-triggered work. It may be backed by paid AI
 // batch state, but the local companion MVP can promote simple manual pages
@@ -151,5 +152,67 @@ describe('InboxPromotionApplicationServiceImpl', () => {
       jobId: 'job-1',
       error: null,
     });
+  });
+
+  // Once BatchService is available, Process Inbox should use the provider
+  // Batch API for structured extraction instead of the rough local HTML
+  // fallback. The returned batch id becomes the run id the side panel polls.
+  it('submits raw inbox items to the base AI batch runtime when available', async () => {
+    const rawItems = [makeItem('a'), makeItem('b')];
+    const inboxRepo = {
+      listByStatus: vi.fn(async () => rawItems),
+      updateStatus: vi.fn(async () => undefined),
+    } as unknown as InboxRepository;
+    const batchRepo = {
+      saveBatch: vi.fn(async () => undefined),
+    } as unknown as BackgroundAiBatchRepository;
+    const submitAiBatch = vi.fn<BatchService['submitAiBatch']>().mockResolvedValue({
+      id: 'inbox-run-1',
+      batchId: 'msgbatch_inbox_1',
+      provider: 'anthropic',
+      type: 'inbox_promote',
+      model: 'claude-haiku-4-5-20251001',
+      submitted: 2,
+    });
+    const app = new InboxPromotionApplicationServiceImpl(
+      inboxRepo,
+      batchRepo,
+      undefined,
+      {
+        provider: 'anthropic',
+        model: 'claude-haiku-4-5-20251001',
+      },
+      { submitAiBatch } as unknown as BatchService,
+    );
+
+    const result = await app.promoteRawInbox({ limit: 20, provider: 'anthropic', shardSize: 20 });
+
+    expect(result).toMatchObject({
+      batchId: 'inbox-run-1',
+      status: 'queued',
+      itemCount: 2,
+      shardCount: 1,
+    });
+    expect(submitAiBatch).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          customId: 'a',
+          prompt: expect.stringContaining('"inboxItemId":"a"'),
+        }),
+        expect.objectContaining({
+          customId: 'b',
+          prompt: expect.stringContaining('"inboxItemId":"b"'),
+        }),
+      ],
+      {
+        type: 'inbox_promote',
+        provider: 'anthropic',
+        model: 'claude-haiku-4-5-20251001',
+        profileId: 'default',
+        maxTokens: 4000,
+      },
+    );
+    expect(inboxRepo.updateStatus).toHaveBeenCalledWith('a', { status: 'queued', error: null });
+    expect(batchRepo.saveBatch).not.toHaveBeenCalled();
   });
 });

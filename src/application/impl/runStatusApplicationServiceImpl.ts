@@ -5,8 +5,10 @@ import type { BackgroundAiBatchRepository } from '../../repository/backgroundAiB
 import type { BatchItem, BatchItemRepository } from '../../repository/batchItemRepository.js';
 import type { BatchRepository, BatchStatus } from '../../repository/batchRepository.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
+import type { InboxRepository } from '../../repository/inboxRepository.js';
 import type { BatchService } from '../../service/batchService.js';
 import type { RenderService } from '../../service/renderService.js';
+import type { AddApplicationService } from '../addApplicationService.js';
 import type { CompanionActionApplicationService } from '../companionActionApplicationService.js';
 import type {
   CompanionRunStatus,
@@ -15,6 +17,8 @@ import type {
 } from '../runStatusApplicationService.js';
 
 export class RunStatusApplicationServiceImpl implements RunStatusApplicationService {
+  private nextProviderPollAtMs = 0;
+
   constructor(
     private readonly backgroundAiBatchRepository: BackgroundAiBatchRepository,
     private readonly companionActionApplicationService?: CompanionActionApplicationService,
@@ -24,6 +28,10 @@ export class RunStatusApplicationServiceImpl implements RunStatusApplicationServ
     private readonly jobRepository?: JobRepository,
     private readonly renderService?: RenderService,
     private readonly artifactWriter: (filePath: string, content: string | Buffer) => Promise<void> = writeArtifactFile,
+    private readonly addApplicationService?: AddApplicationService,
+    private readonly inboxRepository?: InboxRepository,
+    private readonly providerPollIntervalMs = 60_000,
+    private readonly nowMs: () => number = Date.now,
   ) {}
 
   /** @inheritdoc */
@@ -50,7 +58,7 @@ export class RunStatusApplicationServiceImpl implements RunStatusApplicationServ
     }
 
     const baseBatchBeforePoll = await this.batchRepository?.get(runId);
-    if (baseBatchBeforePoll?.status === 'pending') {
+    if (baseBatchBeforePoll?.status === 'pending' && this.shouldPollProvider()) {
       await this.batchService?.pollAiBatches();
     }
     const baseBatch = await this.batchRepository?.get(runId);
@@ -58,9 +66,16 @@ export class RunStatusApplicationServiceImpl implements RunStatusApplicationServ
       const items = await this.batchItemRepository?.listByBatch(runId) ?? [];
       let artifactsReady = false;
       let applyError: string | null = null;
+      const itemFailureError = baseBatch.status === 'completed' ? batchItemFailureError(items) : null;
       if (baseBatch.type === 'tailor') {
         try {
           artifactsReady = await this.applyCompletedTailorItems(baseBatch.status, items);
+        } catch (err) {
+          applyError = err instanceof Error ? err.message : String(err);
+        }
+      } else if (baseBatch.type === 'inbox_promote') {
+        try {
+          await this.applyCompletedInboxItems(baseBatch.status, items);
         } catch (err) {
           applyError = err instanceof Error ? err.message : String(err);
         }
@@ -68,9 +83,9 @@ export class RunStatusApplicationServiceImpl implements RunStatusApplicationServ
       return {
         runId,
         type: baseBatch.type,
-        status: applyError ? 'failed' : mapBaseBatchStatus(baseBatch.status),
+        status: applyError || itemFailureError ? 'failed' : mapBaseBatchStatus(baseBatch.status),
         itemCount: items.length,
-        error: applyError ?? baseBatch.errorMessage,
+        error: applyError ?? itemFailureError ?? baseBatch.errorMessage,
         artifacts: baseBatch.type === 'tailor'
           ? {
               resume: { status: artifactsReady ? 'ready' : 'not_ready', url: null },
@@ -116,6 +131,33 @@ export class RunStatusApplicationServiceImpl implements RunStatusApplicationServ
 
     return true;
   }
+
+  private async applyCompletedInboxItems(status: BatchStatus, items: BatchItem[]): Promise<boolean> {
+    if (status !== 'completed') return false;
+    if (!allItemsSucceeded(items)) return false;
+    if (!this.addApplicationService || !this.inboxRepository || !this.batchItemRepository) return false;
+
+    for (const item of items) {
+      if (item.consumedAt) continue;
+      const parsed = parseInboxBatchResult(item.resultText ?? '');
+      const result = await this.addApplicationService.add(parsed);
+      await this.inboxRepository.updateStatus(item.customId, {
+        status: 'promoted',
+        jobId: result.jobId,
+        error: null,
+      });
+      await this.batchItemRepository.markConsumed(item.id, new Date().toISOString());
+    }
+
+    return true;
+  }
+
+  private shouldPollProvider(): boolean {
+    const now = this.nowMs();
+    if (now < this.nextProviderPollAtMs) return false;
+    this.nextProviderPollAtMs = now + this.providerPollIntervalMs;
+    return true;
+  }
 }
 
 function mapBackgroundBatchStatus(status: BackgroundAiBatchStatus): CompanionRunStatus {
@@ -134,6 +176,13 @@ function mapBaseBatchStatus(status: BatchStatus): CompanionRunStatus {
 
 function allItemsSucceeded(items: BatchItem[]): boolean {
   return items.length > 0 && items.every((item) => item.status === 'succeeded');
+}
+
+function batchItemFailureError(items: BatchItem[]): string | null {
+  const failedItems = items.filter((item) => item.status !== 'succeeded');
+  if (failedItems.length === 0) return null;
+  const firstError = failedItems.find((item) => item.errorMessage)?.errorMessage;
+  return `${failedItems.length} of ${items.length} batch item(s) failed.${firstError ? ` First error: ${firstError}` : ''}`;
 }
 
 function parseTailorBatchResult(raw: string): {
@@ -158,6 +207,35 @@ function parseTailorBatchResult(raw: string): {
     tailoringBrief: parsed.tailoringBrief,
     resumeHtml: parsed.resumeHtml,
     coverLetterHtml: parsed.coverLetterHtml,
+  };
+}
+
+function parseInboxBatchResult(raw: string): {
+  title: string;
+  company: string;
+  url: string;
+  jdText: string;
+} {
+  const trimmed = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  const parsed = JSON.parse(trimmed) as Partial<{
+    title: unknown;
+    company: unknown;
+    url: unknown;
+    jdText: unknown;
+  }>;
+  if (
+    typeof parsed.title !== 'string' ||
+    typeof parsed.company !== 'string' ||
+    typeof parsed.url !== 'string' ||
+    typeof parsed.jdText !== 'string'
+  ) {
+    throw new Error('Inbox batch result is missing title, company, url, or jdText.');
+  }
+  return {
+    title: parsed.title,
+    company: parsed.company,
+    url: parsed.url,
+    jdText: parsed.jdText,
   };
 }
 

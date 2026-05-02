@@ -21,7 +21,7 @@ import type {
 } from '../backgroundAiBatchRepository.js';
 import type { InboxItemKind, InboxItemStatus } from '../inboxRepository.js';
 
-type BatchType = 'score' | 'tailor';
+type BatchType = 'score' | 'tailor' | 'inbox_promote';
 type BatchAiProvider = 'anthropic' | 'openai';
 type BatchStatus = 'pending' | 'completed' | 'failed';
 

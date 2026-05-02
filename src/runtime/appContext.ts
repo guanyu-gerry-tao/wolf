@@ -206,7 +206,13 @@ function wireContext(
   const statusApp = new StatusApplicationServiceImpl(statusCounters);
   const addApp = new AddApplicationServiceImpl(jobRepo, companyRepo);
   const inboxApp = new InboxApplicationServiceImpl(inboxRepo);
-  const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(inboxRepo, backgroundAiBatchRepo, addApp);
+  const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(
+    inboxRepo,
+    backgroundAiBatchRepo,
+    addApp,
+    defaultAiConfig,
+    batchService,
+  );
   const backgroundAiBatchWorker = new BackgroundAiBatchWorkerImpl(backgroundAiBatchRepo);
   const artifactApp = new ArtifactApplicationServiceImpl(jobRepo);
   const companionActionApp = new CompanionActionApplicationServiceImpl(
@@ -220,6 +226,9 @@ function wireContext(
     batchService,
     jobRepo,
     renderService,
+    undefined,
+    addApp,
+    inboxRepo,
   );
   const browserManager = new PlaywrightBrowserManagerImpl(
     path.join(workspaceDir, 'data', 'wolf-browser-profile'),

@@ -42,11 +42,13 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
 
     await fs.mkdir(this.userDataDir, { recursive: true });
     try {
-      this.context = await chromium.launchPersistentContext(this.userDataDir, {
+      const context = await chromium.launchPersistentContext(this.userDataDir, {
         channel: 'chrome',
         headless: false,
         ignoreDefaultArgs: ['--disable-extensions'],
       });
+      this.context = context;
+      context.once('close', () => this.clearContext(context));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(
@@ -106,10 +108,9 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
 
   async stop(): Promise<void> {
     if (!this.context) return;
-    await this.context.close();
-    this.context = null;
-    this.pagesById.clear();
-    this.pagesByRequestedUrl.clear();
+    const context = this.context;
+    await context.close();
+    this.clearContext(context);
   }
 
   private rememberPage(page: Page): string {
@@ -140,6 +141,13 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
       windowId: null,
       company: hostFromUrl(url),
     };
+  }
+
+  private clearContext(context: BrowserContext): void {
+    if (this.context !== context) return;
+    this.context = null;
+    this.pagesById.clear();
+    this.pagesByRequestedUrl.clear();
   }
 }
 

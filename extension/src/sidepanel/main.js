@@ -496,12 +496,33 @@ function renderEmptyQueueItem(column) {
 
 function renderBatchTailorState() {
   setButtonLabel(els.batchTailorButton, 'Batch Tailor');
-  els.batchTailorButton.disabled = !isRuntimeReady();
-  els.batchTailorButton.title = isRuntimeReady() ? '' : runtimeBlockReason();
+  if (!isRuntimeReady()) {
+    els.batchTailorButton.disabled = true;
+    els.batchTailorButton.title = runtimeBlockReason();
+    return;
+  }
+  if (state.queues.ready.length === 0) {
+    els.batchTailorButton.disabled = true;
+    els.batchTailorButton.title = 'Process Inbox first so wolf has Ready jobs to tailor.';
+    return;
+  }
+  els.batchTailorButton.disabled = false;
+  els.batchTailorButton.title = `Batch tailor ${state.queues.ready.length} Ready job(s).`;
 }
 
 async function refreshQueues() {
-  state.queues = { filling: [], ready: [], stuck: [] };
+  if (!isRuntimeReady()) {
+    state.queues = { filling: [], ready: [], stuck: [] };
+    renderQueues();
+    return;
+  }
+  try {
+    const result = await getJson('/api/tabs');
+    state.queues = normalizeQueues(result.queues ?? {});
+  } catch (err) {
+    state.queues = { filling: [], ready: [], stuck: [] };
+    log(`Could not refresh Ready jobs: ${err instanceof Error ? err.message : String(err)}`);
+  }
   renderQueues();
 }
 
@@ -797,6 +818,16 @@ async function processInboxWithAi() {
     }
     setButtonState(els.processInboxButton, 'Queued', false);
     log(`Inbox processing queued: ${result.itemCount ?? 0} item(s), ${result.shardCount ?? 0} shard(s).`);
+    if (result.batchId) {
+      startRunPolling(result.batchId, {
+        button: els.processInboxButton,
+        completeLabel: 'Processed',
+        failedLabel: 'Process Failed',
+        resetLabel: 'Process Inbox',
+        disableOnComplete: false,
+      });
+      await pollRunStatus(result.batchId);
+    }
   } catch (err) {
     setButtonState(els.processInboxButton, 'Queue Failed', false);
     setConnection('disconnected', err instanceof Error ? err.message : String(err));
@@ -807,8 +838,14 @@ async function processInboxWithAi() {
 
 async function batchTailor() {
   if (!ensureReady()) return;
+  const jobIds = state.queues.ready.map((item) => item.jobId ?? item.id).filter(Boolean);
+  if (jobIds.length === 0) {
+    log('No Ready jobs yet. Process Inbox first, then try Batch Tailor.');
+    renderBatchTailorState();
+    return;
+  }
   const confirmed = window.confirm(
-    'Start batch tailoring for current ready jobs? This may use paid AI batch API calls.',
+    `Start batch tailoring for ${jobIds.length} Ready job(s)? This may use paid AI batch API calls.`,
   );
   if (!confirmed) {
     log('Batch tailor cancelled.');
@@ -817,7 +854,7 @@ async function batchTailor() {
 
   setButtonState(els.batchTailorButton, 'Queueing...', true);
   try {
-    const result = await postJson('/api/tailor/batch', {});
+    const result = await postJson('/api/tailor/batch', { jobIds });
     setButtonState(els.batchTailorButton, 'Batch Tailoring...', true);
     log(`Batch tailor started: ${result.runId ?? 'run pending'}`);
     if (result.runId) {
@@ -961,8 +998,17 @@ async function pollRunStatus(runId) {
     renderArtifactButtons();
   }
   if (['ready', 'failed'].includes(body.status)) {
+    if (body.status === 'failed') {
+      log(body.error ? `Run failed: ${body.error}` : 'Run failed.');
+      if (body.type === 'tailor') {
+        log('For failed tailor jobs, open the job and use Tailor this job instantly.');
+      } else if (body.type === 'inbox_promote') {
+        log('For failed inbox items, import that page again, then run Process Inbox.');
+      }
+    }
     renderCompletedRunUi(body.status);
     stopRunPolling();
+    await refreshQueues();
     await refreshArtifactStatus();
   }
 }
@@ -1089,6 +1135,7 @@ function resetButtonLabelLater(button, label) {
     setButtonLabel(button, label);
     button.disabled = false;
     renderDaemonActionState();
+    renderBatchTailorState();
     renderArtifactButtons();
   }, 1_800);
 }

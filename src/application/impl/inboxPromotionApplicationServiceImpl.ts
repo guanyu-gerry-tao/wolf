@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { BackgroundAiBatchRepository } from '../../repository/backgroundAiBatchRepository.js';
 import type { InboxItem, InboxRepository } from '../../repository/inboxRepository.js';
+import type { BatchService } from '../../service/batchService.js';
+import type { AiConfig } from '../../utils/types/index.js';
 import type { AddApplicationService } from '../addApplicationService.js';
 import type {
   InboxPromoteOptions,
@@ -9,11 +11,23 @@ import type {
 } from '../inboxPromotionApplicationService.js';
 import { log } from '../../utils/logger.js';
 
+const INBOX_PROMOTE_SYSTEM_PROMPT = [
+  'You are wolf inbox extractor.',
+  'Convert one raw job page capture into one canonical job JSON object.',
+  'Return strict JSON only.',
+  'Shape: {"title": string, "company": string, "url": string, "jdText": string}.',
+  'Use the source URL when the page does not contain a better canonical URL.',
+  'jdText should be clean readable job-description prose, not raw HTML.',
+  'Do not include Markdown fences or explanatory prose outside the JSON object.',
+].join('\n');
+
 export class InboxPromotionApplicationServiceImpl implements InboxPromotionApplicationService {
   constructor(
     private readonly inboxRepository: InboxRepository,
     private readonly backgroundAiBatchRepository: BackgroundAiBatchRepository,
     private readonly addApplicationService?: AddApplicationService,
+    private readonly defaultAiConfig?: AiConfig,
+    private readonly batchService?: BatchService,
   ) {}
 
   async promoteRawInbox(options: InboxPromoteOptions): Promise<InboxPromoteResult> {
@@ -25,6 +39,36 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
         shardSize: options.shardSize,
       });
       return { batchId: null, status: 'empty', itemCount: 0, shardCount: 0 };
+    }
+
+    if (this.batchService && this.defaultAiConfig) {
+      const requests = rawItems.map((item) => ({
+        customId: item.id,
+        systemPrompt: INBOX_PROMOTE_SYSTEM_PROMPT,
+        prompt: buildPromotionInput(item),
+      }));
+      const submission = await this.batchService.submitAiBatch(requests, {
+        type: 'inbox_promote',
+        provider: this.defaultAiConfig.provider,
+        model: this.defaultAiConfig.model,
+        profileId: 'default',
+        maxTokens: 4000,
+      });
+      for (const item of rawItems) {
+        await this.inboxRepository.updateStatus(item.id, { status: 'queued', error: null });
+      }
+      log.info('inbox.promote.queued', {
+        batchId: submission.id,
+        provider: submission.provider,
+        itemCount: rawItems.length,
+        shardCount: Math.ceil(rawItems.length / options.shardSize),
+      });
+      return {
+        batchId: submission.id,
+        status: 'queued',
+        itemCount: rawItems.length,
+        shardCount: Math.ceil(rawItems.length / options.shardSize),
+      };
     }
 
     const now = new Date().toISOString();

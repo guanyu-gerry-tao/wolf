@@ -1,5 +1,5 @@
 /** What this batch is for — drives the result handler that runs on completion. */
-export type BatchType = "score" | "tailor";
+export type BatchType = "score" | "tailor" | "inbox_promote";
 
 /** AI provider behind the batch. Different providers expose different APIs. */
 export type BatchAiProvider = "anthropic" | "openai";

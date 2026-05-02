@@ -58,9 +58,25 @@ describe('PlaywrightBrowserManagerImpl', () => {
 
     await expect(manager.open()).rejects.toThrow('Install Google Chrome');
   });
+
+  // If the user closes the wolf Chrome window manually, serve should stop
+  // reporting a healthy browser. The side panel can then show the recovery
+  // overlay and let the user reopen the wolf browser.
+  it('marks the browser as stopped when the persistent context closes', async () => {
+    const context = fakeContext();
+    mocks.launchPersistentContext.mockResolvedValue(context);
+    const manager = new PlaywrightBrowserManagerImpl('/tmp/wolf-test/browser-profile');
+
+    await manager.open();
+    expect(manager.status().status).toBe('ready');
+    context.emitClose();
+
+    expect(manager.status().status).toBe('not_started');
+  });
 });
 
 function fakeContext() {
+  let closeHandler: (() => void) | null = null;
   const page = {
     bringToFront: vi.fn().mockResolvedValue(undefined),
     goto: vi.fn().mockResolvedValue(undefined),
@@ -74,6 +90,10 @@ function fakeContext() {
     pages: vi.fn().mockReturnValue([page]),
     newPage: vi.fn().mockResolvedValue(page),
     on: vi.fn(),
+    once: vi.fn((event: string, handler: () => void) => {
+      if (event === 'close') closeHandler = handler;
+    }),
+    emitClose: () => closeHandler?.(),
     close: vi.fn().mockResolvedValue(undefined),
   };
 }
