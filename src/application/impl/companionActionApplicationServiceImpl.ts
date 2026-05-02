@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Page } from 'playwright';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
+import type { StagehandFillService } from '../../service/stagehandFillService.js';
 import type { TailorApplicationService } from '../tailorApplicationService.js';
 import type {
   BatchTailorInput,
@@ -21,6 +22,7 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
     private readonly tailorApplicationService: TailorApplicationService,
     private readonly jobRepository: JobRepository,
     private readonly profileRepository: ProfileRepository,
+    private readonly stagehandFillService?: StagehandFillService,
   ) {}
 
   /** @inheritdoc */
@@ -93,6 +95,18 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
       // safe while the Stagehand selector cache is still being designed.
       const profile = await this.profileRepository.getDefault();
       const fillValues = extractBasicFillValues(profile.md);
+      const stagehandResult = await this.stagehandFillService?.fill({
+        page: input.page,
+        jobId: input.jobId,
+        userPrompt: input.userPrompt,
+        profileMarkdown: profile.md,
+        fillValues,
+      });
+      if (stagehandResult?.mode === 'stagehand') {
+        await this.jobRepository.update(input.jobId, { hasScreenshots: true });
+        this.patchRun(runId, { status: 'ready', type: 'fill', itemCount: 1 });
+        return;
+      }
       await fillKnownFields(input.page, fillValues);
       await this.jobRepository.update(input.jobId, { hasScreenshots: true });
       this.patchRun(runId, { status: 'ready', type: 'fill', itemCount: 1 });

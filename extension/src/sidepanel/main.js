@@ -4,6 +4,7 @@ const DEFAULT_DAEMON_PORT = '47823';
 const HEARTBEAT_MS = 5_000;
 const RUN_POLL_MS = 5_000;
 const IMPORT_PAGE_LABEL = 'Import Page';
+const INCOMPLETE_TOOLTIP = '还没做完';
 const AGGREGATOR_PLATFORMS = [
   {
     name: 'LinkedIn',
@@ -282,6 +283,7 @@ function renderAll() {
   renderView();
   renderCurrentTab();
   renderQueues();
+  renderIncompleteBadges();
 }
 
 function renderConnection() {
@@ -297,6 +299,7 @@ function renderConnection() {
   renderArtifactButtons();
   renderCurrentPageStatus();
   renderRuntimeOverlay();
+  renderIncompleteBadges();
 }
 
 function renderDaemonActionState() {
@@ -348,35 +351,35 @@ function renderArtifactButtons() {
 function renderArtifactButton(button, label, artifact) {
   button.classList.toggle('button-success', artifact.status === 'ready');
   if (artifact.status === 'ready') {
-    button.textContent = label;
+    setButtonLabel(button, label);
     button.disabled = !isRuntimeReady();
     button.title = isRuntimeReady() ? '' : runtimeBlockReason();
     return;
   }
 
-  button.textContent = `${label} Not Ready`;
+  setButtonLabel(button, `${label} Not Ready`);
   button.disabled = true;
   button.title = `${label} is not ready yet.`;
 }
 
 function renderTailorPromptState() {
   if (els.tailorPromptBox.hidden) {
-    els.tailorInstantButton.textContent = 'Tailor this job instantly';
+    setButtonLabel(els.tailorInstantButton, 'Tailor this job instantly');
     return;
   }
-  els.tailorInstantButton.textContent = els.tailorPromptInput.value.trim()
+  setButtonLabel(els.tailorInstantButton, els.tailorPromptInput.value.trim()
     ? 'Send'
-    : 'Tailor this job instantly';
+    : 'Tailor this job instantly');
 }
 
 function renderFillPromptState() {
   if (els.fillPromptBox.hidden) {
-    els.autofillQuickButton.textContent = 'Autofill this page';
+    setButtonLabel(els.autofillQuickButton, 'Autofill this page');
     return;
   }
-  els.autofillQuickButton.textContent = els.fillPromptInput.value.trim()
+  setButtonLabel(els.autofillQuickButton, els.fillPromptInput.value.trim()
     ? 'Send'
-    : 'Autofill this page';
+    : 'Autofill this page');
 }
 
 function renderView() {
@@ -684,7 +687,7 @@ function setArtifactEditMode(kind) {
   state.activeArtifactKind = kind;
   const label = kind === 'resume' ? 'Resume' : 'Cover Letter';
   els.artifactEditTitle.textContent = `Edit ${label}`;
-  els.regenerateArtifactButton.textContent = `Regenerate ${label}`;
+  setButtonLabel(els.regenerateArtifactButton, `Regenerate ${label}`);
   els.artifactEditPromptInput.value = '';
   renderView();
 }
@@ -1074,17 +1077,65 @@ function ensureReady() {
 }
 
 function setButtonState(button, label, disabled) {
-  button.textContent = label;
+  setButtonLabel(button, label);
   button.disabled = disabled;
 }
 
 function resetButtonLabelLater(button, label) {
   setTimeout(() => {
-    button.textContent = label;
+    setButtonLabel(button, label);
     button.disabled = false;
     renderDaemonActionState();
     renderArtifactButtons();
   }, 1_800);
+}
+
+function renderIncompleteBadges() {
+  setButtonLabel(els.configButton, 'Config');
+  setButtonLabel(els.tailorInstantButton, currentButtonText(els.tailorInstantButton) || 'Tailor this job instantly');
+  setButtonLabel(els.batchTailorButton, currentButtonText(els.batchTailorButton) || 'Batch Tailor');
+  setButtonLabel(els.autofillQuickButton, currentButtonText(els.autofillQuickButton) || 'Autofill this page');
+  setButtonLabel(els.regenerateArtifactButton, currentButtonText(els.regenerateArtifactButton) || 'Regenerate Resume');
+}
+
+function setButtonLabel(button, label) {
+  button.replaceChildren(document.createTextNode(label));
+  const reason = incompleteReason(button);
+  if (!reason) return;
+
+  const badge = document.createElement('span');
+  badge.className = 'incomplete-badge';
+  badge.textContent = '⚠️';
+  badge.title = `${INCOMPLETE_TOOLTIP}: ${reason}`;
+  badge.setAttribute('aria-label', `${INCOMPLETE_TOOLTIP}: ${reason}`);
+  button.append(' ', badge);
+}
+
+function currentButtonText(button) {
+  return [...button.childNodes]
+    .filter((node) => node.nodeType === Node.TEXT_NODE)
+    .map((node) => node.textContent)
+    .join('')
+    .trim();
+}
+
+function incompleteReason(button) {
+  if (button === els.configButton) {
+    return '系统设置页只有基础表单，完整配置保存和 Stagehand 并发设置还没做完';
+  }
+  if (button === els.tailorInstantButton) {
+    return '即时 tailor 接口已接通，但 prompt、轮询和 artifact 状态联动还没做完';
+  }
+  if (button === els.batchTailorButton) {
+    return '批量 tailor 入口已接通，但持久后台队列和完整批处理状态还没做完';
+  }
+  if (button === els.autofillQuickButton) {
+    return 'Stagehand 已安装，但 observe/cache/replay 自动填表还没做完，现在是安全 fallback';
+  }
+  if (button === els.regenerateArtifactButton) {
+    return 'resume/cover letter regenerate 接口和实际重写流程还没做完';
+  }
+  return null;
 }
 
 function resetImportButtonLater() {

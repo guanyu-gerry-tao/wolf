@@ -595,6 +595,23 @@ CLI parses args
   ← CLI prints detected fields table
 ```
 
+### Companion `Autofill this page`
+
+```
+Side panel POST /api/fill/quick
+  → CompanionActionApplicationService.quickFill({ jobId, tabId, userPrompt })
+    → ServeBrowserManager.getPage(tabId)          # wolf-controlled browser only
+    → StagehandFillService.fill(...)              # TODO: LOCAL observe/cache/replay
+    → if Stagehand not wired, safe Playwright fallback fills obvious profile/contact fields
+    → never clicks submit
+    → return run status through GET /api/runs/:runId
+```
+
+The Stagehand dependency is present, but the first companion MVP keeps real
+Stagehand execution behind `StagehandFillService`. Until that service is wired
+to a CDP session pool and selector cache, autofill remains a conservative
+Playwright fallback and preserves the no-auto-submit rule.
+
 ## File System Layout
 
 ### Project directory (`wolf/`)

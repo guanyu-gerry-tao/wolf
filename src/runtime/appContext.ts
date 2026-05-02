@@ -35,6 +35,7 @@ import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
 import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
 import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefServiceImpl.js';
+import { StagehandFillServiceImpl } from '../service/impl/stagehandFillServiceImpl.js';
 import { StatusApplicationServiceImpl } from '../application/impl/statusApplicationServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
 import { AddApplicationServiceImpl } from '../application/impl/addApplicationServiceImpl.js';
@@ -79,6 +80,7 @@ import type { JobProvider } from '../service/jobProvider.js';
 import type { RenderService } from '../service/renderService.js';
 import type { ResumeCoverLetterService } from '../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../service/tailoringBriefService.js';
+import type { StagehandFillService } from '../service/stagehandFillService.js';
 import type {
   StatusApplicationService,
   StatusCounter,
@@ -123,6 +125,7 @@ export interface AppContext {
   renderService: RenderService;
   rewriteService: ResumeCoverLetterService;
   briefService: TailoringBriefService;
+  stagehandFillService: StagehandFillService;
   httpServer: HttpServer;
   // application services
   tailorApp: TailorApplicationService;
@@ -185,6 +188,7 @@ function wireContext(
   const renderService = new RenderServiceImpl();
   const rewriteService = new ResumeCoverLetterServiceImpl();
   const briefService = new TailoringBriefServiceImpl();
+  const stagehandFillService = new StagehandFillServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
     jobRepo, profileRepository, renderService, rewriteService, briefService,
     defaultAiConfig,
@@ -205,7 +209,9 @@ function wireContext(
   const inboxPromotionApp = new InboxPromotionApplicationServiceImpl(inboxRepo, backgroundAiBatchRepo, addApp);
   const backgroundAiBatchWorker = new BackgroundAiBatchWorkerImpl(backgroundAiBatchRepo);
   const artifactApp = new ArtifactApplicationServiceImpl(jobRepo);
-  const companionActionApp = new CompanionActionApplicationServiceImpl(tailorApp, jobRepo, profileRepository);
+  const companionActionApp = new CompanionActionApplicationServiceImpl(
+    tailorApp, jobRepo, profileRepository, stagehandFillService,
+  );
   const runStatusApp = new RunStatusApplicationServiceImpl(backgroundAiBatchRepo, companionActionApp);
   const browserManager = new PlaywrightBrowserManagerImpl(path.join(workspaceDir, 'data', 'wolf-browser-profile'));
   const configApp = new ConfigApplicationServiceImpl();
@@ -251,6 +257,7 @@ function wireContext(
     renderService,
     rewriteService,
     briefService,
+    stagehandFillService,
     httpServer,
     tailorApp,
     statusApp,

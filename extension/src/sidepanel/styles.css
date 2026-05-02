@@ -53,6 +53,29 @@ button {
   cursor: pointer;
 }
 
+.incomplete-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 999px;
+  color: #3b2a00;
+  background: #ffd866;
+  box-shadow: 0 0 0 1px rgba(92, 61, 0, 0.22);
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: -2px;
+}
+
+.ghost-button .incomplete-badge {
+  width: 16px;
+  height: 16px;
+  margin-left: 3px;
+  font-size: 10px;
+}
+
 button:hover {
   background: #111614;
 }

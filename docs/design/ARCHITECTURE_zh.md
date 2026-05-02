@@ -551,6 +551,22 @@ CLI 解析参数
   ← CLI 打印检测到的字段表
 ```
 
+### Companion `Autofill this page`
+
+```
+Side panel POST /api/fill/quick
+  → CompanionActionApplicationService.quickFill({ jobId, tabId, userPrompt })
+    → ServeBrowserManager.getPage(tabId)          # 只使用 wolf-controlled browser
+    → StagehandFillService.fill(...)              # TODO: LOCAL observe/cache/replay
+    → 如果 Stagehand 尚未接线,使用安全 Playwright fallback 填明显的 profile/contact 字段
+    → 永远不点击 submit
+    → 通过 GET /api/runs/:runId 返回 run status
+```
+
+Stagehand 依赖已经存在,但第一个 companion MVP 把真正的 Stagehand 执行留在
+`StagehandFillService` 边界后面。直到该服务接上 CDP session pool 和 selector
+cache 之前,autofill 仍然使用保守 Playwright fallback,并保持 no-auto-submit 规则。
+
 ## 文件系统布局
 
 ### 项目目录（`wolf/`）
