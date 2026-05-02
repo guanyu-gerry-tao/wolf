@@ -32,7 +32,7 @@ describe('config utils', () => {
         schemaVersion: 1,
         default: 'default',
         hunt: { minScore: 0.5, maxResults: 50 },
-        tailor: { model: 'anthropic/claude-sonnet-4-6' },
+        tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
         score: { model: 'anthropic/claude-sonnet-4-6' },
         reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
         fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
@@ -63,7 +63,7 @@ describe('config utils', () => {
   describe('backupConfig', () => {
     it('copies wolf.toml to wolf.toml.backup1', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      await saveConfig({ schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' }, companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' as const } });
+      await saveConfig({ schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' }, companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' as const } });
 
       await backupConfig();
 
@@ -73,7 +73,7 @@ describe('config utils', () => {
 
     it('rotates backups: backup1 becomes backup2 on second call', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' }, companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' as const } };
+      const stub = { schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' }, companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' as const } };
 
       await saveConfig(stub);
       await backupConfig(); // creates backup1
@@ -89,7 +89,7 @@ describe('config utils', () => {
 
     it('keeps at most 5 backups', async () => {
       const { saveConfig, backupConfig } = await import('../config.js');
-      const stub = { schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' }, companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' as const } };
+      const stub = { schemaVersion: 1, default: '', hunt: { minScore: 0.5, maxResults: 50 }, tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' }, score: { model: 'anthropic/claude-sonnet-4-6' }, reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: '', maxEmailsPerDay: 10 }, fill: { model: 'anthropic/claude-haiku-4-5-20251001' }, companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' as const } };
 
       for (let i = 0; i < 6; i++) {
         await saveConfig(stub);

@@ -363,12 +363,17 @@ describe('NodeHttpServerImpl', () => {
     });
   });
 
-  // With the companion action service wired, quick tailor is no longer a TODO:
-  // the HTTP layer validates the payload and returns an async run id.
+  // With the companion action service wired, quick and batch tailor both return
+  // async run IDs. Batch tailor uses the provider Batch API underneath, so the
+  // route must call the action service instead of returning the old manual block.
   it('routes quick tailor and batch tailor through companion actions', async () => {
+    let batchTailorCalls = 0;
     const companionActionApp = {
       quickTailor: async () => ({ runId: 'quick-1', status: 'queued' as const }),
-      batchTailor: async () => ({ runId: 'batch-1', status: 'queued' as const }),
+      batchTailor: async () => {
+        batchTailorCalls += 1;
+        return { runId: 'batch-1', status: 'queued' as const };
+      },
       regenerateArtifact: async () => ({ runId: 'regen-1', status: 'queued' as const }),
       quickFill: async () => ({ runId: 'fill-1', status: 'queued' as const }),
       getRunStatus: async () => null,
@@ -389,6 +394,8 @@ describe('NodeHttpServerImpl', () => {
       body: '{"jobIds":["job-1"]}',
       companionActionApp,
     })).resolves.toMatchObject({ status: 202, body: { runId: 'batch-1' } });
+
+    expect(batchTailorCalls).toBe(1);
 
     await expect(dispatchHttpRequest({
       method: 'POST',
@@ -431,31 +438,39 @@ describe('NodeHttpServerImpl', () => {
     })).resolves.toMatchObject({ status: 202, body: { runId: 'fill-1' } });
   });
 
-  // Companion config is a form-shaped view over wolf.toml. The HTTP layer
-  // keeps the browser extension independent from dot-path config commands.
-  it('routes companion config reads and writes through the config application service', async () => {
+  // Browser config is a form-shaped view over wolf.toml. The HTTP layer keeps
+  // the extension independent from dot-path config commands while still
+  // exposing all user-editable workspace config fields.
+  it('routes workspace config reads, writes, and resets through the config application service', async () => {
     const configApp = {
       get: async () => 'unused',
       set: async () => ({ key: 'unused', coerced: 'unused' }),
-      getCompanionConfig: async () => ({
-        defaultProfile: 'default',
-        servePort: 49152,
-        maxStagehandSessions: 3,
-        browserMode: 'wolf_persistent_profile' as const,
-        aiModel: 'anthropic/claude-sonnet-4-6',
-        fillModel: 'anthropic/claude-haiku-4-5-20251001',
+      getWorkspaceConfig: async () => ({
+        default: 'default',
+        hunt: { minScore: 0.5, maxResults: 50 },
+        tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
+        score: { model: 'anthropic/claude-sonnet-4-6' },
+        reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+        fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
       }),
-      updateCompanionConfig: async (update: {
-        defaultProfile?: string;
-        servePort?: number;
-        maxStagehandSessions?: number;
+      updateWorkspaceConfig: async (update: {
+        default?: string;
+        hunt?: { minScore?: number; maxResults?: number };
       }) => ({
-        defaultProfile: update.defaultProfile ?? 'default',
-        servePort: update.servePort ?? 49152,
-        maxStagehandSessions: update.maxStagehandSessions ?? 3,
-        browserMode: 'wolf_persistent_profile' as const,
-        aiModel: 'anthropic/claude-sonnet-4-6',
-        fillModel: 'anthropic/claude-haiku-4-5-20251001',
+        default: update.default ?? 'default',
+        hunt: { minScore: update.hunt?.minScore ?? 0.5, maxResults: update.hunt?.maxResults ?? 50 },
+        tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
+        score: { model: 'anthropic/claude-sonnet-4-6' },
+        reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+        fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
+      }),
+      resetWorkspaceConfig: async () => ({
+        default: 'default',
+        hunt: { minScore: 0.5, maxResults: 50 },
+        tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
+        score: { model: 'anthropic/claude-sonnet-4-6' },
+        reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
+        fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
       }),
     };
 
@@ -466,18 +481,28 @@ describe('NodeHttpServerImpl', () => {
       configApp,
     })).resolves.toMatchObject({
       status: 200,
-      body: { defaultProfile: 'default', servePort: 49152, maxStagehandSessions: 3 },
+      body: { default: 'default', hunt: { minScore: 0.5, maxResults: 50 } },
     });
 
     await expect(dispatchHttpRequest({
       method: 'POST',
       url: '/api/config',
       version: '0.1.0',
-      body: '{"defaultProfile":"gc","servePort":49153,"maxStagehandSessions":5}',
+      body: '{"default":"gc","hunt":{"minScore":0.75,"maxResults":25}}',
       configApp,
     })).resolves.toMatchObject({
       status: 200,
-      body: { status: 'saved', defaultProfile: 'gc', servePort: 49153, maxStagehandSessions: 5 },
+      body: { status: 'saved', default: 'gc', hunt: { minScore: 0.75, maxResults: 25 } },
+    });
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/config/reset',
+      version: '0.1.0',
+      configApp,
+    })).resolves.toMatchObject({
+      status: 200,
+      body: { status: 'saved', default: 'default', hunt: { minScore: 0.5, maxResults: 50 } },
     });
   });
 
@@ -499,6 +524,7 @@ describe('NodeHttpServerImpl', () => {
     ['POST', '/api/fill/quick', '{"jobId":"job-1","tabId":"tab-1"}'],
     ['GET', '/api/config', '{}'],
     ['POST', '/api/config', '{}'],
+    ['POST', '/api/config/reset', '{}'],
     ['POST', '/api/tailor', '{}'],
     ['POST', '/api/score', '{}'],
     ['POST', '/api/fill', '{}'],

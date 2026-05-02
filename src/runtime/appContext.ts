@@ -210,9 +210,17 @@ function wireContext(
   const backgroundAiBatchWorker = new BackgroundAiBatchWorkerImpl(backgroundAiBatchRepo);
   const artifactApp = new ArtifactApplicationServiceImpl(jobRepo);
   const companionActionApp = new CompanionActionApplicationServiceImpl(
-    tailorApp, jobRepo, profileRepository, stagehandFillService,
+    tailorApp, jobRepo, profileRepository, stagehandFillService, defaultAiConfig, batchService,
   );
-  const runStatusApp = new RunStatusApplicationServiceImpl(backgroundAiBatchRepo, companionActionApp);
+  const runStatusApp = new RunStatusApplicationServiceImpl(
+    backgroundAiBatchRepo,
+    companionActionApp,
+    batchRepo,
+    batchItemRepo,
+    batchService,
+    jobRepo,
+    renderService,
+  );
   const browserManager = new PlaywrightBrowserManagerImpl(
     path.join(workspaceDir, 'data', 'wolf-browser-profile'),
     // TODO(companion-onboarding): Wire this to the wolf wiki/onboarding URL

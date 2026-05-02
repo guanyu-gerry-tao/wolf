@@ -32,6 +32,8 @@ export interface Batch {
 export interface BatchRepository {
   /** Inserts or replaces the batch row by `id`. */
   save(batch: Batch): Promise<void>;
+  /** Fetches one batch row by internal wolf id, or null if absent. */
+  get(id: string): Promise<Batch | null>;
   /** Returns every batch still in `pending` state. */
   getPending(): Promise<Batch[]>;
   /** Marks a batch complete and stamps `completedAt`. */

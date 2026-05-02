@@ -17,6 +17,16 @@ export class SqliteBatchRepositoryImpl implements BatchRepository {
   }
 
   /** @inheritdoc */
+  async get(id: string): Promise<Batch | null> {
+    const rows = await this.db
+      .select()
+      .from(batches)
+      .where(eq(batches.id, id))
+      .limit(1);
+    return rows[0] ? rowToBatch(rows[0]) : null;
+  }
+
+  /** @inheritdoc */
   async getPending(): Promise<Batch[]> {
     const rows = await this.db
       .select()

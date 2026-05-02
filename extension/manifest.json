@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "wolf companion",
-  "version": "0.0.10",
+  "version": "0.0.15",
   "description": "Window-scoped side panel for the local wolf daemon.",
   "permissions": [
     "sidePanel",

@@ -8,21 +8,30 @@ export interface ConfigSetResult {
   coerced: unknown;
 }
 
-export interface CompanionConfigView {
-  defaultProfile: string;
-  servePort: number;
-  maxStagehandSessions: number;
-  browserMode: 'wolf_persistent_profile';
-  aiModel: string;
-  fillModel: string;
+export interface WorkspaceConfigView {
+  default: string;
+  hunt: {
+    minScore: number;
+    maxResults: number;
+  };
+  tailor: {
+    model: string;
+    defaultCoverLetterTone: string;
+  };
+  score: {
+    model: string;
+  };
+  reach: {
+    model: string;
+    defaultEmailTone: string;
+    maxEmailsPerDay: number;
+  };
+  fill: {
+    model: string;
+  };
 }
 
-export interface CompanionConfigUpdate {
-  defaultProfile?: string;
-  servePort?: number;
-  maxStagehandSessions?: number;
-  browserMode?: 'wolf_persistent_profile';
-}
+export type WorkspaceConfigUpdate = Partial<WorkspaceConfigView>;
 
 /**
  * Use case for `wolf config get/set` — typed dot-path access to `wolf.toml`.
@@ -47,9 +56,12 @@ export interface ConfigApplicationService {
    */
   set(key: string, valueStr: string): Promise<ConfigSetResult>;
 
-  /** Reads the form-shaped settings used by the wolf companion side panel. */
-  getCompanionConfig(): Promise<CompanionConfigView>;
+  /** Reads the form-shaped workspace settings used by the wolf companion side panel. */
+  getWorkspaceConfig(): Promise<WorkspaceConfigView>;
 
-  /** Writes the subset of companion settings submitted from the side panel. */
-  updateCompanionConfig(update: CompanionConfigUpdate): Promise<CompanionConfigView>;
+  /** Writes the workspace settings submitted from the side panel. */
+  updateWorkspaceConfig(update: WorkspaceConfigUpdate): Promise<WorkspaceConfigView>;
+
+  /** Resets side-panel-editable workspace settings to the TS defaults. */
+  resetWorkspaceConfig(): Promise<WorkspaceConfigView>;
 }

@@ -4,16 +4,14 @@ const DEFAULT_DAEMON_PORT = '47823';
 const HEARTBEAT_MS = 5_000;
 const RUN_POLL_MS = 5_000;
 const IMPORT_PAGE_LABEL = 'Import Page';
-const INCOMPLETE_TOOLTIP = '还没做完';
+const INCOMPLETE_TOOLTIP = 'Not implemented yet';
+const QUEUE_COMING_SOON_MESSAGE = 'Application queue is not implemented yet. Coming soon.';
+const AUTOFILL_BLOCKED_REASON =
+  'Stagehand observe, cache, and replay form filling is not implemented yet.';
 const AGGREGATOR_PLATFORMS = [
   {
     name: 'LinkedIn',
     matches: (url) => hostnameEndsWith(url.hostname, 'linkedin.com') && url.pathname.includes('/jobs/'),
-  },
-  {
-    name: 'Handshake',
-    matches: (url) => hostnameEndsWith(url.hostname, 'joinhandshake.com') &&
-      (url.pathname.includes('/job-search') || url.pathname.includes('/jobs/')),
   },
   {
     name: 'Indeed',
@@ -68,12 +66,18 @@ const els = {
   backToCurrentButton: document.querySelector('#backToCurrentButton'),
   configPanel: document.querySelector('#configPanel'),
   closeConfigButton: document.querySelector('#closeConfigButton'),
-  configPortInput: document.querySelector('#configPortInput'),
-  defaultProfileInput: document.querySelector('#defaultProfileInput'),
-  stagehandSessionsInput: document.querySelector('#stagehandSessionsInput'),
-  browserModeInput: document.querySelector('#browserModeInput'),
-  aiProviderDisplay: document.querySelector('#aiProviderDisplay'),
+  configDefaultInput: document.querySelector('#configDefaultInput'),
+  configHuntMinScoreInput: document.querySelector('#configHuntMinScoreInput'),
+  configHuntMaxResultsInput: document.querySelector('#configHuntMaxResultsInput'),
+  configTailorModelInput: document.querySelector('#configTailorModelInput'),
+  configCoverLetterToneInput: document.querySelector('#configCoverLetterToneInput'),
+  configScoreModelInput: document.querySelector('#configScoreModelInput'),
+  configReachModelInput: document.querySelector('#configReachModelInput'),
+  configEmailToneInput: document.querySelector('#configEmailToneInput'),
+  configMaxEmailsPerDayInput: document.querySelector('#configMaxEmailsPerDayInput'),
+  configFillModelInput: document.querySelector('#configFillModelInput'),
   saveConfigButton: document.querySelector('#saveConfigButton'),
+  resetConfigButton: document.querySelector('#resetConfigButton'),
   portInput: document.querySelector('#portInput'),
   reconnectButton: document.querySelector('#reconnectButton'),
   connectionBadge: document.querySelector('#connectionBadge'),
@@ -156,6 +160,7 @@ function wireEvents() {
   els.openBrowserButton.addEventListener('click', openWolfBrowser);
   els.closeConfigButton.addEventListener('click', showMainView);
   els.saveConfigButton.addEventListener('click', saveConfig);
+  els.resetConfigButton.addEventListener('click', resetConfig);
   els.backToCurrentButton.addEventListener('click', showMainView);
   els.regenerateArtifactButton.addEventListener('click', regenerateArtifact);
   els.reconnectButton.addEventListener('click', reconnect);
@@ -171,7 +176,8 @@ function wireEvents() {
   els.fillPromptInput.addEventListener('input', renderFillPromptState);
 
   document.querySelectorAll('[data-next-column]').forEach((button) => {
-    button.addEventListener('click', () => focusNext(button.dataset.nextColumn));
+    button.disabled = true;
+    button.title = QUEUE_COMING_SOON_MESSAGE;
   });
 
   if (hasChromeApi) {
@@ -307,8 +313,9 @@ function renderDaemonActionState() {
   const ready = isRuntimeReady();
   const title = ready ? '' : runtimeBlockReason();
   for (const button of daemonActionButtons()) {
-    button.disabled = !ready;
-    button.title = title;
+    const incomplete = incompleteReason(button);
+    button.disabled = !ready || Boolean(incomplete);
+    button.title = incomplete ? `${INCOMPLETE_TOOLTIP}: ${incomplete}` : title;
   }
 }
 
@@ -397,29 +404,21 @@ function showMainView() {
 
 async function openConfig() {
   state.view = 'config';
-  els.configPortInput.value = state.port;
   renderView();
   if (state.connection.status !== 'connected') {
-    els.aiProviderDisplay.textContent = 'Connect to wolf serve to load runtime config.';
+    log('Connect to wolf serve to load wolf.toml config.');
     return;
   }
 
   try {
     const body = await getJson('/api/config');
     if (body.status === 'todo') {
-      els.aiProviderDisplay.textContent = body.todo ?? 'Config service is not implemented yet.';
       log(body.todo ?? 'Config service is not implemented yet.');
       return;
     }
-    els.configPortInput.value = String(body.servePort ?? body.port ?? state.port);
-    els.defaultProfileInput.value = body.defaultProfile ?? els.defaultProfileInput.value;
-    els.stagehandSessionsInput.value = String(body.maxStagehandSessions ?? els.stagehandSessionsInput.value);
-    els.browserModeInput.value = formatBrowserMode(body.browserMode);
-    els.aiProviderDisplay.textContent = [body.aiModel, body.fillModel ? `fill: ${body.fillModel}` : null]
-      .filter(Boolean)
-      .join(' / ') || 'No AI model configured.';
+    renderConfigForm(body);
   } catch (err) {
-    els.aiProviderDisplay.textContent = err instanceof Error ? err.message : String(err);
+    log(`Config load unavailable: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -470,9 +469,8 @@ function renderCurrentPageStatus() {
 
 function renderQueues() {
   for (const column of Object.keys(state.queues)) {
-    const items = state.queues[column];
-    els.columns[column].count.textContent = String(items.length);
-    els.columns[column].list.replaceChildren(...(items.length > 0 ? items.map(renderQueueItem) : [renderEmptyQueueItem(column)]));
+    els.columns[column].count.textContent = '0';
+    els.columns[column].list.replaceChildren(renderEmptyQueueItem(column));
   }
   renderBatchTailorState();
 }
@@ -492,49 +490,19 @@ function renderQueueItem(item) {
 function renderEmptyQueueItem(column) {
   const li = document.createElement('li');
   li.className = 'empty-state';
-  li.textContent = {
-    filling: 'No filling pages yet.',
-    ready: 'No ready jobs yet.',
-    stuck: 'No stuck jobs yet.',
-  }[column] ?? 'No items yet.';
+  li.textContent = column ? 'Queue not implemented yet.' : QUEUE_COMING_SOON_MESSAGE;
   return li;
 }
 
 function renderBatchTailorState() {
-  const hasJobs = collectKnownJobIds().length > 0;
-  if (!hasJobs) {
-    els.batchTailorButton.disabled = true;
-    els.batchTailorButton.title = 'No eligible jobs yet.';
-    return;
-  }
-  if (isRuntimeReady()) {
-    els.batchTailorButton.disabled = false;
-    els.batchTailorButton.title = '';
-  }
+  setButtonLabel(els.batchTailorButton, 'Batch Tailor');
+  els.batchTailorButton.disabled = !isRuntimeReady();
+  els.batchTailorButton.title = isRuntimeReady() ? '' : runtimeBlockReason();
 }
 
 async function refreshQueues() {
-  if (state.connection.status !== 'connected') {
-    state.queues = { filling: [], ready: [], stuck: [] };
-    renderQueues();
-    return;
-  }
-
-  try {
-    const body = await getJson('/api/tabs');
-    if (body.status === 'todo') {
-      state.queues = { filling: [], ready: [], stuck: [] };
-      renderQueues();
-      log(body.todo ?? 'Wolf browser tab registry is not implemented yet.');
-      return;
-    }
-    state.queues = normalizeQueues(body.queues ?? body.tabs ?? {});
-  } catch (err) {
-    state.queues = { filling: [], ready: [], stuck: [] };
-    log(`Queue refresh failed: ${err instanceof Error ? err.message : String(err)}`);
-  } finally {
-    renderQueues();
-  }
+  state.queues = { filling: [], ready: [], stuck: [] };
+  renderQueues();
 }
 
 function normalizeQueues(rawQueues) {
@@ -644,26 +612,8 @@ function renderDuplicateNotice(detail) {
 }
 
 async function focusNext(column) {
-  const items = state.queues[column] ?? [];
-  if (items.length === 0) {
-    log('This column has no pages yet.');
-    return;
-  }
-
-  const index = state.cursors[column] % items.length;
-  state.cursors[column] += 1;
-  const item = items[index];
-  state.currentJobId = item.jobId ?? item.id;
-  await refreshArtifactStatus();
-
-  const targetTabId = item.tabId ?? item.id;
-  const result = await postJson(`/api/tabs/${encodeURIComponent(targetTabId)}/focus`, {});
-  if (result.status === 'todo') {
-    log(result.todo ?? 'Wolf browser tab focus is not implemented yet.');
-    return;
-  }
-  state.activeWolfTabId = result.tabId ?? result.id ?? targetTabId;
-  log(`Focused ${item.company} - ${item.title}`);
+  void column;
+  log(QUEUE_COMING_SOON_MESSAGE);
 }
 
 async function openPreview(kind) {
@@ -857,13 +807,8 @@ async function processInboxWithAi() {
 
 async function batchTailor() {
   if (!ensureReady()) return;
-  const jobIds = collectKnownJobIds();
-  if (jobIds.length === 0) {
-    log('No eligible jobs for batch tailor yet.');
-    return;
-  }
   const confirmed = window.confirm(
-    `Batch tailor ${jobIds.length} job(s)? This may use paid batch API calls and will run in the background.`,
+    'Start batch tailoring for current ready jobs? This may use paid AI batch API calls.',
   );
   if (!confirmed) {
     log('Batch tailor cancelled.');
@@ -872,27 +817,23 @@ async function batchTailor() {
 
   setButtonState(els.batchTailorButton, 'Queueing...', true);
   try {
-    const result = await postJson('/api/tailor/batch', { jobIds });
-    if (result.status === 'todo') {
-      setButtonState(els.batchTailorButton, 'Batch TODO', false);
-      log(result.todo ?? 'Batch tailor is not implemented yet.');
-      return;
-    }
-    setButtonState(els.batchTailorButton, 'Batch Queued', false);
+    const result = await postJson('/api/tailor/batch', {});
+    setButtonState(els.batchTailorButton, 'Batch Tailoring...', true);
     log(`Batch tailor started: ${result.runId ?? 'run pending'}`);
     if (result.runId) {
-      setButtonState(els.batchTailorButton, 'Batch Tailoring...', true);
       startRunPolling(result.runId, {
         button: els.batchTailorButton,
-        completeLabel: 'Batch Done',
+        completeLabel: 'Batch Ready',
         failedLabel: 'Batch Failed',
         resetLabel: 'Batch Tailor',
         disableOnComplete: false,
       });
+      await pollRunStatus(result.runId);
     }
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     setButtonState(els.batchTailorButton, 'Batch Failed', false);
-    log(`Batch tailor failed: ${err instanceof Error ? err.message : String(err)}`);
+    log(`Batch tailor failed to start: ${message}`);
     resetButtonLabelLater(els.batchTailorButton, 'Batch Tailor');
   }
 }
@@ -937,37 +878,7 @@ async function tailorThisJobInstantly() {
 }
 
 async function autofillThisPage() {
-  if (!ensureReady()) return;
-
-  if (els.fillPromptBox.hidden) {
-    els.fillPromptBox.hidden = false;
-    els.fillPromptInput.focus();
-    renderFillPromptState();
-    log('wolf will fill this page only. It will not submit the application.');
-    return;
-  }
-
-  const userPrompt = els.fillPromptInput.value.trim();
-  setButtonState(els.autofillQuickButton, 'Sending...', true);
-  try {
-    const result = await postJson('/api/fill/quick', {
-      jobId: state.currentJobId,
-      tabId: state.activeWolfTabId ?? null,
-      userPrompt,
-    });
-    els.fillPromptBox.hidden = true;
-    els.fillPromptInput.value = '';
-    setButtonState(els.autofillQuickButton, 'Filling...', true);
-    log(`Autofill started with no auto-submit: ${result.runId ?? 'run pending'}`);
-    if (result.runId) startRunPolling(result.runId);
-  } catch (err) {
-    els.fillPromptBox.hidden = true;
-    const message = err instanceof Error ? err.message : String(err);
-    setButtonState(els.autofillQuickButton, 'Autofill TODO', false);
-    log(`Autofill unavailable: ${message}`);
-  } finally {
-    resetButtonLabelLater(els.autofillQuickButton, 'Autofill this page');
-  }
+  log(`Autofill is not implemented yet. ${AUTOFILL_BLOCKED_REASON}`);
 }
 
 async function regenerateArtifact() {
@@ -1075,31 +986,14 @@ function stopRunPolling() {
 }
 
 async function saveConfig() {
-  const port = els.configPortInput.value.trim();
-  if (!/^[0-9]{4,5}$/.test(port)) {
-    log('Config port must be 4-5 digits.');
-    return;
-  }
-  const maxStagehandSessions = Number(els.stagehandSessionsInput.value.trim());
-  if (!Number.isInteger(maxStagehandSessions) || maxStagehandSessions < 1 || maxStagehandSessions > 10) {
-    log('Max parallel Stagehand sessions must be an integer from 1 to 10.');
-    return;
-  }
-
-  await storePort(port);
-  els.portInput.value = port;
   setButtonState(els.saveConfigButton, 'Saving...', true);
   try {
-    const result = await postJson('/api/config', {
-      defaultProfile: els.defaultProfileInput.value.trim() || 'default',
-      servePort: Number(port),
-      maxStagehandSessions,
-      browserMode: 'wolf_persistent_profile',
-    });
+    const result = await postJson('/api/config', readConfigForm());
     if (result.status === 'todo') {
       log(result.todo ?? 'Config write is not implemented yet.');
     } else {
-      log('Config saved: port, default profile, and companion settings.');
+      renderConfigForm(result);
+      log('Config saved to wolf.toml.');
     }
   } catch (err) {
     log(`Config save unavailable: ${err instanceof Error ? err.message : String(err)}`);
@@ -1108,9 +1002,68 @@ async function saveConfig() {
   }
 }
 
-function formatBrowserMode(mode) {
-  if (mode === 'wolf_persistent_profile') return 'Google Chrome + wolf profile';
-  return mode ?? 'Google Chrome + wolf profile';
+async function resetConfig() {
+  const confirmed = window.confirm('Reset wolf.toml settings to wolf defaults? This will create a backup first.');
+  if (!confirmed) {
+    log('Config reset cancelled.');
+    return;
+  }
+
+  setButtonState(els.resetConfigButton, 'Resetting...', true);
+  try {
+    const result = await postJson('/api/config/reset', {});
+    renderConfigForm(result);
+    log('Config reset to wolf defaults.');
+  } catch (err) {
+    log(`Config reset unavailable: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    setButtonState(els.resetConfigButton, 'Reset Config', false);
+  }
+}
+
+function renderConfigForm(config) {
+  els.configDefaultInput.value = config.default ?? 'default';
+  els.configHuntMinScoreInput.value = String(config.hunt?.minScore ?? 0.5);
+  els.configHuntMaxResultsInput.value = String(config.hunt?.maxResults ?? 50);
+  els.configTailorModelInput.value = config.tailor?.model ?? 'anthropic/claude-sonnet-4-6';
+  els.configCoverLetterToneInput.value = config.tailor?.defaultCoverLetterTone ?? 'professional';
+  els.configScoreModelInput.value = config.score?.model ?? 'anthropic/claude-sonnet-4-6';
+  els.configReachModelInput.value = config.reach?.model ?? 'anthropic/claude-sonnet-4-6';
+  els.configEmailToneInput.value = config.reach?.defaultEmailTone ?? 'professional';
+  els.configMaxEmailsPerDayInput.value = String(config.reach?.maxEmailsPerDay ?? 10);
+  els.configFillModelInput.value = config.fill?.model ?? 'anthropic/claude-haiku-4-5-20251001';
+}
+
+function readConfigForm() {
+  const minScore = Number(els.configHuntMinScoreInput.value.trim());
+  const maxResults = Number(els.configHuntMaxResultsInput.value.trim());
+  const maxEmailsPerDay = Number(els.configMaxEmailsPerDayInput.value.trim());
+
+  if (!Number.isFinite(minScore) || minScore < 0 || minScore > 1) {
+    throw new Error('Hunt minimum score must be a number from 0 to 1.');
+  }
+  if (!Number.isInteger(maxResults) || maxResults < 1) {
+    throw new Error('Hunt max results must be a positive integer.');
+  }
+  if (!Number.isInteger(maxEmailsPerDay) || maxEmailsPerDay < 1) {
+    throw new Error('Reach max emails per day must be a positive integer.');
+  }
+
+  return {
+    default: els.configDefaultInput.value.trim() || 'default',
+    hunt: { minScore, maxResults },
+    tailor: {
+      model: els.configTailorModelInput.value.trim(),
+      defaultCoverLetterTone: els.configCoverLetterToneInput.value.trim() || 'professional',
+    },
+    score: { model: els.configScoreModelInput.value.trim() },
+    reach: {
+      model: els.configReachModelInput.value.trim(),
+      defaultEmailTone: els.configEmailToneInput.value.trim() || 'professional',
+      maxEmailsPerDay,
+    },
+    fill: { model: els.configFillModelInput.value.trim() },
+  };
 }
 
 function collectKnownJobIds() {
@@ -1141,6 +1094,7 @@ function resetButtonLabelLater(button, label) {
 }
 
 function renderIncompleteBadges() {
+  setButtonLabel(els.batchTailorButton, currentButtonText(els.batchTailorButton) || 'Batch Tailor');
   setButtonLabel(els.autofillQuickButton, currentButtonText(els.autofillQuickButton) || 'Autofill this page');
 }
 
@@ -1166,8 +1120,11 @@ function currentButtonText(button) {
 }
 
 function incompleteReason(button) {
+  if (button === els.batchTailorButton) {
+    return null;
+  }
   if (button === els.autofillQuickButton) {
-    return 'Stagehand 已安装，但 observe/cache/replay 自动填表还没做完，现在是安全 fallback';
+    return AUTOFILL_BLOCKED_REASON;
   }
   return null;
 }

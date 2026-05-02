@@ -52,7 +52,7 @@
           <button id="tailorInstantButton" type="button">Tailor this job instantly</button>
           <button id="refreshRunStatusButton" type="button">Refresh status</button>
           <button id="batchTailorButton" type="button">Batch Tailor</button>
-          <button id="autofillQuickButton" type="button">Autofill this page</button>
+          <button id="autofillQuickButton" type="button" disabled>Autofill this page</button>
         </div>
         <div id="tailorPromptBox" class="prompt-box" hidden>
           <label class="field-label" for="tailorPromptInput">Tailor instructions</label>
@@ -80,49 +80,67 @@
         <button id="regenerateArtifactButton" type="button">Regenerate Resume</button>
       </section>
 
-      <section id="configPanel" class="panel config-panel" aria-label="wolf companion config" hidden>
+      <section id="configPanel" class="panel config-panel" aria-label="wolf config" hidden>
         <div class="panel-heading-row">
           <div>
             <p class="eyebrow">Settings</p>
-            <h2>Companion Config</h2>
+            <h2>wolf Config</h2>
           </div>
           <button id="closeConfigButton" class="ghost-button" type="button">Back</button>
         </div>
         <div class="form-section">
-          <label class="field-label" for="configPortInput">Serve port</label>
-          <input id="configPortInput" inputmode="numeric" maxlength="5" pattern="[0-9]{4,5}" value="47823" />
-          <p class="form-help">Copy the port printed by wolf serve. Saving also updates the quick-connect field above.</p>
+          <label class="field-label" for="configDefaultInput">Default profile</label>
+          <input id="configDefaultInput" value="default" />
+          <p class="form-help">Writes <code>default</code> in wolf.toml.</p>
         </div>
         <div class="form-section">
-          <label class="field-label" for="defaultProfileInput">Default profile</label>
-          <input id="defaultProfileInput" value="default" />
-          <p class="form-help">Saved to wolf.toml as the default profile name.</p>
+          <p class="field-label">Hunt</p>
+          <label for="configHuntMinScoreInput">Minimum score</label>
+          <input id="configHuntMinScoreInput" inputmode="decimal" value="0.5" />
+          <label for="configHuntMaxResultsInput">Max results</label>
+          <input id="configHuntMaxResultsInput" inputmode="numeric" value="50" />
         </div>
         <div class="form-section">
-          <label class="field-label" for="stagehandSessionsInput">Max parallel Stagehand sessions</label>
-          <input id="stagehandSessionsInput" inputmode="numeric" maxlength="2" value="3" />
-          <p class="form-help">Saved now. Actual Stagehand fill execution is still marked TODO.</p>
+          <p class="field-label">Tailor</p>
+          <label for="configTailorModelInput">Model</label>
+          <input id="configTailorModelInput" value="anthropic/claude-sonnet-4-6" />
+          <label for="configCoverLetterToneInput">Default cover letter tone</label>
+          <input id="configCoverLetterToneInput" value="professional" />
         </div>
         <div class="form-section">
-          <label class="field-label" for="browserModeInput">Browser instance mode</label>
-          <input id="browserModeInput" value="Google Chrome + wolf profile" readonly />
-          <p class="form-help">Fixed for safety: wolf opens a separate Google Chrome profile under this workspace. Install wolf companion and password-manager extensions there once; the profile persists.</p>
+          <p class="field-label">Score</p>
+          <label for="configScoreModelInput">Model</label>
+          <input id="configScoreModelInput" value="anthropic/claude-sonnet-4-6" />
         </div>
         <div class="form-section">
-          <p class="field-label">AI provider/model</p>
-          <p id="aiProviderDisplay" class="form-static">Not loaded yet.</p>
+          <p class="field-label">Reach</p>
+          <label for="configReachModelInput">Model</label>
+          <input id="configReachModelInput" value="anthropic/claude-sonnet-4-6" />
+          <label for="configEmailToneInput">Default email tone</label>
+          <input id="configEmailToneInput" value="professional" />
+          <label for="configMaxEmailsPerDayInput">Max emails per day</label>
+          <input id="configMaxEmailsPerDayInput" inputmode="numeric" value="10" />
         </div>
-        <button id="saveConfigButton" type="button">Save Config</button>
+        <div class="form-section">
+          <p class="field-label">Fill</p>
+          <label for="configFillModelInput">Model</label>
+          <input id="configFillModelInput" value="anthropic/claude-haiku-4-5-20251001" />
+        </div>
+        <div class="config-actions">
+          <button id="saveConfigButton" type="button">Save Config</button>
+          <button id="resetConfigButton" class="danger-button" type="button">Reset Config</button>
+        </div>
       </section>
 
-      <section class="queue" aria-label="application queue">
+      <section class="queue queue--disabled" aria-label="application queue">
+        <p class="queue-coming-soon">Application queue is not implemented yet. Coming soon.</p>
         <article class="queue-column" data-column="filling">
           <div class="column-head">
             <div>
               <p>Filling</p>
               <strong id="fillingCount">0</strong>
             </div>
-            <button class="next-button" type="button" data-next-column="filling">Next</button>
+            <button class="next-button" type="button" data-next-column="filling" disabled>Next</button>
           </div>
           <ol id="fillingList" class="job-list"></ol>
         </article>
@@ -133,7 +151,7 @@
               <p>Ready</p>
               <strong id="readyCount">0</strong>
             </div>
-            <button class="next-button" type="button" data-next-column="ready">Next</button>
+            <button class="next-button" type="button" data-next-column="ready" disabled>Next</button>
           </div>
           <ol id="readyList" class="job-list"></ol>
         </article>
@@ -144,7 +162,7 @@
               <p>Stuck</p>
               <strong id="stuckCount">0</strong>
             </div>
-            <button class="next-button" type="button" data-next-column="stuck">Next</button>
+            <button class="next-button" type="button" data-next-column="stuck" disabled>Next</button>
           </div>
           <ol id="stuckList" class="job-list"></ol>
         </article>

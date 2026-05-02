@@ -4,6 +4,7 @@ import claudeTemplate from './templates/workspace-claude.md';
 import { profileTomlTemplate } from '../../utils/profileTomlGenerate.js';
 import attachmentsReadmeTemplate from './templates/attachments-readme.md';
 import { saveConfig } from '../../utils/config.js';
+import { DEFAULT_COMPANION_CONFIG, DEFAULT_WORKSPACE_CONFIG } from '../../utils/appConfigDefaults.js';
 import { currentBinaryName } from '../../utils/instance.js';
 import { CURRENT_SCHEMA_VERSION } from '../../runtime/migrations/index.js';
 import { ensureProfilePromptPack } from '../../utils/profilePromptPack.js';
@@ -35,13 +36,8 @@ export class InitApplicationServiceImpl implements InitApplicationService {
     return {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       ...(mode ? { instance: { mode } } : {}),
-      default: DEFAULT_PROFILE_NAME,
-      hunt: { minScore: 0.5, maxResults: 50 },
-      tailor: { model: 'anthropic/claude-sonnet-4-6' },
-      score: { model: 'anthropic/claude-sonnet-4-6' },
-      reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
-      fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
-      companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' },
+      ...DEFAULT_WORKSPACE_CONFIG,
+      companion: DEFAULT_COMPANION_CONFIG,
     };
   }
 

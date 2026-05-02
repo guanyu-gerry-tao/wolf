@@ -425,6 +425,11 @@ h2 {
   border-bottom: 1px solid var(--line);
 }
 
+.form-section label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .form-section input {
   width: 100%;
   min-height: 34px;
@@ -433,6 +438,28 @@ h2 {
   padding: 0 10px;
   color: var(--ink);
   background: #fff;
+}
+
+.form-section code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #f0ebe0;
+}
+
+.config-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.danger-button {
+  border-color: #8f3b32;
+  color: #fffaf8;
+  background: #8f3b32;
+}
+
+.danger-button:hover {
+  background: #6f2a24;
 }
 
 .form-help,
@@ -444,6 +471,7 @@ h2 {
 }
 
 .queue {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(124px, 1fr));
   align-items: stretch;
@@ -454,6 +482,28 @@ h2 {
   padding-bottom: 6px;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
+}
+
+.queue--disabled .queue-column {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.queue-coming-soon {
+  position: absolute;
+  z-index: 2;
+  inset: 86px 14px auto;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: #3e4541;
+  background: rgba(255, 253, 250, 0.94);
+  box-shadow: 0 10px 24px rgba(31, 37, 35, 0.12);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .queue-column {

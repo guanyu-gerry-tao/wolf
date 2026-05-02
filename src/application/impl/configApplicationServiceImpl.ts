@@ -1,12 +1,13 @@
 import { loadConfig, saveConfig, backupConfig } from '../../utils/config.js';
 import { getByPath, setByPath, coerceToShape } from '../../utils/dotPath.js';
 import { AppConfigSchema } from '../../utils/schemas.js';
+import { DEFAULT_WORKSPACE_CONFIG } from '../../utils/appConfigDefaults.js';
 import type { AppConfig } from '../../utils/types/index.js';
 import type {
-  CompanionConfigUpdate,
-  CompanionConfigView,
   ConfigApplicationService,
   ConfigSetResult,
+  WorkspaceConfigUpdate,
+  WorkspaceConfigView,
 } from '../configApplicationService.js';
 
 /**
@@ -38,37 +39,48 @@ export class ConfigApplicationServiceImpl implements ConfigApplicationService {
   }
 
   /** @inheritdoc */
-  async getCompanionConfig(): Promise<CompanionConfigView> {
+  async getWorkspaceConfig(): Promise<WorkspaceConfigView> {
     const config = AppConfigSchema.parse(await loadConfig());
-    return toCompanionConfigView(config);
+    return toWorkspaceConfigView(config);
   }
 
   /** @inheritdoc */
-  async updateCompanionConfig(update: CompanionConfigUpdate): Promise<CompanionConfigView> {
+  async updateWorkspaceConfig(update: WorkspaceConfigUpdate): Promise<WorkspaceConfigView> {
     const config = AppConfigSchema.parse(await loadConfig());
     const updated = AppConfigSchema.parse({
       ...config,
-      default: update.defaultProfile ?? config.default,
-      companion: {
-        ...config.companion,
-        servePort: update.servePort ?? config.companion.servePort,
-        maxStagehandSessions: update.maxStagehandSessions ?? config.companion.maxStagehandSessions,
-        browserMode: update.browserMode ?? config.companion.browserMode,
-      },
+      default: update.default ?? config.default,
+      hunt: { ...config.hunt, ...update.hunt },
+      tailor: { ...config.tailor, ...update.tailor },
+      score: { ...config.score, ...update.score },
+      reach: { ...config.reach, ...update.reach },
+      fill: { ...config.fill, ...update.fill },
     });
     await backupConfig();
     await saveConfig(updated);
-    return toCompanionConfigView(updated);
+    return toWorkspaceConfigView(updated);
+  }
+
+  /** @inheritdoc */
+  async resetWorkspaceConfig(): Promise<WorkspaceConfigView> {
+    const config = AppConfigSchema.parse(await loadConfig());
+    const updated = AppConfigSchema.parse({
+      ...config,
+      ...DEFAULT_WORKSPACE_CONFIG,
+    });
+    await backupConfig();
+    await saveConfig(updated);
+    return toWorkspaceConfigView(updated);
   }
 }
 
-function toCompanionConfigView(config: AppConfig): CompanionConfigView {
+function toWorkspaceConfigView(config: AppConfig): WorkspaceConfigView {
   return {
-    defaultProfile: config.default,
-    servePort: config.companion.servePort,
-    maxStagehandSessions: config.companion.maxStagehandSessions,
-    browserMode: config.companion.browserMode,
-    aiModel: config.tailor.model,
-    fillModel: config.fill.model,
+    default: config.default,
+    hunt: config.hunt,
+    tailor: config.tailor,
+    score: config.score,
+    reach: config.reach,
+    fill: config.fill,
   };
 }

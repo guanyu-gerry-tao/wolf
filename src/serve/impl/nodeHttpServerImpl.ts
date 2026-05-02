@@ -389,20 +389,20 @@ export async function dispatchHttpRequest(input: {
 
   if (input.method === 'GET' && url.pathname === '/api/config') {
     if (!input.configApp) return todoRoute(input.method, url.pathname);
-    return { status: 200, body: await input.configApp.getCompanionConfig() };
+    return { status: 200, body: await input.configApp.getWorkspaceConfig() };
   }
 
   if (input.method === 'POST' && url.pathname === '/api/config') {
     if (!input.configApp) return todoRoute(input.method, url.pathname);
     const parsedJson = parseJsonBody(input.body);
     if (!parsedJson.ok) return parsedJson.result;
-    const body = parsedJson.value as Record<string, unknown>;
-    const saved = await input.configApp.updateCompanionConfig({
-      defaultProfile: typeof body.defaultProfile === 'string' ? body.defaultProfile : undefined,
-      servePort: typeof body.port === 'string' ? Number(body.port) : asOptionalNumber(body.servePort),
-      maxStagehandSessions: asOptionalNumber(body.maxStagehandSessions),
-      browserMode: body.browserMode === 'wolf_persistent_profile' ? body.browserMode : undefined,
-    });
+    const saved = await input.configApp.updateWorkspaceConfig(parsedJson.value as Record<string, unknown>);
+    return { status: 200, body: { status: 'saved', ...saved } };
+  }
+
+  if (input.method === 'POST' && url.pathname === '/api/config/reset') {
+    if (!input.configApp) return todoRoute(input.method, url.pathname);
+    const saved = await input.configApp.resetWorkspaceConfig();
     return { status: 200, body: { status: 'saved', ...saved } };
   }
 
@@ -531,7 +531,7 @@ function todoRouteSpec(method: string, pathname: string): { todo: string; nextSt
     {
       matches: method === 'POST' && pathname === '/api/tailor/batch',
       todo: 'Batch tailor is not implemented yet.',
-      nextStep: 'Create background AI batch rows for tailor runs.',
+      nextStep: 'Wire CompanionActionApplicationService.batchTailor through POST /api/tailor/batch.',
     },
     {
       matches: method === 'POST' && pathname === '/api/artifacts/regenerate',
@@ -560,6 +560,11 @@ function todoRouteSpec(method: string, pathname: string): { todo: string; nextSt
       matches: method === 'POST' && pathname === '/api/config',
       todo: 'HTTP config write is not implemented yet.',
       nextStep: 'Expose ConfigApplicationService through POST /api/config.',
+    },
+    {
+      matches: method === 'POST' && pathname === '/api/config/reset',
+      todo: 'HTTP config reset is not implemented yet.',
+      nextStep: 'Expose ConfigApplicationService.resetWorkspaceConfig through POST /api/config/reset.',
     },
     {
       matches: method === 'GET' && pathname === '/api/status',
@@ -631,12 +636,6 @@ function parseJsonBody(body: string | undefined):
   } catch {
     return { ok: false, result: { status: 400, body: { error: 'invalid json' } } };
   }
-}
-
-function asOptionalNumber(value: unknown): number | undefined {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string' && value.trim().length > 0) return Number(value);
-  return undefined;
 }
 
 function writeCors(res: http.ServerResponse): void {

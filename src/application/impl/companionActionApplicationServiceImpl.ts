@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page } from 'playwright';
+import type { BatchService } from '../../service/batchService.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
 import type { StagehandFillService } from '../../service/stagehandFillService.js';
+import type { AiConfig, Job, Profile } from '../../utils/types/index.js';
 import type { TailorApplicationService } from '../tailorApplicationService.js';
 import type {
   BatchTailorInput,
@@ -18,6 +20,14 @@ import type { RunStatusResult } from '../runStatusApplicationService.js';
 
 type LocalRun = RunStatusResult;
 
+const BATCH_TAILOR_SYSTEM_PROMPT = [
+  'You are wolf batch tailor.',
+  'Return strict JSON only.',
+  'Shape: {"tailoringBrief": string, "resumeHtml": string, "coverLetterHtml": string}.',
+  'resumeHtml and coverLetterHtml must be HTML body fragments, not full documents.',
+  'Do not include Markdown fences or explanatory prose outside the JSON object.',
+].join('\n');
+
 export class CompanionActionApplicationServiceImpl implements CompanionActionApplicationService {
   private readonly runs = new Map<string, LocalRun>();
 
@@ -26,6 +36,8 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
     private readonly jobRepository: JobRepository,
     private readonly profileRepository: ProfileRepository,
     private readonly stagehandFillService?: StagehandFillService,
+    private readonly defaultAiConfig?: AiConfig,
+    private readonly batchService?: BatchService,
   ) {}
 
   /** @inheritdoc */
@@ -39,10 +51,30 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
   /** @inheritdoc */
   async batchTailor(input: BatchTailorInput): Promise<CompanionActionStartResult> {
     const jobIds = input.jobIds?.length ? input.jobIds : await this.defaultBatchJobIds(input.statusFilter);
-    const runId = `batch_tailor_${randomUUID()}`;
-    this.setRun({ runId, status: 'queued', type: 'tailor', itemCount: jobIds.length });
-    void this.runTailor(runId, jobIds, input.userPrompt, ['resume', 'cover_letter']);
-    return { runId, status: 'queued' };
+    if (!this.batchService) throw new Error('BatchService is unavailable.');
+    if (!this.defaultAiConfig) throw new Error('Default AI config is unavailable.');
+    if (jobIds.length === 0) throw new Error('No jobs are available for batch tailor.');
+
+    const profile = await this.profileRepository.getDefault();
+    const resumePool = await this.profileRepository.getResumePool(profile.name);
+    const requests = await Promise.all(jobIds.map(async (jobId) => {
+      const job = await this.jobRepository.get(jobId);
+      if (!job) throw new Error(`Job not found: ${jobId}`);
+      const jdText = await this.jobRepository.readJdText(jobId);
+      return {
+        customId: jobId,
+        systemPrompt: BATCH_TAILOR_SYSTEM_PROMPT,
+        prompt: buildBatchTailorPrompt(job, profile, resumePool, jdText, input.userPrompt),
+      };
+    }));
+    const submission = await this.batchService.submitAiBatch(requests, {
+      type: 'tailor',
+      provider: this.defaultAiConfig.provider,
+      model: this.defaultAiConfig.model,
+      profileId: profile.name,
+      maxTokens: 12000,
+    });
+    return { runId: submission.id, status: 'queued' };
   }
 
   /** @inheritdoc */
@@ -211,6 +243,26 @@ function buildRegenerateHint(
       ? `## Existing ${artifactLabel} text/html\n${existingArtifactText}`
       : `## Existing ${artifactLabel} text/html\nNo existing artifact text was available. Regenerate from the current job and profile context.`,
   ].join('\n\n');
+}
+
+function buildBatchTailorPrompt(
+  job: Job,
+  profile: Profile,
+  resumePool: string,
+  jdText: string,
+  userPrompt: string | undefined,
+): string {
+  const guidance = userPrompt?.trim()
+    ? `## User Guidance\n${userPrompt.trim()}`
+    : '';
+  return [
+    `## Job\nTitle: ${job.title}\nURL: ${job.url}`,
+    `## Candidate Profile\n${profile.md}`,
+    `## Resume Pool\n${resumePool}`,
+    `## Job Description\n${jdText}`,
+    guidance,
+    'Produce a tailored resume and cover letter for this one job.',
+  ].filter((section) => section.length > 0).join('\n\n');
 }
 
 function extractBasicFillValues(profileMd: string): Record<string, string> {
