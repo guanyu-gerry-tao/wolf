@@ -78,4 +78,15 @@ describe('SqliteInboxRepositoryImpl', () => {
       error: null,
     });
   });
+
+  // Accidental companion imports can be removed from the inbox before paid
+  // processing. This does not touch any jobs table rows.
+  it('deletes inbox items by id', async () => {
+    const repo = makeRepo();
+    await repo.insert(makeItem());
+
+    await repo.delete('inbox-1');
+
+    await expect(repo.findByRawSha256('sha256-a')).resolves.toBeNull();
+  });
 });

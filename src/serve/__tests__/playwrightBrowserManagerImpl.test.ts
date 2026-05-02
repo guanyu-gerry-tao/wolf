@@ -30,6 +30,7 @@ describe('PlaywrightBrowserManagerImpl', () => {
     expect(mocks.launchPersistentContext).toHaveBeenCalledWith('/tmp/wolf-test/browser-profile', {
       channel: 'chrome',
       headless: false,
+      viewport: null,
       ignoreDefaultArgs: ['--disable-extensions'],
     });
   });

@@ -58,26 +58,41 @@ describe('companion side panel MVP', () => {
     expect(html).toContain('⚠️ wolf browser is not ready');
     expect(html).toContain('Start the browser from wolf serve, then reconnect.');
     expect(html).toContain('id="openBrowserButton"');
+    expect(html).toContain('id="openBrowserInlineButton"');
     expect(html).toContain('Open wolf browser');
     expect(html).toContain('id="configButton"');
     expect(html).toContain('Config');
     expect(html).toContain('id="duplicateNotice"');
     expect(html).toContain('id="importCurrentPageButton"');
+    expect(html).toContain('id="deleteImportButton"');
+    expect(html).toContain('id="processCurrentPageButton"');
+    expect(html).toContain('Process this page');
     expect(html).toContain('id="processInboxButton"');
-    expect(html).toContain('Process Inbox');
+    expect(html).toContain('Batch Process');
+    expect(html).toContain('id="deleteProcessButton"');
+    expect(html).toContain('id="workflowPanel"');
+    expect(html).toContain('id="workflowProgressNumber"');
+    expect(html).toContain('id="workflowStageKicker"');
+    expect(html).toContain('id="workflowStageTitle"');
     expect(html).toContain('id="previewResumeButton"');
     expect(html).toContain('id="previewCoverLetterButton"');
     expect(html).toContain('id="tailorInstantButton"');
     expect(html).toContain('Tailor this job instantly');
+    expect(html).toContain('id="deleteTailorButton"');
     expect(html).toContain('id="tailorPromptBox"');
     expect(html).toContain('id="tailorPromptInput"');
     expect(html).toContain('Optional one-shot instructions');
     expect(html).toContain('id="refreshRunStatusButton"');
-    expect(html).toContain('Refresh status');
+    expect(html).toContain('Check run');
+    expect(html).toContain('Steps: 1 Import, 2 Process, 3 Tailor. TODO: Fill and Reach out.');
     expect(html).toContain('id="batchTailorButton"');
     expect(html).toContain('Batch Tailor');
     expect(html).toContain('id="autofillQuickButton"');
     expect(html).toContain('Autofill this page');
+    expect(html).toContain('id="outreachDraftButton"');
+    expect(html).toContain('Generate outreach draft');
+    expect(html).toContain('id="actionHint"');
+    expect(html).toContain('Connect to wolf serve first.');
     expect(html).toContain('Optional page-specific instructions. wolf will fill the form but will not submit it.');
     expect(html).toContain('id="artifactEditPanel"');
     expect(html).toContain('Artifact Editor');
@@ -110,6 +125,9 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('/api/runtime/status');
     expect(js).toContain('/api/browser/open');
     expect(js).toContain('/api/inbox/items');
+    expect(js).toContain('/api/inbox/items/${encodeURIComponent(inboxId)}/process');
+    expect(js).toContain("method: 'DELETE'");
+    expect(js).toContain('/api/inbox/status');
     expect(js).toContain('/api/inbox/process');
     expect(js).toContain('/api/tailor/quick');
     expect(js).toContain('/api/tailor/batch');
@@ -120,6 +138,7 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('/api/inbox/duplicate-check');
     expect(js).toContain('Future AI extraction may use paid batch API calls');
     expect(js).toContain('Process raw inbox items into jobs?');
+    expect(js).toContain('Process this imported page into a Ready job?');
     expect(js).toContain('Inbox processing queued');
     expect(js).toContain('artifactTargets');
     expect(js).toContain('Instant tailor unavailable');
@@ -131,11 +150,24 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('Run polling is not implemented yet.');
     expect(js).toContain('Batch tailor started');
     expect(js).toContain('No Ready jobs yet. Process Inbox first, then try Batch Tailor.');
+    expect(js).toContain('Batch Process (${state.inbox.rawCount})');
+    expect(js).toContain('Batch Tailor (${state.tailor.untailoredJobCount})');
+    expect(js).toContain('imported page(s) are waiting');
+    expect(js).toContain('untailored job(s)');
+    expect(js).toContain('Import at least one page before processing the inbox.');
+    expect(js).toContain('This page is not a Ready job yet. Import it, then Process Inbox.');
+    expect(js).toContain('No active AI run to check yet.');
+    expect(js).toContain('workflowStatus');
+    expect(js).toContain('Process done');
+    expect(js).toContain('Step 2 of 3');
+    expect(js).toContain('Step 3 of 3');
+    expect(js).toContain('Show wolf browser');
     expect(js).toContain('For failed tailor jobs, open the job and use Tailor this job instantly.');
     expect(js).toContain('For failed inbox items, import that page again, then run Process Inbox.');
     expect(js).toContain('Not implemented yet');
     expect(js).toContain('Application queue is not implemented yet. Coming soon.');
     expect(js).toContain('Autofill is not implemented yet.');
+    expect(js).toContain('Outreach draft is not implemented yet.');
     expect(js).toContain('existingArtifactText');
     expect(js).toContain('Regenerating...');
     expect(js).toContain('showMainView');
@@ -177,6 +209,13 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('/api/jobs/');
     expect(js).toContain("kind === 'resume' ? 'resume' : 'cover-letter'");
     expect(js).toContain('/artifacts/${artifactPath}');
+
+    const daemonButtons = js.slice(
+      js.indexOf('function daemonActionButtons'),
+      js.indexOf('function isRuntimeReady'),
+    );
+    expect(daemonButtons).not.toContain('previewResumeButton');
+    expect(daemonButtons).not.toContain('previewCoverLetterButton');
   });
 
   // The queue should read as a compact kanban board without forcing the whole
@@ -192,11 +231,15 @@ describe('companion side panel MVP', () => {
     expect(css).toContain('grid-template-columns: 74px minmax(0, 1fr)');
     expect(css).toContain('-webkit-line-clamp: 3');
     expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) 34px');
+    expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr)) 34px');
     expect(css).toContain('white-space: nowrap');
-    expect(css).toContain('#importCurrentPageButton');
-    expect(css).toContain('#processInboxButton');
-    expect(css).toContain('#tailorInstantButton');
-    expect(css).toContain('#refreshRunStatusButton');
+    expect(css).toContain('.action-step');
+    expect(css).toContain('.action-step__header');
+    expect(css).toContain('.action-row--with-delete');
+    expect(css).toContain('.action-row--two-plus-delete');
+    expect(css).toContain('.square-button');
+    expect(css).toContain('.danger-square');
     expect(css).toContain('.prompt-box');
     expect(css).toContain('.prompt-help');
     expect(css).toContain('.edit-panel');
@@ -206,6 +249,12 @@ describe('companion side panel MVP', () => {
     expect(css).toContain('.config-actions');
     expect(css).toContain('.danger-button');
     expect(css).toContain('.ghost-button');
+    expect(css).toContain('.browser-open-button');
+    expect(css).toContain('.workflow-panel');
+    expect(css).toContain('.workflow-progress');
+    expect(css).toContain('.workflow-hint');
+    expect(css).toContain('.workflow-steps');
+    expect(css).toContain('.refresh-chip');
     expect(css).toContain('[hidden]');
     expect(css).toContain('.empty-state');
     expect(css).toContain('grid-column: 1 / -1');

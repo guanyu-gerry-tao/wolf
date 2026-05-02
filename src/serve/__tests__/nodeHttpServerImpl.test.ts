@@ -83,6 +83,8 @@ describe('NodeHttpServerImpl', () => {
           status: input.kind === 'manual_page' ? 'raw' : 'failed',
         }),
         findDuplicateManualPage: async () => null,
+        getStatus: async () => ({ hasRaw: true, rawCount: 1 }),
+        deleteItem: async () => ({ inboxId: 'manual-1', status: 'deleted' }),
         saveHuntRun: async () => {
           throw new Error('not used');
         },
@@ -112,6 +114,8 @@ describe('NodeHttpServerImpl', () => {
       inboxApp: {
         saveCurrentPage: async () => ({ inboxId: 'manual-1', status: 'raw' }),
         findDuplicateManualPage: async () => null,
+        getStatus: async () => ({ hasRaw: true, rawCount: 1 }),
+        deleteItem: async () => ({ inboxId: 'manual-1', status: 'deleted' }),
         saveHuntRun: async () => { throw new Error('not used'); },
       },
     });
@@ -137,6 +141,8 @@ describe('NodeHttpServerImpl', () => {
         saveHuntRun: async () => {
           throw new Error('not used');
         },
+        getStatus: async () => ({ hasRaw: true, rawCount: 1 }),
+        deleteItem: async () => ({ inboxId: 'manual-1', status: 'deleted' }),
         findDuplicateManualPage: async (url) => ({
           id: 'manual-1',
           kind: 'manual_page',
@@ -163,6 +169,55 @@ describe('NodeHttpServerImpl', () => {
     });
   });
 
+  // The side panel's duplicate-state X removes the import record from the raw
+  // inbox. It intentionally does not delete any promoted job rows yet.
+  it('routes DELETE /api/inbox/items/:id to the inbox application', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'DELETE',
+      url: '/api/inbox/items/manual-1',
+      version: '0.1.0',
+      inboxApp: {
+        saveCurrentPage: async () => {
+          throw new Error('not used');
+        },
+        saveHuntRun: async () => {
+          throw new Error('not used');
+        },
+        findDuplicateManualPage: async () => null,
+        getStatus: async () => ({ hasRaw: false, rawCount: 0 }),
+        deleteItem: async (id) => ({ inboxId: id, status: 'deleted' }),
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ inboxId: 'manual-1', status: 'deleted' });
+  });
+
+  // The side panel gates "Process Inbox" on this lightweight local status
+  // check, so clicking it does not become the user's way to discover an empty
+  // inbox.
+  it('routes GET /api/inbox/status to the inbox application', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/inbox/status',
+      version: '0.1.0',
+      inboxApp: {
+        saveCurrentPage: async () => {
+          throw new Error('not used');
+        },
+        saveHuntRun: async () => {
+          throw new Error('not used');
+        },
+        findDuplicateManualPage: async () => null,
+        getStatus: async () => ({ hasRaw: false, rawCount: 0 }),
+        deleteItem: async () => ({ inboxId: 'manual-1', status: 'deleted' }),
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ hasRaw: false, rawCount: 0 });
+  });
+
   // Process Inbox is the explicit paid step: the daemon creates background batch
   // state and returns 202 rather than doing synchronous AI/job creation.
   it('routes POST /api/inbox/process to the inbox promotion application', async () => {
@@ -176,6 +231,12 @@ describe('NodeHttpServerImpl', () => {
           batchId: 'batch-1',
           status: 'queued',
           itemCount: input.limit,
+          shardCount: 1,
+        }),
+        promoteInboxItem: async () => ({
+          batchId: 'batch-1',
+          status: 'queued',
+          itemCount: 1,
           shardCount: 1,
         }),
       },
@@ -205,11 +266,47 @@ describe('NodeHttpServerImpl', () => {
           itemCount: input.limit,
           shardCount: 1,
         }),
+        promoteInboxItem: async () => ({
+          batchId: 'batch-1',
+          status: 'queued',
+          itemCount: 1,
+          shardCount: 1,
+        }),
       },
     });
 
     expect(res.status).toBe(202);
     expect(res.body).toMatchObject({ batchId: 'batch-1', status: 'queued' });
+  });
+
+  // The side panel can process a single imported page without also processing
+  // every raw inbox item.
+  it('routes POST /api/inbox/items/:id/process to single-item inbox promotion', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/inbox/items/manual-1/process',
+      version: '0.1.0',
+      body: JSON.stringify({ shardSize: 1 }),
+      inboxPromotionApp: {
+        promoteRawInbox: async () => {
+          throw new Error('not used');
+        },
+        promoteInboxItem: async (id, input) => ({
+          batchId: `${id}-batch`,
+          status: 'queued',
+          itemCount: input.shardSize,
+          shardCount: 1,
+        }),
+      },
+    });
+
+    expect(res.status).toBe(202);
+    expect(res.body).toMatchObject({
+      batchId: 'manual-1-batch',
+      status: 'queued',
+      itemCount: 1,
+      shardCount: 1,
+    });
   });
 
   // Artifact readiness has a stable response shape before the actual artifact
@@ -324,6 +421,63 @@ describe('NodeHttpServerImpl', () => {
       version: '0.1.0',
       browserManager,
     })).resolves.toMatchObject({ status: 200, body: { id: 'tab-1' } });
+  });
+
+  // The side panel needs the Batch Tailor count to represent jobs still missing
+  // tailor artifacts, not merely open browser tabs. Completed jobs should not
+  // re-enter the Ready column or the Batch Tailor count.
+  it('adds untailored job counts and ready jobs to GET /api/tabs', async () => {
+    const res = await dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/tabs',
+      version: '0.1.0',
+      browserManager: {
+        open: async () => ({ status: 'ready' as const, detail: 'ready', requiredAction: 'Use wolf browser.' }),
+        openUrl: async () => { throw new Error('not used'); },
+        listTabs: async () => ({ queues: { filling: [], ready: [], stuck: [] } }),
+        focusTab: async () => { throw new Error('not used'); },
+        status: () => ({ status: 'ready' as const, detail: 'ready', requiredAction: 'Use wolf browser.' }),
+        getPage: async () => null,
+        stop: async () => undefined,
+      },
+      jobRepository: {
+        query: async () => [
+          {
+            id: 'job-1',
+            title: 'Needs Tailor',
+            companyId: 'company-1',
+            url: 'https://example.com/job-1',
+            hasTailoredResume: false,
+            hasTailoredCoverLetter: false,
+          },
+          {
+            id: 'job-2',
+            title: 'Already Tailored',
+            companyId: 'company-1',
+            url: 'https://example.com/job-2',
+            hasTailoredResume: true,
+            hasTailoredCoverLetter: true,
+          },
+        ],
+        countWithoutCompleteTailor: async () => 1,
+      } as never,
+      companyRepository: {
+        get: async () => ({ name: 'Acme' }),
+      } as never,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      counts: { untailoredJobs: 1 },
+      queues: {
+        ready: [
+          expect.objectContaining({
+            jobId: 'job-1',
+            title: 'Needs Tailor',
+          }),
+        ],
+      },
+    });
   });
 
   // Ready-column jobs are database rows, not already-open browser tabs. Focusing

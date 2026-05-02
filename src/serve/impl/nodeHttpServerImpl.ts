@@ -192,14 +192,27 @@ export async function dispatchHttpRequest(input: {
     return { status: 200, body: await input.browserManager.open() };
   }
 
+  if (input.method === 'GET' && url.pathname === '/api/inbox/status') {
+    if (!input.inboxApp) {
+      return { status: 503, body: { error: 'inbox unavailable' } };
+    }
+    return { status: 200, body: await input.inboxApp.getStatus() };
+  }
+
   if (input.method === 'GET' && url.pathname === '/api/tabs') {
     if (!input.browserManager) return todoRoute(input.method, url.pathname);
     const tabs = await input.browserManager.listTabs();
     if (input.jobRepository && input.companyRepository) {
-      const readyJobs = await companionReadyJobs(input.jobRepository, input.companyRepository);
+      const [readyJobs, untailoredJobCount] = await Promise.all([
+        companionReadyJobs(input.jobRepository, input.companyRepository),
+        input.jobRepository.countWithoutCompleteTailor(),
+      ]);
       return {
         status: 200,
         body: {
+          counts: {
+            untailoredJobs: untailoredJobCount,
+          },
           queues: {
             filling: tabs.queues.filling,
             ready: readyJobs,
@@ -239,10 +252,22 @@ export async function dispatchHttpRequest(input: {
         inboxId: duplicate.id,
         title: duplicate.title,
         url: duplicate.url,
+        jobId: duplicate.jobId,
         receivedAt: duplicate.receivedAt,
         status: duplicate.status,
       },
     };
+  }
+
+  if (input.method === 'DELETE' && /^\/api\/inbox\/items\/[^/]+$/.test(url.pathname)) {
+    if (!input.inboxApp) {
+      return { status: 503, body: { error: 'inbox unavailable' } };
+    }
+    const inboxId = decodeURIComponent(url.pathname.split('/')[4] ?? '');
+    if (!inboxId) {
+      return { status: 400, body: { error: 'missing inbox id' } };
+    }
+    return { status: 200, body: await input.inboxApp.deleteItem(inboxId) };
   }
 
   if (
@@ -296,6 +321,27 @@ export async function dispatchHttpRequest(input: {
     }
 
     const result = await input.inboxPromotionApp.promoteRawInbox(parsed.data);
+    return { status: 202, body: result };
+  }
+
+  if (input.method === 'POST' && /^\/api\/inbox\/items\/[^/]+\/process$/.test(url.pathname)) {
+    if (!input.inboxPromotionApp) {
+      return { status: 503, body: { error: 'inbox promotion unavailable' } };
+    }
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+
+    const parsed = InboxPromoteRequestSchema.pick({ provider: true, shardSize: true }).safeParse(parsedJson.value);
+    if (!parsed.success) {
+      return { status: 400, body: { error: 'invalid inbox item process request' } };
+    }
+
+    const inboxId = decodeURIComponent(url.pathname.split('/')[4] ?? '');
+    if (!inboxId) {
+      return { status: 400, body: { error: 'missing inbox id' } };
+    }
+
+    const result = await input.inboxPromotionApp.promoteInboxItem(inboxId, parsed.data);
     return { status: 202, body: result };
   }
 
@@ -592,6 +638,7 @@ async function companionReadyJobs(
   const jobs = await jobRepository.query({ limit: 50 });
   const result = [];
   for (const job of jobs) {
+    if (job.hasTailoredResume && job.hasTailoredCoverLetter) continue;
     const company = await companyRepository.get(job.companyId);
     result.push({
       id: job.id,
@@ -640,7 +687,7 @@ function parseJsonBody(body: string | undefined):
 
 function writeCors(res: http.ServerResponse): void {
   res.setHeader('access-control-allow-origin', '*');
-  res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
+  res.setHeader('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS');
   res.setHeader('access-control-allow-headers', 'content-type');
 }
 

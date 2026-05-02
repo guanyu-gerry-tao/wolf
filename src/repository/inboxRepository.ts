@@ -26,8 +26,11 @@ export interface InboxRepository {
   saveManualPage(input: ManualPageInboxCapture): Promise<InboxSaveResult>;
   saveHuntRun(input: HuntRunInboxCapture): Promise<InboxSaveResult>;
   insert(item: InboxItem): Promise<void>;
+  get(id: string): Promise<InboxItem | null>;
   findByRawSha256(rawSha256: string): Promise<InboxItem | null>;
   findManualPageByUrl(url: string): Promise<InboxItem | null>;
   listByStatus(status: InboxItemStatus, limit: number): Promise<InboxItem[]>;
+  countByStatus(status: InboxItemStatus): Promise<number>;
   updateStatus(id: string, patch: Partial<Pick<InboxItem, 'status' | 'jobId' | 'error'>>): Promise<void>;
+  delete(id: string): Promise<void>;
 }

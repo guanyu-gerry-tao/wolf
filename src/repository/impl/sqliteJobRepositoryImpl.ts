@@ -122,6 +122,17 @@ export class SqliteJobRepositoryImpl implements JobRepository {
     return Number(row?.count ?? 0);
   }
 
+  async countWithoutCompleteTailor(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(jobs)
+      .where(or(
+        eq(jobs.hasTailoredResume, false),
+        eq(jobs.hasTailoredCoverLetter, false),
+      ));
+    return Number(row?.count ?? 0);
+  }
+
   async countMatching(q: JobQuery): Promise<number> {
     // Mirror query()'s two paths so the two helpers can't drift — the parity
     // tests in __tests__/sqliteJobRepositoryImpl.test.ts enforce this.

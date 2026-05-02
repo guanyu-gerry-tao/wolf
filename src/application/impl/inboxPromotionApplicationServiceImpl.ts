@@ -159,6 +159,142 @@ export class InboxPromotionApplicationServiceImpl implements InboxPromotionAppli
     };
   }
 
+  async promoteInboxItem(id: string, options: Omit<InboxPromoteOptions, 'limit'>): Promise<InboxPromoteResult> {
+    const item = await this.inboxRepository.get(id);
+    if (!item || item.status !== 'raw') {
+      log.info('inbox.promote.single.empty', {
+        inboxId: id,
+        provider: options.provider,
+        shardSize: options.shardSize,
+      });
+      return { batchId: null, status: 'empty', itemCount: 0, shardCount: 0 };
+    }
+
+    if (this.batchService && this.defaultAiConfig) {
+      const submission = await this.batchService.submitAiBatch([
+        {
+          customId: item.id,
+          systemPrompt: INBOX_PROMOTE_SYSTEM_PROMPT,
+          prompt: buildPromotionInput(item),
+        },
+      ], {
+        type: 'inbox_promote',
+        provider: this.defaultAiConfig.provider,
+        model: this.defaultAiConfig.model,
+        profileId: 'default',
+        maxTokens: 4000,
+      });
+      await this.inboxRepository.updateStatus(item.id, { status: 'queued', error: null });
+      log.info('inbox.promote.single.queued', {
+        batchId: submission.id,
+        provider: submission.provider,
+        inboxId: item.id,
+      });
+      return {
+        batchId: submission.id,
+        status: 'queued',
+        itemCount: 1,
+        shardCount: 1,
+      };
+    }
+
+    const result = await this.promoteRawItems([item], {
+      limit: 1,
+      provider: options.provider,
+      shardSize: options.shardSize,
+    });
+    return result;
+  }
+
+  private async promoteRawItems(rawItems: InboxItem[], options: InboxPromoteOptions): Promise<InboxPromoteResult> {
+    const now = new Date().toISOString();
+    const batchId = `inbox_promote_${randomUUID()}`;
+    const shards = chunk(rawItems, options.shardSize);
+    const canPromoteLocally = this.addApplicationService !== undefined;
+
+    await this.backgroundAiBatchRepository.saveBatch({
+      id: batchId,
+      type: 'inbox_promote',
+      status: canPromoteLocally ? 'completed' : 'queued',
+      inputJson: JSON.stringify({
+        limit: options.limit,
+        provider: options.provider,
+        shardSize: options.shardSize,
+        inboxItemIds: rawItems.map((item) => item.id),
+      }),
+      createdAt: now,
+      updatedAt: now,
+      deadlineAt: null,
+      error: null,
+    });
+
+    const promotedJobIds: string[] = [];
+    for (let shardIndex = 0; shardIndex < shards.length; shardIndex += 1) {
+      const shardItems = shards[shardIndex];
+      const shardId = `${batchId}_shard_${shardIndex + 1}`;
+
+      await this.backgroundAiBatchRepository.saveShard({
+        id: shardId,
+        backgroundAiBatchId: batchId,
+        provider: options.provider,
+        providerBatchId: null,
+        status: canPromoteLocally ? 'completed' : 'queued',
+        itemCount: shardItems.length,
+        nextPollAt: null,
+        submittedAt: null,
+        completedAt: null,
+        error: null,
+      });
+
+      for (const item of shardItems) {
+        const promotedJobId = canPromoteLocally
+          ? await this.promoteItemLocally(item).catch(async (err: unknown) => {
+              await this.inboxRepository.updateStatus(item.id, {
+                status: 'failed',
+                error: err instanceof Error ? err.message : String(err),
+              });
+              return null;
+            })
+          : null;
+        if (promotedJobId) promotedJobIds.push(promotedJobId);
+
+        await this.backgroundAiBatchRepository.saveItem({
+          id: `${batchId}_item_${item.id}`,
+          backgroundAiBatchId: batchId,
+          shardId,
+          subjectType: 'inbox_item',
+          subjectId: item.id,
+          status: promotedJobId ? 'promoted' : canPromoteLocally ? 'failed' : 'queued',
+          aiInputJson: buildPromotionInput(item),
+          debugJson: null,
+          debugExpiresAt: null,
+          targetId: promotedJobId,
+          error: promotedJobId || !canPromoteLocally ? null : 'Local inbox promotion failed.',
+        });
+        if (promotedJobId) {
+          await this.inboxRepository.updateStatus(item.id, { status: 'promoted', jobId: promotedJobId, error: null });
+        } else if (!canPromoteLocally) {
+          await this.inboxRepository.updateStatus(item.id, { status: 'queued', error: null });
+        }
+      }
+    }
+
+    log.info(canPromoteLocally ? 'inbox.promote.completed' : 'inbox.promote.queued', {
+      batchId,
+      provider: options.provider,
+      itemCount: rawItems.length,
+      shardCount: shards.length,
+    });
+
+    return {
+      batchId,
+      status: canPromoteLocally ? 'completed' : 'queued',
+      itemCount: rawItems.length,
+      shardCount: shards.length,
+      jobIds: promotedJobIds,
+    };
+  }
+
   private async promoteItemLocally(item: InboxItem): Promise<string> {
     if (!this.addApplicationService) throw new Error('AddApplicationService is unavailable.');
     const parsed = JSON.parse(item.rawJson) as {

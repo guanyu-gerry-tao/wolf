@@ -1,18 +1,18 @@
 :root {
   color-scheme: light;
-  --bg: #f4f1ea;
-  --ink: #1f2523;
-  --muted: #68716d;
-  --line: #d6d1c5;
-  --panel: #fffdfa;
+  --bg: #f5f5f7;
+  --ink: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #d2d2d7;
+  --panel: #ffffff;
   --green: #197a4d;
   --green-soft: #dcefe5;
   --red: #b3261e;
   --red-soft: #f8dfda;
   --amber: #8a5a00;
   --amber-soft: #f5e7c4;
-  --blue: #245f8f;
-  --blue-soft: #dce9f3;
+  --blue: #0066cc;
+  --blue-soft: #e8f2ff;
   font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
 }
 
@@ -31,7 +31,8 @@ body {
   overflow-x: hidden;
   color: var(--ink);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent 240px),
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 210px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.75), transparent 260px),
     var(--bg);
 }
 
@@ -47,7 +48,7 @@ textarea {
 button {
   min-height: 34px;
   border: 1px solid #26302c;
-  border-radius: 6px;
+  border-radius: 12px;
   color: #fdfbf7;
   background: #26302c;
   cursor: pointer;
@@ -120,11 +121,11 @@ input:focus-visible {
 .shell {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-  padding: 12px;
+  padding: 8px;
 }
 
 .topbar {
@@ -148,7 +149,7 @@ input:focus-visible {
   min-height: 30px;
   border-color: var(--line);
   color: var(--ink);
-  background: #fffdfa;
+  background: #fff;
 }
 
 .ghost-button:hover {
@@ -251,14 +252,14 @@ h2 {
 .queue-column,
 .activity {
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 253, 250, 0.92);
-  box-shadow: 0 1px 0 rgba(31, 37, 35, 0.04);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 2px rgba(29, 29, 31, 0.04);
 }
 
 .panel {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   padding: 10px;
 }
 
@@ -272,7 +273,7 @@ h2 {
   width: 100%;
   min-height: 34px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 12px;
   padding: 0 10px;
   color: var(--ink);
   background: #fff;
@@ -283,6 +284,72 @@ h2 {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.browser-open-button {
+  justify-self: start;
+  padding-inline: 12px;
+}
+
+.workflow-panel {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(245, 245, 247, 0.86)),
+    #fff;
+}
+
+.workflow-progress {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(145deg, #1d1d1f, #46464a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 8px 20px rgba(29, 29, 31, 0.13);
+}
+
+#workflowProgressNumber {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.workflow-copy {
+  min-width: 0;
+}
+
+.workflow-copy h2 {
+  margin-top: 2px;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.workflow-hint {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.34;
+}
+
+.workflow-steps {
+  margin: 4px 0 0;
+  color: #4f4f55;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.refresh-chip {
+  align-self: start;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--blue);
+  font-size: 12px;
 }
 
 .section-title,
@@ -311,23 +378,114 @@ h2 {
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
+  padding-top: 1px;
 }
 
-.action-grid button {
+.action-step {
+  display: grid;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid rgba(210, 210, 215, 0.82);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 250, 251, 0.86)),
+    #fff;
+}
+
+.action-step--quiet {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.action-step__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 7px;
   min-width: 0;
+}
+
+.action-step__header span {
+  flex: none;
+  color: #343438;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.action-step__header small {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-row {
+  display: grid;
+  gap: 6px;
+}
+
+.action-row--with-delete {
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.action-row--two-plus-delete {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 34px;
+}
+
+.action-row--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.action-grid button,
+.action-row button {
+  min-width: 0;
+  min-height: 32px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#importCurrentPageButton,
-#processInboxButton,
-#tailorInstantButton,
-#refreshRunStatusButton,
-#batchTailorButton,
+.square-button {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.danger-square {
+  border-color: #e0b9b4;
+  color: var(--red);
+  background: #fff8f6;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
+}
+
+.danger-square:hover {
+  color: #fff;
+  background: var(--red);
+}
+
+.danger-square:disabled {
+  border-color: #d4ccbd;
+  color: #9c9588;
+  background: #ede7db;
+  box-shadow: none;
+}
+
 #autofillQuickButton {
+  grid-column: 1 / -1;
+}
+
+#outreachDraftButton {
   grid-column: 1 / -1;
 }
 

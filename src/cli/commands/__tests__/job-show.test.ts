@@ -82,6 +82,7 @@ function makeRepos(initial: Job[]): {
     countByStatus: vi.fn(),
     countAll: vi.fn(),
     countWithTailoredResume: vi.fn(),
+    countWithoutCompleteTailor: vi.fn(),
     countMatching: vi.fn(),
     delete: vi.fn(),
     getWorkspaceDir: vi.fn(),

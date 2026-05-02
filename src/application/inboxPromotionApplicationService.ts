@@ -16,4 +16,5 @@ export interface InboxPromoteResult {
 
 export interface InboxPromotionApplicationService {
   promoteRawInbox(options: InboxPromoteOptions): Promise<InboxPromoteResult>;
+  promoteInboxItem(id: string, options: Omit<InboxPromoteOptions, 'limit'>): Promise<InboxPromoteResult>;
 }

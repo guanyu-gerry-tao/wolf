@@ -9,4 +9,6 @@ export interface InboxApplicationService {
   saveCurrentPage(input: ManualPageInboxCapture): Promise<InboxSaveResult>;
   saveHuntRun(input: HuntRunInboxCapture): Promise<InboxSaveResult>;
   findDuplicateManualPage(url: string): Promise<InboxItem | null>;
+  getStatus(): Promise<{ hasRaw: boolean; rawCount: number }>;
+  deleteItem(id: string): Promise<{ inboxId: string; status: 'deleted' }>;
 }

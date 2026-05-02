@@ -15,6 +15,20 @@ export class InboxApplicationServiceImpl implements InboxApplicationService {
     return this.inboxRepository.findManualPageByUrl(normalizeInboxUrl(url));
   }
 
+  async getStatus(): Promise<{ hasRaw: boolean; rawCount: number }> {
+    const rawCount = await this.inboxRepository.countByStatus('raw');
+    return { hasRaw: rawCount > 0, rawCount };
+  }
+
+  async deleteItem(id: string): Promise<{ inboxId: string; status: 'deleted' }> {
+    await this.inboxRepository.delete(id);
+    log.info('inbox.item.deleted', {
+      inboxId: id,
+      status: 'deleted',
+    });
+    return { inboxId: id, status: 'deleted' };
+  }
+
   async saveCurrentPage(input: ManualPageInboxCapture): Promise<InboxSaveResult> {
     const rawJson = stableJsonStringify({
       kind: 'manual_page',

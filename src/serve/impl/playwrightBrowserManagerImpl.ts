@@ -45,6 +45,7 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
       const context = await chromium.launchPersistentContext(this.userDataDir, {
         channel: 'chrome',
         headless: false,
+        viewport: null,
         ignoreDefaultArgs: ['--disable-extensions'],
       });
       this.context = context;

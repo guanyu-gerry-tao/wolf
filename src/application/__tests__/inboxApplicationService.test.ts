@@ -185,4 +185,32 @@ describe('InboxApplicationServiceImpl', () => {
     );
     expect(result).toBe(duplicate);
   });
+
+  // The companion uses this cheap local status check to decide whether
+  // "Process Inbox" should be clickable, instead of making the user click into
+  // an empty batch operation.
+  it('reports whether raw inbox items are waiting to be processed', async () => {
+    const repo = {
+      countByStatus: vi.fn(async () => 3),
+    } as unknown as InboxRepository;
+    const app = new InboxApplicationServiceImpl(repo);
+
+    await expect(app.getStatus()).resolves.toEqual({ hasRaw: true, rawCount: 3 });
+    expect(repo.countByStatus).toHaveBeenCalledWith('raw');
+  });
+
+  // The side panel can remove an accidental import before the user pays for a
+  // processing run. This only deletes the inbox record, not any promoted job.
+  it('deletes an inbox item by id', async () => {
+    const repo = {
+      delete: vi.fn(async () => undefined),
+    } as unknown as InboxRepository;
+    const app = new InboxApplicationServiceImpl(repo);
+
+    await expect(app.deleteItem('manual_1')).resolves.toEqual({
+      inboxId: 'manual_1',
+      status: 'deleted',
+    });
+    expect(repo.delete).toHaveBeenCalledWith('manual_1');
+  });
 });
