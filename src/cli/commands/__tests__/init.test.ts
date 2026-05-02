@@ -70,8 +70,8 @@ describe('init()', () => {
       expect(config.default).toBe('default');
       expect(config.tailor.model).toBe('anthropic/claude-sonnet-4-6');
       expect(config.fill.model).toBe('anthropic/claude-haiku-4-5-20251001');
-      // Fresh init writes schemaVersion = 2 (the current).
-      expect(config.schemaVersion).toBe(2);
+      // Fresh init writes the current workspace schema version.
+      expect(config.schemaVersion).toBe(3);
 
       // The v2 single profile.toml replaces the old md trio. It should contain
       // the structural anchors we expect (table headers, builtin stories).

@@ -11,6 +11,7 @@ import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import type { CompanySize } from '../../utils/types/company.js';
 import type { JobError, JobSource, JobStatus } from '../../utils/types/job.js';
 import type { Sponsorship } from '../../utils/types/sponsorship.js';
+import type { BatchItemStatus } from '../batchItemRepository.js';
 
 type BatchType = 'score' | 'tailor';
 type BatchAiProvider = 'anthropic' | 'openai';
@@ -80,8 +81,22 @@ export const batches = sqliteTable('batches', {
   batchId: text('batch_id').notNull(),        // external ID returned by the AI provider (Anthropic / OpenAI)
   type: text('type').$type<BatchType>().notNull(),
   aiProvider: text('ai_provider').$type<BatchAiProvider>().notNull(),
+  model: text('model'),
   profileId: text('profile_id').notNull(),
   status: text('status').$type<BatchStatus>().notNull(),
+  errorMessage: text('error_message'),
   submittedAt: text('submitted_at').notNull(),
+  completedAt: text('completed_at'),
+});
+
+export const batchItems = sqliteTable('batch_items', {
+  id: text('id').primaryKey(),
+  batchId: text('batch_id').notNull(),
+  customId: text('custom_id').notNull(),
+  status: text('status').$type<BatchItemStatus>().notNull(),
+  resultText: text('result_text'),
+  errorMessage: text('error_message'),
+  consumedAt: text('consumed_at'),
+  createdAt: text('created_at').notNull(),
   completedAt: text('completed_at'),
 });
