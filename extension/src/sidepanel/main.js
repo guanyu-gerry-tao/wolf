@@ -1109,8 +1109,8 @@ async function saveConfig() {
 }
 
 function formatBrowserMode(mode) {
-  if (mode === 'wolf_persistent_profile') return 'wolf persistent profile';
-  return mode ?? 'wolf persistent profile';
+  if (mode === 'wolf_persistent_profile') return 'Google Chrome + wolf profile';
+  return mode ?? 'Google Chrome + wolf profile';
 }
 
 function collectKnownJobIds() {

@@ -213,7 +213,13 @@ function wireContext(
     tailorApp, jobRepo, profileRepository, stagehandFillService,
   );
   const runStatusApp = new RunStatusApplicationServiceImpl(backgroundAiBatchRepo, companionActionApp);
-  const browserManager = new PlaywrightBrowserManagerImpl(path.join(workspaceDir, 'data', 'wolf-browser-profile'));
+  const browserManager = new PlaywrightBrowserManagerImpl(
+    path.join(workspaceDir, 'data', 'wolf-browser-profile'),
+    // TODO(companion-onboarding): Wire this to the wolf wiki/onboarding URL
+    // once the first-run flow is ready. Keep null for now so serve only opens
+    // the browser profile and does not surprise users with a page navigation.
+    null,
+  );
   const configApp = new ConfigApplicationServiceImpl();
   const envApp = new EnvApplicationServiceImpl();
   const profileApp = new ProfileApplicationServiceImpl();

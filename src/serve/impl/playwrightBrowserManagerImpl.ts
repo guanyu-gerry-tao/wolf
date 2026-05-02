@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import { chromium, type BrowserContext, type Page } from 'playwright';
-import { ensurePlaywrightChromiumInstalled } from '../../utils/playwrightChromium.js';
 import type {
   ServeBrowserManager,
   ServeBrowserStatus,
@@ -14,7 +13,10 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
   private readonly pagesByRequestedUrl = new Map<string, Page>();
   private nextPageId = 1;
 
-  constructor(private readonly userDataDir: string) {}
+  constructor(
+    private readonly userDataDir: string,
+    private readonly startupUrl: string | null = null,
+  ) {}
 
   status(): ServeBrowserStatus {
     if (!this.context) {
@@ -26,8 +28,8 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
     }
     return {
       status: 'ready',
-      detail: `Wolf browser is running with profile ${this.userDataDir}.`,
-      requiredAction: 'Use the wolf browser window for application pages.',
+      detail: `Wolf browser is running in Google Chrome with profile ${this.userDataDir}.`,
+      requiredAction: 'Use the wolf Chrome window for application pages.',
     };
   }
 
@@ -39,15 +41,24 @@ export class PlaywrightBrowserManagerImpl implements ServeBrowserManager {
     }
 
     await fs.mkdir(this.userDataDir, { recursive: true });
-    await ensurePlaywrightChromiumInstalled();
-    this.context = await chromium.launchPersistentContext(this.userDataDir, {
-      headless: false,
-    });
+    try {
+      this.context = await chromium.launchPersistentContext(this.userDataDir, {
+        channel: 'chrome',
+        headless: false,
+        ignoreDefaultArgs: ['--disable-extensions'],
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        'Wolf Browser could not start Google Chrome. Install Google Chrome, then run wolf serve again. ' +
+        `Original error: ${message}`,
+      );
+    }
     this.context.on('page', (page) => this.rememberPage(page));
 
     const page = this.context.pages()[0] ?? await this.context.newPage();
     this.rememberPage(page);
-    await page.goto('about:blank').catch(() => undefined);
+    await page.goto(this.startupUrl ?? 'about:blank').catch(() => undefined);
     return this.status();
   }
 

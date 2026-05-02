@@ -88,7 +88,8 @@ describe('companion side panel MVP', () => {
     expect(html).toContain('Saved to wolf.toml as the default profile name.');
     expect(html).toContain('Max parallel Stagehand sessions');
     expect(html).toContain('Saved now. Actual Stagehand fill execution is still marked TODO.');
-    expect(html).toContain('wolf automates only the wolf-controlled Chrome profile');
+    expect(html).toContain('wolf opens a separate Google Chrome profile');
+    expect(html).toContain('the profile persists');
     expect(html).toContain('data-column="filling"');
     expect(html).toContain('data-column="ready"');
     expect(html).toContain('data-column="stuck"');

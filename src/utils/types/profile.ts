@@ -63,7 +63,7 @@ export interface AppConfig {
   companion: {
     servePort: number;                  // default local daemon port for the browser extension
     maxStagehandSessions: number;       // planned LOCAL Stagehand parallelism cap
-    browserMode: 'wolf_persistent_profile'; // wolf-controlled Chrome profile only
+    browserMode: 'wolf_persistent_profile'; // separate Google Chrome profile under the wolf workspace
   };
 }
 
