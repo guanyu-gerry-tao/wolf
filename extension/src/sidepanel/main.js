@@ -991,12 +991,18 @@ async function regenerateArtifact() {
     });
     setButtonState(els.regenerateArtifactButton, 'Regenerating...', true);
     log(`${label} regeneration started: ${result.runId ?? 'run pending'}`);
-    if (result.runId) startRunPolling(result.runId);
+    if (result.runId) {
+      startRunPolling(result.runId, {
+        button: els.regenerateArtifactButton,
+        completeLabel: `${label} Ready`,
+        failedLabel: 'Regenerate Failed',
+        resetLabel: `Regenerate ${label}`,
+      });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     setButtonState(els.regenerateArtifactButton, 'Regenerate TODO', false);
     log(`${label} regeneration unavailable: ${message}`);
-  } finally {
     resetButtonLabelLater(els.regenerateArtifactButton, `Regenerate ${label}`);
   }
 }

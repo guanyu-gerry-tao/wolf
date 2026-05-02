@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { Page } from 'playwright';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ProfileRepository } from '../../repository/profileRepository.js';
@@ -10,6 +12,7 @@ import type {
   CompanionActionStartResult,
   QuickFillInput,
   QuickTailorInput,
+  RegenerateArtifactInput,
 } from '../companionActionApplicationService.js';
 import type { RunStatusResult } from '../runStatusApplicationService.js';
 
@@ -39,6 +42,19 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
     const runId = `batch_tailor_${randomUUID()}`;
     this.setRun({ runId, status: 'queued', type: 'tailor', itemCount: jobIds.length });
     void this.runTailor(runId, jobIds, input.userPrompt, ['resume', 'cover_letter']);
+    return { runId, status: 'queued' };
+  }
+
+  /** @inheritdoc */
+  async regenerateArtifact(input: RegenerateArtifactInput): Promise<CompanionActionStartResult> {
+    const runId = `regenerate_${randomUUID()}`;
+    this.setRun({
+      runId,
+      status: 'queued',
+      type: input.artifactType === 'resume' ? 'regenerate_resume' : 'regenerate_cover_letter',
+      itemCount: 1,
+    });
+    void this.runRegenerateArtifact(runId, input);
     return { runId, status: 'queued' };
   }
 
@@ -83,6 +99,49 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  private async runRegenerateArtifact(runId: string, input: RegenerateArtifactInput): Promise<void> {
+    this.patchRun(runId, { status: 'running' });
+    try {
+      const existingArtifactText = await this.existingArtifactText(input);
+      const hint = buildRegenerateHint(input.artifactType, existingArtifactText, input.userPrompt);
+      await this.tailorApplicationService.analyze({ jobId: input.jobId, hint });
+      if (input.artifactType === 'resume') {
+        await this.tailorApplicationService.writeResume({ jobId: input.jobId });
+      } else {
+        await this.tailorApplicationService.writeCoverLetter({ jobId: input.jobId });
+      }
+      this.patchRun(runId, {
+        status: 'ready',
+        artifacts: {
+          resume: { status: input.artifactType === 'resume' ? 'ready' : 'not_ready', url: null },
+          coverLetter: { status: input.artifactType === 'cover_letter' ? 'ready' : 'not_ready', url: null },
+        },
+      });
+    } catch (err) {
+      this.patchRun(runId, {
+        status: 'failed',
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  private async existingArtifactText(input: RegenerateArtifactInput): Promise<string> {
+    const supplied = input.existingArtifactText.trim();
+    const pathOnDisk = await this.existingArtifactPath(input.jobId, input.artifactType);
+    const diskText = pathOnDisk
+      ? await readFile(pathOnDisk, 'utf-8').catch(() => '')
+      : '';
+    return [supplied, diskText].filter((part) => part.trim().length > 0).join('\n\n--- existing file on disk ---\n\n');
+  }
+
+  private async existingArtifactPath(jobId: string, artifactType: RegenerateArtifactInput['artifactType']): Promise<string | null> {
+    if (artifactType === 'cover_letter') {
+      return this.jobRepository.getArtifactPath(jobId, 'cover_letter_html');
+    }
+    const workspaceDir = await this.jobRepository.getWorkspaceDir(jobId);
+    return path.join(workspaceDir, 'src', 'resume.html');
   }
 
   private async runSafeAutofill(runId: string, input: QuickFillInput): Promise<void> {
@@ -135,6 +194,23 @@ export class CompanionActionApplicationServiceImpl implements CompanionActionApp
     if (!existing) return;
     this.runs.set(runId, { ...existing, ...patch });
   }
+}
+
+function buildRegenerateHint(
+  artifactType: RegenerateArtifactInput['artifactType'],
+  existingArtifactText: string,
+  userPrompt: string,
+): string {
+  const artifactLabel = artifactType === 'resume' ? 'resume' : 'cover letter';
+  return [
+    `Regenerate only the ${artifactLabel} for this job.`,
+    'This is a one-shot edit request from wolf companion. Do not assume memory from previous edits.',
+    'Apply all user instructions below while still following the job description and candidate profile.',
+    `## User edit instructions\n${userPrompt}`,
+    existingArtifactText.trim()
+      ? `## Existing ${artifactLabel} text/html\n${existingArtifactText}`
+      : `## Existing ${artifactLabel} text/html\nNo existing artifact text was available. Regenerate from the current job and profile context.`,
+  ].join('\n\n');
 }
 
 function extractBasicFillValues(profileMd: string): Record<string, string> {

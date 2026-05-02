@@ -369,6 +369,7 @@ describe('NodeHttpServerImpl', () => {
     const companionActionApp = {
       quickTailor: async () => ({ runId: 'quick-1', status: 'queued' as const }),
       batchTailor: async () => ({ runId: 'batch-1', status: 'queued' as const }),
+      regenerateArtifact: async () => ({ runId: 'regen-1', status: 'queued' as const }),
       quickFill: async () => ({ runId: 'fill-1', status: 'queued' as const }),
       getRunStatus: async () => null,
     };
@@ -388,6 +389,14 @@ describe('NodeHttpServerImpl', () => {
       body: '{"jobIds":["job-1"]}',
       companionActionApp,
     })).resolves.toMatchObject({ status: 202, body: { runId: 'batch-1' } });
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/artifacts/regenerate',
+      version: '0.1.0',
+      body: '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"old","userPrompt":"tighten bullets"}',
+      companionActionApp,
+    })).resolves.toMatchObject({ status: 202, body: { runId: 'regen-1' } });
   });
 
   // Quick fill needs both the action service and the wolf browser page. The
@@ -398,6 +407,7 @@ describe('NodeHttpServerImpl', () => {
     const companionActionApp = {
       quickTailor: async () => ({ runId: 'quick-1', status: 'queued' as const }),
       batchTailor: async () => ({ runId: 'batch-1', status: 'queued' as const }),
+      regenerateArtifact: async () => ({ runId: 'regen-1', status: 'queued' as const }),
       quickFill: async () => ({ runId: 'fill-1', status: 'queued' as const }),
       getRunStatus: async () => null,
     };

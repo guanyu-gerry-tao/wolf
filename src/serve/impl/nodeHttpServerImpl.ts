@@ -379,6 +379,14 @@ export async function dispatchHttpRequest(input: {
     return { status: 202, body: await input.companionActionApp.quickFill({ ...parsed, page }) };
   }
 
+  if (input.method === 'POST' && url.pathname === '/api/artifacts/regenerate') {
+    if (!input.companionActionApp) return todoRoute(input.method, url.pathname);
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+    const parsed = RegenerateArtifactRequestSchema.parse(parsedJson.value);
+    return { status: 202, body: await input.companionActionApp.regenerateArtifact(parsed) };
+  }
+
   if (input.method === 'GET' && url.pathname === '/api/config') {
     if (!input.configApp) return todoRoute(input.method, url.pathname);
     return {

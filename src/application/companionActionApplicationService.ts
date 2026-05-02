@@ -20,6 +20,13 @@ export interface QuickFillInput {
   page: Page | null;
 }
 
+export interface RegenerateArtifactInput {
+  jobId: string;
+  artifactType: 'resume' | 'cover_letter';
+  existingArtifactText: string;
+  userPrompt: string;
+}
+
 export interface CompanionActionStartResult {
   runId: string;
   status: 'queued' | 'running';
@@ -28,6 +35,7 @@ export interface CompanionActionStartResult {
 export interface CompanionActionApplicationService {
   quickTailor(input: QuickTailorInput): Promise<CompanionActionStartResult>;
   batchTailor(input: BatchTailorInput): Promise<CompanionActionStartResult>;
+  regenerateArtifact(input: RegenerateArtifactInput): Promise<CompanionActionStartResult>;
   quickFill(input: QuickFillInput): Promise<CompanionActionStartResult>;
   getRunStatus(runId: string): Promise<RunStatusResult | null>;
 }
