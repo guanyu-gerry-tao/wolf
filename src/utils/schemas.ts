@@ -47,4 +47,13 @@ export const AppConfigSchema = z.object({
   fill: z.object({
     model: ModelRefSchema.default(DEFAULT_HAIKU),
   }).default({ model: DEFAULT_HAIKU }),
+  companion: z.object({
+    servePort: z.number().int().min(1024).max(65535).default(47823),
+    maxStagehandSessions: z.number().int().min(1).max(10).default(3),
+    browserMode: z.enum(['wolf_persistent_profile']).default('wolf_persistent_profile'),
+  }).default({
+    servePort: 47823,
+    maxStagehandSessions: 3,
+    browserMode: 'wolf_persistent_profile',
+  }),
 });

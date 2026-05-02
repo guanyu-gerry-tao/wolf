@@ -87,8 +87,8 @@ describe('companion side panel MVP', () => {
     expect(html).toContain('Companion Config');
     expect(html).toContain('Saved to wolf.toml as the default profile name.');
     expect(html).toContain('Max parallel Stagehand sessions');
-    expect(html).toContain('Stagehand LOCAL session pooling is a TODO');
-    expect(html).toContain('wolf should automate only the wolf-controlled Chrome instance');
+    expect(html).toContain('Saved now. Actual Stagehand fill execution is still marked TODO.');
+    expect(html).toContain('wolf automates only the wolf-controlled Chrome profile');
     expect(html).toContain('data-column="filling"');
     expect(html).toContain('data-column="ready"');
     expect(html).toContain('data-column="stuck"');
@@ -125,7 +125,7 @@ describe('companion side panel MVP', () => {
     expect(js).toContain('showMainView');
     expect(js).toContain('openConfig');
     expect(js).toContain('Config write is not implemented yet.');
-    expect(js).toContain('Config saved: port and default profile.');
+    expect(js).toContain('Config saved: port, default profile, and companion settings.');
     expect(js).toContain('No filling pages yet.');
     expect(js).toContain('Wolf browser tab registry is not implemented yet.');
     expect(js).toContain('/artifacts');

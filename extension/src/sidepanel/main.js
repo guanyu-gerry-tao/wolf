@@ -411,10 +411,13 @@ async function openConfig() {
       log(body.todo ?? 'Config service is not implemented yet.');
       return;
     }
+    els.configPortInput.value = String(body.servePort ?? body.port ?? state.port);
     els.defaultProfileInput.value = body.defaultProfile ?? els.defaultProfileInput.value;
     els.stagehandSessionsInput.value = String(body.maxStagehandSessions ?? els.stagehandSessionsInput.value);
-    els.browserModeInput.value = body.browserMode ?? els.browserModeInput.value;
-    els.aiProviderDisplay.textContent = body.aiModel ?? 'No AI model configured.';
+    els.browserModeInput.value = formatBrowserMode(body.browserMode);
+    els.aiProviderDisplay.textContent = [body.aiModel, body.fillModel ? `fill: ${body.fillModel}` : null]
+      .filter(Boolean)
+      .join(' / ') || 'No AI model configured.';
   } catch (err) {
     els.aiProviderDisplay.textContent = err instanceof Error ? err.message : String(err);
   }
@@ -1077,25 +1080,37 @@ async function saveConfig() {
     log('Config port must be 4-5 digits.');
     return;
   }
+  const maxStagehandSessions = Number(els.stagehandSessionsInput.value.trim());
+  if (!Number.isInteger(maxStagehandSessions) || maxStagehandSessions < 1 || maxStagehandSessions > 10) {
+    log('Max parallel Stagehand sessions must be an integer from 1 to 10.');
+    return;
+  }
 
   await storePort(port);
   els.portInput.value = port;
   setButtonState(els.saveConfigButton, 'Saving...', true);
   try {
     const result = await postJson('/api/config', {
-      port,
       defaultProfile: els.defaultProfileInput.value.trim() || 'default',
+      servePort: Number(port),
+      maxStagehandSessions,
+      browserMode: 'wolf_persistent_profile',
     });
     if (result.status === 'todo') {
       log(result.todo ?? 'Config write is not implemented yet.');
     } else {
-      log('Config saved: port and default profile.');
+      log('Config saved: port, default profile, and companion settings.');
     }
   } catch (err) {
     log(`Config save unavailable: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     setButtonState(els.saveConfigButton, 'Save Config', false);
   }
+}
+
+function formatBrowserMode(mode) {
+  if (mode === 'wolf_persistent_profile') return 'wolf persistent profile';
+  return mode ?? 'wolf persistent profile';
 }
 
 function collectKnownJobIds() {
@@ -1126,11 +1141,7 @@ function resetButtonLabelLater(button, label) {
 }
 
 function renderIncompleteBadges() {
-  setButtonLabel(els.configButton, 'Config');
-  setButtonLabel(els.tailorInstantButton, currentButtonText(els.tailorInstantButton) || 'Tailor this job instantly');
-  setButtonLabel(els.batchTailorButton, currentButtonText(els.batchTailorButton) || 'Batch Tailor');
   setButtonLabel(els.autofillQuickButton, currentButtonText(els.autofillQuickButton) || 'Autofill this page');
-  setButtonLabel(els.regenerateArtifactButton, currentButtonText(els.regenerateArtifactButton) || 'Regenerate Resume');
 }
 
 function setButtonLabel(button, label) {
@@ -1155,20 +1166,8 @@ function currentButtonText(button) {
 }
 
 function incompleteReason(button) {
-  if (button === els.configButton) {
-    return '系统设置页只有基础表单，完整配置保存和 Stagehand 并发设置还没做完';
-  }
-  if (button === els.tailorInstantButton) {
-    return '即时 tailor 接口已接通，但 prompt、轮询和 artifact 状态联动还没做完';
-  }
-  if (button === els.batchTailorButton) {
-    return '批量 tailor 入口已接通，但持久后台队列和完整批处理状态还没做完';
-  }
   if (button === els.autofillQuickButton) {
     return 'Stagehand 已安装，但 observe/cache/replay 自动填表还没做完，现在是安全 fallback';
-  }
-  if (button === els.regenerateArtifactButton) {
-    return 'resume/cover letter regenerate 接口和实际重写流程还没做完';
   }
   return null;
 }

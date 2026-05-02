@@ -60,6 +60,11 @@ export interface AppConfig {
   fill: {
     model: ModelRef;                   // default "anthropic/claude-haiku-4-5-20251001"
   };
+  companion: {
+    servePort: number;                  // default local daemon port for the browser extension
+    maxStagehandSessions: number;       // planned LOCAL Stagehand parallelism cap
+    browserMode: 'wolf_persistent_profile'; // wolf-controlled Chrome profile only
+  };
 }
 
 /** AI provider + model split for a single service call. */

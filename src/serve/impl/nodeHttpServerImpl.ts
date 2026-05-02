@@ -389,15 +389,7 @@ export async function dispatchHttpRequest(input: {
 
   if (input.method === 'GET' && url.pathname === '/api/config') {
     if (!input.configApp) return todoRoute(input.method, url.pathname);
-    return {
-      status: 200,
-      body: {
-        defaultProfile: await input.configApp.get('default'),
-        maxStagehandSessions: 3,
-        browserMode: 'wolf persistent profile',
-        aiModel: await input.configApp.get('tailor.model'),
-      },
-    };
+    return { status: 200, body: await input.configApp.getCompanionConfig() };
   }
 
   if (input.method === 'POST' && url.pathname === '/api/config') {
@@ -405,10 +397,13 @@ export async function dispatchHttpRequest(input: {
     const parsedJson = parseJsonBody(input.body);
     if (!parsedJson.ok) return parsedJson.result;
     const body = parsedJson.value as Record<string, unknown>;
-    if (typeof body.defaultProfile === 'string') {
-      await input.configApp.set('default', body.defaultProfile);
-    }
-    return { status: 200, body: { status: 'saved' } };
+    const saved = await input.configApp.updateCompanionConfig({
+      defaultProfile: typeof body.defaultProfile === 'string' ? body.defaultProfile : undefined,
+      servePort: typeof body.port === 'string' ? Number(body.port) : asOptionalNumber(body.servePort),
+      maxStagehandSessions: asOptionalNumber(body.maxStagehandSessions),
+      browserMode: body.browserMode === 'wolf_persistent_profile' ? body.browserMode : undefined,
+    });
+    return { status: 200, body: { status: 'saved', ...saved } };
   }
 
   if (input.method === 'GET' && url.pathname === '/api/status') {
@@ -636,6 +631,12 @@ function parseJsonBody(body: string | undefined):
   } catch {
     return { ok: false, result: { status: 400, body: { error: 'invalid json' } } };
   }
+}
+
+function asOptionalNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim().length > 0) return Number(value);
+  return undefined;
 }
 
 function writeCors(res: http.ServerResponse): void {

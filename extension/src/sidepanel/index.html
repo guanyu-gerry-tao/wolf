@@ -100,13 +100,13 @@
         </div>
         <div class="form-section">
           <label class="field-label" for="stagehandSessionsInput">Max parallel Stagehand sessions</label>
-          <input id="stagehandSessionsInput" inputmode="numeric" maxlength="2" value="3" disabled />
-          <p class="form-help">Read-only for now. Stagehand LOCAL session pooling is a TODO behind wolf serve.</p>
+          <input id="stagehandSessionsInput" inputmode="numeric" maxlength="2" value="3" />
+          <p class="form-help">Saved now. Actual Stagehand fill execution is still marked TODO.</p>
         </div>
         <div class="form-section">
           <label class="field-label" for="browserModeInput">Browser instance mode</label>
-          <input id="browserModeInput" value="wolf persistent profile" disabled />
-          <p class="form-help">wolf should automate only the wolf-controlled Chrome instance, not the user's main Chrome profile.</p>
+          <input id="browserModeInput" value="wolf persistent profile" readonly />
+          <p class="form-help">Fixed for safety: wolf automates only the wolf-controlled Chrome profile, not the user's main Chrome profile.</p>
         </div>
         <div class="form-section">
           <p class="field-label">AI provider/model</p>

@@ -23,6 +23,7 @@ const CONFIG: AppConfig = {
   score: { model: 'anthropic/claude-sonnet-4-6' },
   reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
   fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
+  companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' },
 };
 
 let tmpDir: string;

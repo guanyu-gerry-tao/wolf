@@ -8,6 +8,22 @@ export interface ConfigSetResult {
   coerced: unknown;
 }
 
+export interface CompanionConfigView {
+  defaultProfile: string;
+  servePort: number;
+  maxStagehandSessions: number;
+  browserMode: 'wolf_persistent_profile';
+  aiModel: string;
+  fillModel: string;
+}
+
+export interface CompanionConfigUpdate {
+  defaultProfile?: string;
+  servePort?: number;
+  maxStagehandSessions?: number;
+  browserMode?: 'wolf_persistent_profile';
+}
+
 /**
  * Use case for `wolf config get/set` — typed dot-path access to `wolf.toml`.
  * Reads validate that the key exists; writes coerce the input string to the
@@ -30,4 +46,10 @@ export interface ConfigApplicationService {
    * @throws If coercion fails or the resulting config violates the schema.
    */
   set(key: string, valueStr: string): Promise<ConfigSetResult>;
+
+  /** Reads the form-shaped settings used by the wolf companion side panel. */
+  getCompanionConfig(): Promise<CompanionConfigView>;
+
+  /** Writes the subset of companion settings submitted from the side panel. */
+  updateCompanionConfig(update: CompanionConfigUpdate): Promise<CompanionConfigView>;
 }

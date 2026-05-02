@@ -345,7 +345,7 @@ Types 层定义了各层共享的数据结构，是 wolf 的 single source of tr
 - `Job` — 职位信息，核心数据对象，存入 SQLite。
 - `Resume` — 解析后的简历结构。
 - `Profile` — 每个 profile 的身份信息。自 2026-04-26 起，profile 是一个小型 `{ name, md }` 信封外加三个同级磁盘文件：`profile.md`（身份、联系方式、地址、链接、求职偏好、demographics、clearance —— 全部以 H2 为键的纯文本段落）、`resume_pool.md`（完整简历内容池）、`standard_questions.md`（供 `wolf fill` 使用的问答库）。再加一个 `attachments/` 目录存放可上传文件（成绩单等）。由 `FileProfileRepositoryImpl` 加载。文本本身没有 zod schema：校验只关心"内容形态"（REQUIRED H2 是否被填写、resume pool 是否有足够实质行数），由命令调用时的 `assertReadyForTailor` 强制执行，并由 `wolf doctor` 主动提示。
-- `AppConfig` — 用户配置，从工作区根目录的 `wolf.toml` 加载。
+- `AppConfig` — workspace 级配置，从工作区根目录的 `wolf.toml` 加载。包含默认 profile 名、各命令模型设置，以及 companion 设置（`servePort`、`maxStagehandSessions`、固定的 `browserMode`）。由 `AppConfigSchema`（zod）在解析时校验；不内嵌 profile 数据。
 - 每个命令的 Options/Result 对。
 
 完整定义见 [TYPES_zh.md](TYPES_zh.md)。

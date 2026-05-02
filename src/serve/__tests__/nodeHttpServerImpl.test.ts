@@ -431,6 +431,56 @@ describe('NodeHttpServerImpl', () => {
     })).resolves.toMatchObject({ status: 202, body: { runId: 'fill-1' } });
   });
 
+  // Companion config is a form-shaped view over wolf.toml. The HTTP layer
+  // keeps the browser extension independent from dot-path config commands.
+  it('routes companion config reads and writes through the config application service', async () => {
+    const configApp = {
+      get: async () => 'unused',
+      set: async () => ({ key: 'unused', coerced: 'unused' }),
+      getCompanionConfig: async () => ({
+        defaultProfile: 'default',
+        servePort: 49152,
+        maxStagehandSessions: 3,
+        browserMode: 'wolf_persistent_profile' as const,
+        aiModel: 'anthropic/claude-sonnet-4-6',
+        fillModel: 'anthropic/claude-haiku-4-5-20251001',
+      }),
+      updateCompanionConfig: async (update: {
+        defaultProfile?: string;
+        servePort?: number;
+        maxStagehandSessions?: number;
+      }) => ({
+        defaultProfile: update.defaultProfile ?? 'default',
+        servePort: update.servePort ?? 49152,
+        maxStagehandSessions: update.maxStagehandSessions ?? 3,
+        browserMode: 'wolf_persistent_profile' as const,
+        aiModel: 'anthropic/claude-sonnet-4-6',
+        fillModel: 'anthropic/claude-haiku-4-5-20251001',
+      }),
+    };
+
+    await expect(dispatchHttpRequest({
+      method: 'GET',
+      url: '/api/config',
+      version: '0.1.0',
+      configApp,
+    })).resolves.toMatchObject({
+      status: 200,
+      body: { defaultProfile: 'default', servePort: 49152, maxStagehandSessions: 3 },
+    });
+
+    await expect(dispatchHttpRequest({
+      method: 'POST',
+      url: '/api/config',
+      version: '0.1.0',
+      body: '{"defaultProfile":"gc","servePort":49153,"maxStagehandSessions":5}',
+      configApp,
+    })).resolves.toMatchObject({
+      status: 200,
+      body: { status: 'saved', defaultProfile: 'gc', servePort: 49153, maxStagehandSessions: 5 },
+    });
+  });
+
   // The companion UI is allowed to depend on stable HTTP paths before every
   // underlying service exists. Missing services must return structured TODO
   // responses, not vague 404s or one-off error strings.
