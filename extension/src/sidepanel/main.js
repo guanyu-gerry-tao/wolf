@@ -877,11 +877,19 @@ async function batchTailor() {
     }
     setButtonState(els.batchTailorButton, 'Batch Queued', false);
     log(`Batch tailor started: ${result.runId ?? 'run pending'}`);
-    if (result.runId) startRunPolling(result.runId);
+    if (result.runId) {
+      setButtonState(els.batchTailorButton, 'Batch Tailoring...', true);
+      startRunPolling(result.runId, {
+        button: els.batchTailorButton,
+        completeLabel: 'Batch Done',
+        failedLabel: 'Batch Failed',
+        resetLabel: 'Batch Tailor',
+        disableOnComplete: false,
+      });
+    }
   } catch (err) {
     setButtonState(els.batchTailorButton, 'Batch Failed', false);
     log(`Batch tailor failed: ${err instanceof Error ? err.message : String(err)}`);
-  } finally {
     resetButtonLabelLater(els.batchTailorButton, 'Batch Tailor');
   }
 }
@@ -1043,7 +1051,7 @@ function renderCompletedRunUi(status) {
   const ui = state.activeRunUi;
   if (!ui?.button) return;
   if (status === 'ready') {
-    setButtonState(ui.button, ui.completeLabel ?? 'Ready', true);
+    setButtonState(ui.button, ui.completeLabel ?? 'Ready', ui.disableOnComplete ?? true);
     return;
   }
   setButtonState(ui.button, ui.failedLabel ?? 'Failed', false);
@@ -1085,10 +1093,10 @@ async function saveConfig() {
 }
 
 function collectKnownJobIds() {
-  return Object.values(state.queues)
+  return [...new Set(Object.values(state.queues)
     .flat()
-    .map((item) => item.id)
-    .filter(Boolean);
+    .map((item) => item.jobId)
+    .filter(Boolean))];
 }
 
 function ensureReady() {
