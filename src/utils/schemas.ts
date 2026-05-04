@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { PROVIDER_IDS } from '../service/ai/registry.js';
+import {
+  DEFAULT_COMPANION_CONFIG,
+  DEFAULT_HAIKU_MODEL,
+  DEFAULT_SONNET_MODEL,
+  DEFAULT_WORKSPACE_CONFIG,
+} from './appConfigDefaults.js';
 
 // --- AppConfig ---
 
@@ -12,9 +18,6 @@ export const ModelRefSchema = z.string().regex(
   new RegExp(`^(${PROVIDER_PATTERN})\\/.+$`),
   `Model must be "<provider>/<model>" where provider is one of ${PROVIDER_IDS.join(', ')}`,
 );
-
-const DEFAULT_SONNET = 'anthropic/claude-sonnet-4-6';
-const DEFAULT_HAIKU  = 'anthropic/claude-haiku-4-5-20251001';
 
 export const AppConfigSchema = z.object({
   // Workspace schema version. Bumped by wolf releases that introduce a
@@ -32,19 +35,25 @@ export const AppConfigSchema = z.object({
   hunt: z.object({
     minScore: z.number().min(0).max(1).default(0.5),
     maxResults: z.number().positive().default(50),
-  }).default({ minScore: 0.5, maxResults: 50 }),
+  }).default(DEFAULT_WORKSPACE_CONFIG.hunt),
   tailor: z.object({
-    model: ModelRefSchema.default(DEFAULT_SONNET),
-  }).default({ model: DEFAULT_SONNET }),
+    model: ModelRefSchema.default(DEFAULT_SONNET_MODEL),
+    defaultCoverLetterTone: z.string().default('professional'),
+  }).default(DEFAULT_WORKSPACE_CONFIG.tailor),
   score: z.object({
-    model: ModelRefSchema.default(DEFAULT_SONNET),
-  }).default({ model: DEFAULT_SONNET }),
+    model: ModelRefSchema.default(DEFAULT_SONNET_MODEL),
+  }).default(DEFAULT_WORKSPACE_CONFIG.score),
   reach: z.object({
-    model: ModelRefSchema.default(DEFAULT_SONNET),
+    model: ModelRefSchema.default(DEFAULT_SONNET_MODEL),
     defaultEmailTone: z.string().default('professional'),
     maxEmailsPerDay: z.number().positive().default(10),
-  }).default({ model: DEFAULT_SONNET, defaultEmailTone: 'professional', maxEmailsPerDay: 10 }),
+  }).default(DEFAULT_WORKSPACE_CONFIG.reach),
   fill: z.object({
-    model: ModelRefSchema.default(DEFAULT_HAIKU),
-  }).default({ model: DEFAULT_HAIKU }),
+    model: ModelRefSchema.default(DEFAULT_HAIKU_MODEL),
+  }).default(DEFAULT_WORKSPACE_CONFIG.fill),
+  companion: z.object({
+    servePort: z.number().int().min(1024).max(65535).default(47823),
+    maxStagehandSessions: z.number().int().min(1).max(10).default(3),
+    browserMode: z.enum(['wolf_persistent_profile']).default('wolf_persistent_profile'),
+  }).default(DEFAULT_COMPANION_CONFIG),
 });

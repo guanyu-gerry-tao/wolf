@@ -32,6 +32,9 @@ export interface JobRepository {
    */
   countWithTailoredResume(): Promise<number>;
 
+  /** Number of jobs that do not yet have both tailored resume and cover letter artifacts. */
+  countWithoutCompleteTailor(): Promise<number>;
+
   /** Total number of rows matching a query, ignoring the query's `limit`. */
   countMatching(q: JobQuery): Promise<number>;
 

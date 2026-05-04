@@ -85,7 +85,8 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
       makeJob({ id: 'j1', companyId: 'c-acme', status: 'new', score: 0.5, source: 'LinkedIn',
         createdAt: '2026-04-10T00:00:00.000Z' }),
       makeJob({ id: 'j2', companyId: 'c-acme', status: 'applied', score: 0.9,
-        hasTailoredResume: true, createdAt: '2026-04-12T00:00:00.000Z' }),
+        hasTailoredResume: true, hasTailoredCoverLetter: true,
+        createdAt: '2026-04-12T00:00:00.000Z' }),
       makeJob({ id: 'j3', companyId: 'c-beta', status: 'reviewed', score: 0.8,
         hasTailoredResume: true, source: 'Indeed',
         createdAt: '2026-04-14T00:00:00.000Z' }),
@@ -125,6 +126,22 @@ describe('SqliteJobRepositoryImpl — counts and query parity', () => {
     it('reflects updates that clear hasTailoredResume', async () => {
       await jobRepo.update('j2', { hasTailoredResume: false });
       expect(await jobRepo.countWithTailoredResume()).toBe(1);
+    });
+  });
+
+  describe('countWithoutCompleteTailor()', () => {
+    // Batch Tailor should show the number of jobs still missing either resume
+    // or cover letter artifacts. A job is complete only when both flags are
+    // true; resume-only jobs still need tailoring work.
+    it('counts jobs missing either tailored resume or cover letter', async () => {
+      expect(await jobRepo.countWithoutCompleteTailor()).toBe(4);
+    });
+
+    // Once a resume-only job receives its cover letter too, it should leave the
+    // Batch Tailor queue.
+    it('reflects updates that complete the tailor artifact pair', async () => {
+      await jobRepo.update('j3', { hasTailoredCoverLetter: true });
+      expect(await jobRepo.countWithoutCompleteTailor()).toBe(3);
     });
   });
 

@@ -8,6 +8,31 @@ export interface ConfigSetResult {
   coerced: unknown;
 }
 
+export interface WorkspaceConfigView {
+  default: string;
+  hunt: {
+    minScore: number;
+    maxResults: number;
+  };
+  tailor: {
+    model: string;
+    defaultCoverLetterTone: string;
+  };
+  score: {
+    model: string;
+  };
+  reach: {
+    model: string;
+    defaultEmailTone: string;
+    maxEmailsPerDay: number;
+  };
+  fill: {
+    model: string;
+  };
+}
+
+export type WorkspaceConfigUpdate = Partial<WorkspaceConfigView>;
+
 /**
  * Use case for `wolf config get/set` — typed dot-path access to `wolf.toml`.
  * Reads validate that the key exists; writes coerce the input string to the
@@ -30,4 +55,13 @@ export interface ConfigApplicationService {
    * @throws If coercion fails or the resulting config violates the schema.
    */
   set(key: string, valueStr: string): Promise<ConfigSetResult>;
+
+  /** Reads the form-shaped workspace settings used by the wolf companion side panel. */
+  getWorkspaceConfig(): Promise<WorkspaceConfigView>;
+
+  /** Writes the workspace settings submitted from the side panel. */
+  updateWorkspaceConfig(update: WorkspaceConfigUpdate): Promise<WorkspaceConfigView>;
+
+  /** Resets side-panel-editable workspace settings to the TS defaults. */
+  resetWorkspaceConfig(): Promise<WorkspaceConfigView>;
 }

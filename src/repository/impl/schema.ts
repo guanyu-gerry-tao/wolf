@@ -12,8 +12,16 @@ import type { CompanySize } from '../../utils/types/company.js';
 import type { JobError, JobSource, JobStatus } from '../../utils/types/job.js';
 import type { Sponsorship } from '../../utils/types/sponsorship.js';
 import type { BatchItemStatus } from '../batchItemRepository.js';
+import type {
+  BackgroundAiBatchItemStatus,
+  BackgroundAiBatchShardStatus,
+  BackgroundAiBatchStatus,
+  BackgroundAiBatchSubjectType,
+  BackgroundAiBatchType,
+} from '../backgroundAiBatchRepository.js';
+import type { InboxItemKind, InboxItemStatus } from '../inboxRepository.js';
 
-type BatchType = 'score' | 'tailor';
+type BatchType = 'score' | 'tailor' | 'inbox_promote';
 type BatchAiProvider = 'anthropic' | 'openai';
 type BatchStatus = 'pending' | 'completed' | 'failed';
 
@@ -99,4 +107,65 @@ export const batchItems = sqliteTable('batch_items', {
   consumedAt: text('consumed_at'),
   createdAt: text('created_at').notNull(),
   completedAt: text('completed_at'),
+});
+
+// ---------------------------------------------------------------------------
+// inbox_items
+// ---------------------------------------------------------------------------
+
+export const inboxItems = sqliteTable('inbox_items', {
+  id: text('id').primaryKey(),
+  kind: text('kind').$type<InboxItemKind>().notNull(),
+  source: text('source').notNull(),
+  url: text('url'),
+  title: text('title'),
+  rawJson: text('raw_json').notNull(),
+  rawSha256: text('raw_sha256').notNull(),
+  status: text('status').$type<InboxItemStatus>().notNull(),
+  jobId: text('job_id'),
+  receivedAt: text('received_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  error: text('error'),
+});
+
+// ---------------------------------------------------------------------------
+// background_ai_batches
+// ---------------------------------------------------------------------------
+
+export const backgroundAiBatches = sqliteTable('background_ai_batches', {
+  id: text('id').primaryKey(),
+  type: text('type').$type<BackgroundAiBatchType>().notNull(),
+  status: text('status').$type<BackgroundAiBatchStatus>().notNull(),
+  inputJson: text('input_json').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  deadlineAt: text('deadline_at'),
+  error: text('error'),
+});
+
+export const backgroundAiBatchShards = sqliteTable('background_ai_batch_shards', {
+  id: text('id').primaryKey(),
+  backgroundAiBatchId: text('background_ai_batch_id').notNull(),
+  provider: text('provider').notNull(),
+  providerBatchId: text('provider_batch_id'),
+  status: text('status').$type<BackgroundAiBatchShardStatus>().notNull(),
+  itemCount: integer('item_count').notNull(),
+  nextPollAt: text('next_poll_at'),
+  submittedAt: text('submitted_at'),
+  completedAt: text('completed_at'),
+  error: text('error'),
+});
+
+export const backgroundAiBatchItems = sqliteTable('background_ai_batch_items', {
+  id: text('id').primaryKey(),
+  backgroundAiBatchId: text('background_ai_batch_id').notNull(),
+  shardId: text('shard_id'),
+  subjectType: text('subject_type').$type<BackgroundAiBatchSubjectType>().notNull(),
+  subjectId: text('subject_id').notNull(),
+  status: text('status').$type<BackgroundAiBatchItemStatus>().notNull(),
+  aiInputJson: text('ai_input_json').notNull(),
+  debugJson: text('debug_json'),
+  debugExpiresAt: text('debug_expires_at'),
+  targetId: text('target_id'),
+  error: text('error'),
 });

@@ -343,3 +343,17 @@ Decisions made during Milestone 1 are reconstructed retrospectively from commit 
 **Me:** I want a base AI batch layer that every future batch workflow can reuse (`score`, input extraction, tailor, etc.), not a score-specific implementation. The tricky part is what happens after provider polling: different services may poll or consume at different times, and results can be partially successful.
 **AI:** Split batch lifecycle from business interpretation. `BatchService` owns provider submission, provider polling, and durable normalized results. It stores one row per provider batch in `batches` and one row per request/result in `batch_items`. `batch_items` records `custom_id`, item status, normalized text output or error, and `consumed_at`. The base layer does not parse score JSON, validate resume HTML, or update job fields; application services consume successful `batch_items` later and write domain state. Provider-specific APIs stay behind adapters such as Anthropic Message Batches, which translate `custom_id`, provider statuses, JSONL rows, content blocks, and provider errors into wolf-owned types.
 **Result:** Adopted for the base batch runtime. This keeps polling dumb and resumable, supports partial item failure, survives process restarts, and avoids coupling the batch layer to score/tailor/input semantics. Future business services should treat `batch_items.result_text` as their input and mark rows consumed only after their own writes succeed.
+
+---
+
+**2026-04-30 — `wolf serve` is a parallel HTTP transport, not the new CLI backend**
+**Me:** The companion extension needs a persistent local daemon, but should that make the whole project HTTP-first, with CLI/MCP becoming HTTP clients?
+**AI:** Keep CLI, MCP, and HTTP as peer entry points. `wolf serve` is a long-running local HTTP daemon for browser extension calls, but it delegates to the same application services through `AppContext`; it does not replace the in-process CLI/MCP path. The CLI still runs without requiring a daemon, preserving one-shot command ergonomics and the existing workspace semantics.
+**Result:** Adopted. `src/serve/` holds the local HTTP daemon interface, `ServeApplicationService` owns the daemon lifecycle, and `src/cli/commands/serve.ts` remains a thin wrapper. The initial route is `GET /api/ping`, which echoes a nonce for the companion extension connection check.
+
+---
+
+**2026-04-30 — Inbox is a raw-only landing zone**
+**Me:** The inbox must accept both manual companion-extension captures and large hunt results without becoming another processed job workspace.
+**AI:** Keep inbox raw-only, but store it in SQLite `inbox_items` instead of `data/inbox/` folders so manual captures and mass hunt results share one durable queue.
+**Result:** Adopted. No cleaned JD, parsed fields, tailor artifacts, dedupe output, or fill snapshots live in inbox. User-triggered paid processing creates `background_ai_batches`; successful AI output is immediately applied to canonical job state, with only short-lived debug payloads retained.

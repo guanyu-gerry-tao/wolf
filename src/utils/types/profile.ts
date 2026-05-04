@@ -48,6 +48,7 @@ export interface AppConfig {
   };
   tailor: {
     model: ModelRef;                   // default "anthropic/claude-sonnet-4-6"
+    defaultCoverLetterTone: string;    // e.g. "professional", "warm"
   };
   score: {
     model: ModelRef;                   // default "anthropic/claude-sonnet-4-6"
@@ -59,6 +60,11 @@ export interface AppConfig {
   };
   fill: {
     model: ModelRef;                   // default "anthropic/claude-haiku-4-5-20251001"
+  };
+  companion: {
+    servePort: number;                  // default local daemon port for the browser extension
+    maxStagehandSessions: number;       // planned LOCAL Stagehand parallelism cap
+    browserMode: 'wolf_persistent_profile'; // separate Google Chrome profile under the wolf workspace
   };
 }
 
