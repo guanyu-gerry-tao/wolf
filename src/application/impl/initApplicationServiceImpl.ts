@@ -1,11 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import claudeTemplate from './templates/workspace-claude.md';
+import agentStableSegment from './templates/agent-stable.md';
+import agentDevSegment from './templates/agent-dev.md';
 import { profileTomlTemplate } from '../../utils/profileTomlGenerate.js';
 import attachmentsReadmeTemplate from './templates/attachments-readme.md';
 import { saveConfig } from '../../utils/config.js';
 import { DEFAULT_COMPANION_CONFIG, DEFAULT_WORKSPACE_CONFIG } from '../../utils/appConfigDefaults.js';
-import { currentBinaryName } from '../../utils/instance.js';
+import { currentBinaryName, isDevBuild } from '../../utils/instance.js';
 import { CURRENT_SCHEMA_VERSION } from '../../runtime/migrations/index.js';
 import { ensureProfilePromptPack } from '../../utils/profilePromptPack.js';
 import type { AppConfig } from '../../utils/types/index.js';
@@ -94,16 +96,18 @@ async function ensureGitignore(workspaceDir: string): Promise<void> {
 
 // CLAUDE.md and AGENTS.md tell any AI assistant operating in this workspace
 // (Claude Code, OpenClaw, etc.) how the directory is laid out and what files
-// to edit. Same content; both files written so each agent finds its expected name.
+// to edit. Same content; both files written so each agent finds its expected
+// name.
 //
-// The bundled template uses `__WOLF_BIN__` placeholders for any spot that
-// names a CLI command the user (or AI agent) might run. We substitute the
-// real binary name at write time so a stable workspace's CLAUDE.md says
-// `wolf init` while a dev workspace's says `wolf-dev init`. Project-name
-// references like "wolf workspace" or "What wolf does" stay literal — they
-// describe the project, not commands to type.
+// Composition: `claudeTemplate` is the build-agnostic skeleton. We append a
+// build-specific segment (stable -> "no need to volunteer internals" tone;
+// dev -> "append Dev log section" convention). Then `__WOLF_BIN__` is
+// substituted across the whole composed string so command examples read
+// `wolf init` in stable workspaces and `wolf-dev init` in dev workspaces.
 async function ensureAgentInstructions(workspaceDir: string): Promise<void> {
-  const personalized = claudeTemplate.replace(/__WOLF_BIN__/g, currentBinaryName());
+  const buildSegment = isDevBuild() ? agentDevSegment : agentStableSegment;
+  const composed = `${claudeTemplate}\n${buildSegment}`;
+  const personalized = composed.replace(/__WOLF_BIN__/g, currentBinaryName());
   for (const filename of ['CLAUDE.md', 'AGENTS.md']) {
     await writeIfAbsent(path.join(workspaceDir, filename), personalized);
   }

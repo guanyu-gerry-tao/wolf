@@ -254,7 +254,9 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     let raw: string;
     try { raw = await readFile(hintPath, 'utf-8'); }
     catch { return undefined; }
-    const active = stripComments(raw).trim();
+    // hint.md feeds the analyst prompt directly — strip alert blocks and
+    // hide any unanswered H2 sections so the model sees only real guidance.
+    const active = stripComments(raw, { dropEmptyH2s: true }).trim();
     return active.length > 0 ? active : undefined;
   }
 

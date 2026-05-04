@@ -1,6 +1,6 @@
 # default
 
-<!-- 
+<!--
 // Consumed by:
 //   wolf tailor  — currently. Name + contact + links go into the resume header
 //                  and the cover-letter salutation. Job-preferences targets and
@@ -19,107 +19,126 @@
 
 > [!TIP]
 > Convention:
->   H1 = category
->   H2 = field / question
->   Body under H2 = your answer
+>   H1 = category, H2 = field/question, body under H2 = your answer.
 >
-> Markers (each is a `>` blockquote line — stripped before AI sees the file;
-> renders as a styled quote box in MD preview):
->   > [!IMPORTANT]
->   > you must answer; AI cannot guess this.
->   > Optional. Leave blank if N/A.
+> Markers (each renders as a styled callout in any GitHub-Alert-aware viewer
+> and is fully stripped before any AI sees the file):
+>   `> [!IMPORTANT]` body starts with "REQUIRED —" → wolf cannot run without it.
+>   `> [!NOTE]`       body starts with "OPTIONAL —" → safe to leave blank.
 >
-> Sections without a `>` marker already carry a sensible default; edit if it doesn't fit you.
->
-> The whole file gets passed to AI agents (tailor, resume writer, fill, outreach)
-> as context. Be honest and specific; the AI will adapt phrasing per role.
+> Three answering modes:
+>   - You have an answer → write it on a plain (non-`>`) line below the callout.
+>   - You don't care / want to skip → leave the body completely empty.
+>     Do NOT write "N/A", "—", "(skipped)" — those count as real answers.
+>     The empty section is hidden from the AI; doctor will flag it only if
+>     it is REQUIRED.
+>   - You explicitly want to refuse (e.g. EEO demographics) → write the
+>     literal phrase ("Decline to answer", "Prefer not to say"). Forms will
+>     fill that exact text.
 
 # Identity
 
 ## Legal first name
+
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> REQUIRED — wolf cannot guess this. Used as the resume header.
 
 ## Legal middle name
-> [!TIP]
-> Optional. Leave blank if none.
+
+> [!NOTE]
+> OPTIONAL — leave empty if none.
 
 ## Legal last name
+
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> REQUIRED — wolf cannot guess this. Used as the resume header.
 
 ## Preferred name
-> [!TIP]
-> Optional. Leave blank to use legal first name.
+
+> [!NOTE]
+> OPTIONAL — leave empty to use legal first name.
 
 ## Pronouns
-> [!TIP]
-> Optional.
+
+> [!NOTE]
+> OPTIONAL.
 
 ## Date of birth
-> [!TIP]
-> Optional. Required by some non-US ATS; format YYYY-MM-DD.
+
+> [!NOTE]
+> OPTIONAL — required by some non-US ATS; format YYYY-MM-DD.
 
 ## Country of citizenship
+
 > [!IMPORTANT]
-> Country whose passport you hold (e.g. "United States", "China", "India").
-> This is a fact, not a strategy. Wolf fill uses it to answer ATS "Country of
-> citizenship" dropdowns and similar.
+> REQUIRED — country whose passport you hold (e.g. "United States",
+> "China", "India"). Wolf fill uses this to answer ATS "Country of
+> citizenship" dropdowns. This is a fact, not a strategy.
 
 ## Country you're currently in
+
 United States
-> [!TIP]
-> Where you are physically right now. Used by wolf fill to answer "Are you
-> currently in [country]?" / "Are you authorized to work in [country] from
-> here?" type form questions. Default is United States (most NG mass-apply
-> scenarios). Update if you're abroad.
+
+> [!NOTE]
+> OPTIONAL — where you are physically right now. Defaults to United
+> States (most NG mass-apply scenarios). Update if you're abroad.
 
 # Contact
 
 ## Email
+
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> REQUIRED — wolf cannot guess this. Used as resume header and outreach
+> From: address.
 
 ## Phone
+
 > [!IMPORTANT]
-> you must answer; AI cannot guess this.
+> REQUIRED — wolf cannot guess this. Used in the resume header.
 
 # Address
 
 ## Full address
+
 > [!IMPORTANT]
-> Write complete address including country, e.g.
->   "123 Main St, Apt 4, San Francisco, CA 94102, USA"
+> REQUIRED — write complete address including country, e.g.
+> "123 Main St, Apt 4, San Francisco, CA 94102, USA".
 
 # Links
 
 ## First link (most prominent on resume)
+
 > [!IMPORTANT]
-> At minimum your LinkedIn.
-> AI infers the link type (LinkedIn / GitHub / portfolio / LeetCode) from the URL.
+> REQUIRED — at minimum your LinkedIn. Wolf infers link type
+> (LinkedIn / GitHub / portfolio / LeetCode) from the URL.
 
 ## Second link (also on resume if there's room)
-> [!TIP]
-> Optional.
+
+> [!NOTE]
+> OPTIONAL.
 
 ## Other links
-> [!TIP]
-> Optional. One URL per line, any number.
+
+> [!NOTE]
+> OPTIONAL — one URL per line, any number.
 
 # Job Preferences
 
 ## Target roles
+
 > [!IMPORTANT]
-> Comma-separated, e.g. "Software Engineer, Backend Engineer".
+> REQUIRED — comma-separated, e.g. "Software Engineer, Backend Engineer".
 
 ## Target locations
+
 > [!IMPORTANT]
-> Comma-separated, e.g. "SF Bay Area, NYC, Remote-US".
+> REQUIRED — comma-separated, e.g. "SF Bay Area, NYC, Remote-US".
 
 ## Relocation preference — where are you actually willing to live?
+
 > [!IMPORTANT]
-> This is the HONEST answer for hunt filtering. Mark willingness
-> at each level: "yes" / "no" / "maybe":
+> REQUIRED — this is the HONEST answer for hunt filtering. Mark
+> willingness at each level: "yes" / "no" / "maybe":
 >   - within current metro area: yes
 >   - within current state: yes
 >   - cross-country (e.g. coast to coast): yes
@@ -131,23 +150,27 @@ United States
 > answer — that's a strategic choice (say "Yes" on form, negotiate later).
 
 ## Scoring notes
-> [!TIP]
-> Optional. Free-form preferences for the AI scorer,
->   e.g. "prefer backend over frontend, OK with hybrid".
+
+> [!NOTE]
+> OPTIONAL — free-form preferences for the AI scorer, e.g.
+> "prefer backend over frontend, OK with hybrid".
 
 ## Precision-apply companies (don't mass-apply)
-> [!TIP]
-> Optional. Comma-separated company names. Wolf will still tailor a resume,
->   but won't auto-fill the application; you apply manually.
->   Leave blank to mass-apply everyone.
+
+> [!NOTE]
+> OPTIONAL — comma-separated company names. Wolf will still tailor a
+> resume but won't auto-fill the application; you apply manually.
+> Leave empty to mass-apply everyone.
 
 ## Hard-reject companies (never apply, even if AI suggests)
-> [!TIP]
-> Optional. Comma-separated company names. Filtered out at hunt.
+
+> [!NOTE]
+> OPTIONAL — comma-separated company names. Filtered out at hunt.
 
 ## Sponsorship preference — which jobs do you want to apply to?
+
 > [!IMPORTANT]
-> This is your STRATEGY for hunt filtering, not your form answer.
+> REQUIRED — your STRATEGY for hunt filtering, not your form answer.
 > For each row, mark "yes" / "no" / "only if no other option":
 >   - require H-1B sponsorship: 
 >   - require green-card sponsorship: 
@@ -161,66 +184,106 @@ United States
 > choice, not a contradiction.
 
 ## Minimum hourly rate (intern, USD)
-> [!TIP]
-> Optional. E.g. "30" or leave blank for no floor.
+
+> [!NOTE]
+> OPTIONAL — e.g. "30" or leave empty for no floor.
 
 ## Minimum annual salary (new grad, USD)
-> [!TIP]
-> Optional. E.g. "100000" or leave blank for no floor.
+
+> [!NOTE]
+> OPTIONAL — e.g. "100000" or leave empty for no floor.
 
 ## Remote preference
+
 no preference
 
+> [!NOTE]
+> OPTIONAL — values: "remote only" / "hybrid only" / "onsite only" /
+> "no preference" (default).
+
 ## Max applications per day (self-rate-limit)
+
 30
+
+> [!NOTE]
+> OPTIONAL — defaults to 30 if blank. Tune higher for aggressive volume.
 
 # Demographics
 
-> [!TIP]
-> US ATS EEO fields. All voluntary by law. "Decline to answer" is always valid.
+> [!NOTE]
+> OPTIONAL — US ATS EEO fields, all voluntary by law. Three modes per
+> field: leave empty to skip; write your real answer; write
+> "Decline to answer" if you want forms to fill that literal phrase.
 
 ## Race
-> [!TIP]
-> Optional EEO. "Decline to answer" is a valid value.
+
+> [!NOTE]
+> OPTIONAL EEO.
 
 ## Gender
-> [!TIP]
-> Optional EEO. "Decline to answer" is a valid value.
+
+> [!NOTE]
+> OPTIONAL EEO.
 
 ## Ethnicity
-> [!TIP]
-> Optional EEO. "Not Hispanic or Latino" / "Hispanic or Latino" / "Decline to answer".
+
+> [!NOTE]
+> OPTIONAL EEO — values: "Hispanic or Latino" / "Not Hispanic or Latino" /
+> "Decline to answer".
 
 ## Veteran status
+
 I am not a protected veteran
 
+> [!NOTE]
+> OPTIONAL EEO — defaults shown above. Edit to your actual status if
+> different ("I am a protected veteran" / "Decline to answer").
+
 ## Disability status
-> [!TIP]
-> Optional EEO. "I do not wish to answer" is a valid value.
+
+> [!NOTE]
+> OPTIONAL EEO.
 
 ## LGBTQ+
-> [!TIP]
-> Optional. "Decline to state" is a valid value.
+
+> [!NOTE]
+> OPTIONAL.
 
 ## Transgender
-> [!TIP]
-> Optional. "Decline to state" is a valid value.
+
+> [!NOTE]
+> OPTIONAL.
 
 ## First-generation college student
+
 No
+
+> [!NOTE]
+> OPTIONAL — "Yes" / "No" / "Decline to answer". Default shown above.
 
 # Clearance
 
 ## Do you have an active security clearance?
+
 No
 
+> [!NOTE]
+> OPTIONAL — "Yes" / "No". Default shown above. Edit to "Yes" if you have
+> an active clearance, then fill the two fields below.
+
 ## Clearance level
-> [!TIP]
-> Optional. Only fill if active clearance: Secret / Top Secret / TS-SCI.
+
+> [!NOTE]
+> OPTIONAL — only fill if active clearance: Secret / Top Secret / TS-SCI.
 
 ## Clearance status
-> [!TIP]
-> Optional. Only fill if active clearance: Active / Inactive / Eligible.
+
+> [!NOTE]
+> OPTIONAL — only fill if active clearance: Active / Inactive / Eligible.
 
 ## Are you willing to obtain one?
+
 Yes
+
+> [!NOTE]
+> OPTIONAL — "Yes" / "No". Default shown above.

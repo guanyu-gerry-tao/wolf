@@ -381,7 +381,9 @@ describe('TailorApplicationService', () => {
     // After stripping the GitHub-Alert header block, what reaches the AI
     // should be effectively empty (modulo whitespace).
     const { stripComments } = await import('../../utils/stripComments.js');
-    expect(stripComments(body).trim()).toBe('');
+    // Mirror the production hint.md path: dropEmptyH2s: true so the
+    // assertion exercises the exact transform tailor uses on hint.md.
+    expect(stripComments(body, { dropEmptyH2s: true }).trim()).toBe('');
   });
 
   // ---------------------------------------------------------------------------
