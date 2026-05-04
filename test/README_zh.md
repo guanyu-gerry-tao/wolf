@@ -67,7 +67,7 @@ WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>
 
 - `~/wolf/`
 - `~/wolf-dev/`
-- repo 内的 `data/`
+- repo 内 `data/` 下的运行时文件（`data/.gitkeep` 是被 git 跟踪的占位文件，不算测试写入）
 - shell RC 文件，例如 `~/.zshrc`
 - `/tmp/wolf-test/` 之外的任何路径
 

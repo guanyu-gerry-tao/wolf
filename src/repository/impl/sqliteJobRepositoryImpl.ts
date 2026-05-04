@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { and, eq, gte, inArray, isNotNull, like, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, like, lte, or, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import type { JobRepository } from '../jobRepository.js';
+import type { ArtifactKind, JobRepository } from '../jobRepository.js';
 import type { CompanyRepository } from '../companyRepository.js';
 import type { Job, JobQuery, JobStatus, JobUpdate } from '../../utils/types/job.js';
 import { ALL_JOB_STATUSES } from '../../utils/types/job.js';
@@ -118,7 +118,18 @@ export class SqliteJobRepositoryImpl implements JobRepository {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(jobs)
-      .where(isNotNull(jobs.tailoredResumePdfPath));
+      .where(eq(jobs.hasTailoredResume, true));
+    return Number(row?.count ?? 0);
+  }
+
+  async countWithoutCompleteTailor(): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(jobs)
+      .where(or(
+        eq(jobs.hasTailoredResume, false),
+        eq(jobs.hasTailoredCoverLetter, false),
+      ));
     return Number(row?.count ?? 0);
   }
 
@@ -155,14 +166,47 @@ export class SqliteJobRepositoryImpl implements JobRepository {
   }
 
   async readJdText(id: string): Promise<string> {
-    const dir = await this.getWorkspaceDir(id);
-    return readFile(path.join(dir, 'jd.md'), 'utf-8');
+    // v2: JD prose lives in the `description_md` column. Old `data/jobs/
+    // <dir>/jd.md` files are migrated by v1ToV2 and deleted; we never
+    // touch them at runtime any more.
+    const rows = await this.db
+      .select({ descriptionMd: jobs.descriptionMd })
+      .from(jobs)
+      .where(eq(jobs.id, id))
+      .limit(1);
+    if (rows.length === 0) throw new Error(`Job not found: ${id}`);
+    return rows[0].descriptionMd;
   }
 
   async writeJdText(id: string, jdText: string): Promise<void> {
+    // Ensure the per-job artifact dir exists (tailor's resume.pdf /
+    // cover_letter.pdf still land there). The dir is no longer used for
+    // jd.md, but tailor / fill writers expect it.
     const dir = await this.getWorkspaceDir(id);
     await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, 'jd.md'), jdText, 'utf-8');
+    const result = await this.db
+      .update(jobs)
+      .set({ descriptionMd: jdText, updatedAt: new Date().toISOString() })
+      .where(eq(jobs.id, id));
+    // Drizzle's better-sqlite3 driver returns a `RunResult`-shaped object;
+    // we don't strictly need to inspect it (a missing job would have
+    // produced 0 rows updated, which is fine — the tailor flow does its
+    // own existence check via get()).
+    void result;
+  }
+
+  async getArtifactPath(id: string, kind: ArtifactKind): Promise<string> {
+    // β.10h: convention paths under the per-job workspace dir. The booleans
+    // (hasTailoredResume etc.) on the Job row tell callers whether the
+    // artifact has been produced; the path is always derivable.
+    const dir = await this.getWorkspaceDir(id);
+    switch (kind) {
+      case 'resume_pdf':         return path.join(dir, 'resume.pdf');
+      case 'cover_letter_html':  return path.join(dir, 'src', 'cover_letter.html');
+      case 'cover_letter_pdf':   return path.join(dir, 'cover_letter.pdf');
+      case 'screenshot_dir':     return path.join(dir, 'screenshots');
+      case 'outreach_draft':     return path.join(dir, 'outreach.eml');
+    }
   }
 }
 
@@ -271,7 +315,8 @@ function rowToJob(row: JobRow): Job {
     source: row.source,
     location: row.location,
     remote: row.remote,
-    salary: row.salary,
+    salaryLow: row.salaryLow,
+    salaryHigh: row.salaryHigh,
     workAuthorizationRequired: row.workAuthorizationRequired,
     clearanceRequired: row.clearanceRequired,
     score: row.score,
@@ -279,11 +324,10 @@ function rowToJob(row: JobRow): Job {
     status: row.status,
     error: row.error,
     appliedProfileId: row.appliedProfileId,
-    tailoredResumePdfPath: row.tailoredResumePdfPath,
-    coverLetterHtmlPath: row.coverLetterHtmlPath,
-    coverLetterPdfPath: row.coverLetterPdfPath,
-    screenshotPath: row.screenshotPath,
-    outreachDraftPath: row.outreachDraftPath,
+    hasTailoredResume: row.hasTailoredResume,
+    hasTailoredCoverLetter: row.hasTailoredCoverLetter,
+    hasScreenshots: row.hasScreenshots,
+    hasOutreachDraft: row.hasOutreachDraft,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -298,7 +342,8 @@ function jobToRow(job: Job): typeof jobs.$inferInsert {
     source: job.source,
     location: job.location,
     remote: job.remote,
-    salary: job.salary ?? undefined,
+    salaryLow: job.salaryLow ?? undefined,
+    salaryHigh: job.salaryHigh ?? undefined,
     workAuthorizationRequired: job.workAuthorizationRequired,
     clearanceRequired: job.clearanceRequired,
     score: job.score ?? undefined,
@@ -306,11 +351,10 @@ function jobToRow(job: Job): typeof jobs.$inferInsert {
     status: job.status,
     error: job.error ?? undefined,
     appliedProfileId: job.appliedProfileId ?? undefined,
-    tailoredResumePdfPath: job.tailoredResumePdfPath ?? undefined,
-    coverLetterHtmlPath: job.coverLetterHtmlPath ?? undefined,
-    coverLetterPdfPath: job.coverLetterPdfPath ?? undefined,
-    screenshotPath: job.screenshotPath ?? undefined,
-    outreachDraftPath: job.outreachDraftPath ?? undefined,
+    hasTailoredResume: job.hasTailoredResume,
+    hasTailoredCoverLetter: job.hasTailoredCoverLetter,
+    hasScreenshots: job.hasScreenshots,
+    hasOutreachDraft: job.hasOutreachDraft,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };

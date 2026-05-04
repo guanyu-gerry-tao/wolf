@@ -2,7 +2,8 @@ import path from 'node:path';
 import { mkdir, writeFile, readFile, access } from 'node:fs/promises';
 import { parseModelRef } from '../../utils/parseModelRef.js';
 import { stripComments } from '../../utils/stripComments.js';
-import { extractH2Content } from '../../utils/extractH2.js';
+import { isFilled, getByPath, type ProfileToml } from '../../utils/profileToml.js';
+import { REQUIRED_PROFILE_FIELDS } from '../../utils/profileFields.js';
 import type {
   TailorApplicationService,
   AnalyzeResult,
@@ -74,7 +75,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     private readonly rewriteService: ResumeCoverLetterService,
     private readonly briefService: TailoringBriefService,
     private readonly defaultAiConfig: AiConfig,
-    private readonly defaultCoverLetterTone: string,
   ) {}
 
   /** @inheritdoc */
@@ -117,18 +117,17 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       coverLetterPromise,
     ]);
 
-    // Pre-compute the paths we'll hand to both the DB update and the result
-    // so the two sites can't drift.
+    // β.10h: artifact paths are convention-derived (see JobRepository.
+    // getArtifactPath). We persist booleans on the Job row to mark which
+    // pipeline steps have produced their outputs; the return value still
+    // carries the actual paths so the CLI can echo them.
     const tailoredResumePdfPath = resumeStep.pdfPath;
     const coverLetterHtmlPath = clStep?.htmlPath ?? null;
     const coverLetterPdfPath = clStep?.pdfPath ?? null;
 
-    // Persist the generated paths on the Job row so downstream commands
-    // (wolf job list, wolf fill, wolf reach) can find the artifacts.
     await this.jobRepository.update(ctx.job.id, {
-      tailoredResumePdfPath,
-      coverLetterHtmlPath,
-      coverLetterPdfPath,
+      hasTailoredResume: true,
+      hasTailoredCoverLetter: clStep !== null,
     });
 
     log.info('tailor.pipeline.done', {
@@ -162,7 +161,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
     const step = await this.runResume(ctx, brief);
-    await this.jobRepository.update(ctx.job.id, { tailoredResumePdfPath: step.pdfPath });
+    // β.10h: paths are convention-derived; persist a boolean flag instead.
+    await this.jobRepository.update(ctx.job.id, { hasTailoredResume: true });
     return step;
   }
 
@@ -172,10 +172,8 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     const ctx = await this.prepareContext(options);
     const brief = await this.readBrief(ctx);
     const step = await this.runCoverLetter(ctx, brief);
-    await this.jobRepository.update(ctx.job.id, {
-      coverLetterHtmlPath: step.htmlPath,
-      coverLetterPdfPath:  step.pdfPath,
-    });
+    // β.10h: paths are convention-derived; persist a single boolean flag.
+    await this.jobRepository.update(ctx.job.id, { hasTailoredCoverLetter: true });
     return step;
   }
 
@@ -207,8 +205,9 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
     // Pre-flight: refuse to run tailor on a placeholder profile or pool.
     // Otherwise the AI would faithfully build a resume from "Job Title — Company
     // Name" / blank legal name, etc. — garbage in, garbage out. Fail early with
-    // a clear message so the user fills the files in before spending API tokens.
-    assertReadyForTailor(profile, resumePool);
+    // a clear message so the user fills the file in before spending API tokens.
+    const tomlProfile = await this.profileRepository.getProfileToml(profile.name);
+    assertReadyForTailor(profile, tomlProfile);
 
     const outputDir = await this.jobRepository.getWorkspaceDir(jobId);
     const srcDir = path.join(outputDir, 'src');
@@ -311,7 +310,6 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
       ctx.jdText,
       ctx.profile,
       brief,
-      this.defaultCoverLetterTone,
       ctx.aiConfig,
     );
     await writeFile(ctx.coverLetterHtmlPath, html);
@@ -321,47 +319,30 @@ export class TailorApplicationServiceImpl implements TailorApplicationService {
   }
 }
 
-// Minimum non-blank, non-heading lines required in resume_pool.md (after
-// stripping alert blocks) before we let tailor proceed. The init template
-// produces 0 such lines (each section is `## Title` followed by an empty
-// `> [!TIP]` example block). 5 means "at least one bullet of one role" and
-// is generous enough not to bother people who only have a sparse pool.
-const MIN_POOL_CONTENT_LINES = 5;
-
-// REQUIRED H2 fields in profile.md that tailor surfaces directly (resume
-// header, cover-letter salutation). If any are blank the resume comes out
-// nameless / with no contact — fail loudly here instead of producing junk.
-const REQUIRED_PROFILE_FIELDS = [
-  'Legal first name',
-  'Legal last name',
-  'Email',
-  'Phone',
-] as const;
+// Minimum total resume entries (experience / project / education / filled
+// skill buckets) before tailor accepts a workspace. 5 = "at least one role
+// with bullets, plus a couple of skill groups" — generous enough not to
+// bother people with sparse pools but loud enough that tailor never sees
+// a totally empty profile and produces a nameless resume.
+const MIN_RESUME_ENTRIES = 5;
 
 /**
- * Throws a user-facing Error if the profile or pool can't safely back a
- * tailor run. The message names the file to edit so the user can act on it
- * without reading source.
+ * Throws a user-facing Error if the profile can't safely back a tailor run.
+ * Pulls REQUIRED-field metadata from `PROFILE_FIELDS` (single source of
+ * truth shared with `wolf doctor` / `wolf profile fields`).
  *
  * Validation is intentionally narrow:
- *   - REQUIRED_PROFILE_FIELDS in profile.md must have a non-empty body
- *   - resume_pool.md after stripComments must have ≥ MIN_POOL_CONTENT_LINES
- *     non-blank, non-heading lines (proxy for "real experience exists")
- *
- * We do NOT try to detect template-shaped content — wrapping the example
- * blocks in `> [!TIP]` already removes them at strip time, so anything that
- * survives strip is either real content or the user's intentional placeholder.
+ *   - REQUIRED fields in `PROFILE_FIELDS` must be filled (per `isFilled`).
+ *   - Resume content (experience / project / education / skills) must
+ *     produce ≥ `MIN_RESUME_ENTRIES` filled entries.
  */
-function assertReadyForTailor(profile: Profile, resumePool: string): void {
-  // Strip alert callouts before extraction: an H2 whose body is only a
-  // `> [!IMPORTANT]` block (the un-edited template state) must count as
-  // empty, not "answered". Use dropEmptyH2s: false — we DEPEND on empty
-  // H2s being preserved here so extractH2Content can detect missing
-  // REQUIRED fields and report them to the user.
-  const strippedProfile = stripComments(profile.md, { dropEmptyH2s: false });
-  const missing = REQUIRED_PROFILE_FIELDS.filter(
-    (field) => extractH2Content(strippedProfile, field).length === 0,
-  );
+function assertReadyForTailor(profile: Profile, toml: ProfileToml): void {
+  const missing: string[] = [];
+  for (const field of REQUIRED_PROFILE_FIELDS) {
+    const value = getByPath(toml, field.path);
+    const filled = typeof value === 'string' ? isFilled(value) : value !== undefined;
+    if (!filled) missing.push(field.path);
+  }
   if (missing.length > 0) {
     log.error('tailor.context.profile_incomplete', {
       profileName: profile.name,
@@ -369,29 +350,32 @@ function assertReadyForTailor(profile: Profile, resumePool: string): void {
     });
     throw new Error(
       `Profile '${profile.name}' is missing required field(s) for tailor: ${missing.join(', ')}.\n` +
-      `Open profiles/${profile.name}/profile.md and fill in the H2 sections under # Identity / # Contact.`,
+      `Run \`wolf profile set <field> <value>\` for each missing field, or \`wolf doctor\` to see help text.`,
     );
   }
 
-  // Same rationale as profile above: dropEmptyH2s: false preserves the H2
-  // skeleton so the substantive-line count reflects actual user content.
-  const stripped = stripComments(resumePool, { dropEmptyH2s: false });
-  const substantiveLines = stripped
-    .split('\n')
-    .filter((line) => {
-      const t = line.trim();
-      return t.length > 0 && !t.startsWith('#');
-    });
-  if (substantiveLines.length < MIN_POOL_CONTENT_LINES) {
+  let entryCount = 0;
+  for (const e of toml.experience) {
+    if (isFilled(e.job_title) || isFilled(e.bullets)) entryCount++;
+  }
+  for (const p of toml.project) {
+    if (isFilled(p.name) || isFilled(p.bullets)) entryCount++;
+  }
+  for (const e of toml.education) {
+    if (isFilled(e.degree) || isFilled(e.school)) entryCount++;
+  }
+  // β.10i: skills collapsed to one freeform `text` field.
+  if (isFilled(toml.skills.text)) entryCount++;
+  if (entryCount < MIN_RESUME_ENTRIES) {
     log.error('tailor.context.pool_empty', {
       profileName: profile.name,
-      substantiveLines: substantiveLines.length,
-      minRequired: MIN_POOL_CONTENT_LINES,
+      entryCount,
+      minRequired: MIN_RESUME_ENTRIES,
     });
     throw new Error(
-      `Resume pool for profile '${profile.name}' is empty or only has placeholder examples.\n` +
-      `Open profiles/${profile.name}/resume_pool.md and write at least one real experience entry ` +
-      `(role + company + dates + bullets) before running tailor — otherwise the AI builds a resume from nothing.`,
+      `Resume content for profile '${profile.name}' is too sparse (only ${entryCount} entries; need ≥ ${MIN_RESUME_ENTRIES}).\n` +
+      `Add experience / project / education entries via \`wolf profile add <type>\` ` +
+      `and skills via \`wolf profile set skills.<bucket> <value>\` before running tailor.`,
     );
   }
 }

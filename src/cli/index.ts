@@ -7,12 +7,19 @@ import updateNotifier from 'update-notifier';
 import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from './commands/tailor.js';
 import { status, formatStatus } from './commands/status.js';
 import { doctor, formatDoctor } from './commands/doctor.js';
-import { runJobListCli } from './commands/job/index.js';
+import { runJobListCli, jobShow, jobGet, jobSet, jobFields } from './commands/job/index.js';
 import { init } from './commands/init.js';
 import { add } from './commands/add.js';
 import { envShow, envSet, envSetOne, envClear } from './commands/env.js';
 import { configGet, configSet } from './commands/config.js';
-import { profileList, profileCreate, profileUse, profileDelete } from './commands/profile.js';
+import {
+  profileList, profileCreate, profileUse, profileDelete,
+  profileShow, profileGet, profileSet, profileAdd, profileAddQuestion, profileRemove, profileFields,
+  profilePromptsList, profilePromptsPath, profilePromptsRepair,
+} from './commands/profile.js';
+import { migrate } from './commands/migrate.js';
+import { context } from './commands/context.js';
+import { serve } from './commands/serve.js';
 import { startMcpServer } from '../mcp/server.js';
 import { DEV_WARNING, isDevBuild, currentBinaryName } from '../utils/instance.js';
 import { MissingApiKeyError, MissingChromiumError, WorkspaceNotInitializedError } from '../utils/errors/index.js';
@@ -226,11 +233,47 @@ program
     if (!report.ready) process.exitCode = 1;
   });
 
+program
+  .command('migrate')
+  .description('Upgrade this workspace to the binary\'s current schema version')
+  .option('--dry-run', 'Print the migration plan without applying any change')
+  .action(async (opts) => {
+    await migrate({ dryRun: opts.dryRun });
+  });
+
+program
+  .command('context')
+  .description('Print AI-prompt-friendly context for a scenario (search-time agent / tailor wrapper)')
+  .requiredOption('--for <scenario>', 'Scenario: search | tailor')
+  .action(async (opts: { for: string }) => {
+    if (opts.for !== 'search' && opts.for !== 'tailor') {
+      throw new Error(`Unknown --for value "${opts.for}". Allowed: search / tailor.`);
+    }
+    await context(opts.for);
+  });
+
+program
+  .command('serve')
+  .description('Start the local HTTP daemon for the wolf companion extension')
+  .option('-p, --port <port>', 'Port to listen on (default 47823)', parsePort)
+  .option('--no-browser', 'Do not launch the Wolf Browser window')
+  .action(async (opts: { port?: number; browser?: boolean }) => {
+    await serve({ port: opts.port, browser: opts.browser });
+  });
+
 // Commander's collector for repeatable flags. Each occurrence of --search
 // appends one term to the accumulator. Needs to live at module scope so the
 // initial empty array is captured per option definition.
 function collectSearchTerms(value: string, previous: string[]): string[] {
   return [...previous, value];
+}
+
+function parsePort(value: string): number {
+  const port = Number.parseInt(value, 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid port "${value}". Expected 1-65535.`);
+  }
+  return port;
 }
 
 const jobCmd = new Command('job').description('Inspect tracked jobs');
@@ -282,6 +325,49 @@ jobCmd
       Boolean(opts.json),
     );
   });
+// `wolf job show <id>` — print every column + JD prose.
+jobCmd
+  .command('show')
+  .description('Print all fields of a job by id, plus its JD prose.')
+  .argument('<id>', 'Job id (uuid)')
+  .option('--json', 'Machine-readable output')
+  .action(async (id: string, opts: { json?: boolean }) => {
+    await jobShow(id, opts);
+  });
+
+// `wolf job get <id> <field>` — pipe-friendly single-field read.
+jobCmd
+  .command('get')
+  .description('Read one field of a job by id.')
+  .argument('<id>', 'Job id (uuid)')
+  .argument('<field>', 'Field name (e.g. status, score, description_md)')
+  .action(async (id: string, field: string) => {
+    await jobGet(id, field);
+  });
+
+// `wolf job set <id> <field> [value]` — surgical update; --from-file for prose.
+jobCmd
+  .command('set')
+  .description('Update one field of a job. `--from-file` reads multiline values from disk.')
+  .argument('<id>', 'Job id (uuid)')
+  .argument('<field>', 'Field name (e.g. status, score, description_md)')
+  .argument('[value]', 'Value (use --from-file for long prose or shell-quoting-hostile values)')
+  .option('--from-file <path>', 'Read the value from a file instead of the CLI arg')
+  .action(async (id: string, field: string, value: string | undefined, opts: { fromFile?: string }) => {
+    await jobSet(id, field, value, opts);
+  });
+
+// `wolf job fields [name]` — schema reference for humans / AI.
+jobCmd
+  .command('fields')
+  .description('Print the field reference. Pass [name] to detail one field.')
+  .argument('[name]', 'Optional field name; prints just that field if given')
+  .option('--required', 'Only list REQUIRED fields')
+  .option('--json', 'Machine-readable output')
+  .action(async (name: string | undefined, opts: { required?: boolean; json?: boolean }) => {
+    await jobFields(name, opts);
+  });
+
 program.addCommand(jobCmd);
 
 const configCmd = new Command('config').description('Get or set wolf.toml fields by dot-path key');
@@ -295,9 +381,10 @@ configCmd
   .action(async (key: string, value: string) => { await configSet(key, value); });
 program.addCommand(configCmd);
 
-// Profile fields are stored as markdown — edit profiles/<name>/profile.md
-// directly with $EDITOR, no get/set CLI to keep the API surface small.
-const profileCmd = new Command('profile').description('Manage profile directories');
+// Profile data lives in profiles/<name>/profile.toml (v2). All writes
+// go through wolf commands so comments / formatting are preserved by the
+// surgical TOML editor (smol-toml's stringify() drops comments).
+const profileCmd = new Command('profile').description('Manage profile directories and fields');
 profileCmd
   .command('list')
   .description('List all profile directories (default marked with *)')
@@ -316,6 +403,91 @@ profileCmd
   .description('Delete profile directory (requires --yes)')
   .option('-y, --yes', 'Confirm deletion')
   .action(async (id: string, opts: { yes?: boolean }) => { await profileDelete(id, opts); });
+profileCmd
+  .command('show')
+  .description('Print profile.toml verbatim (raw, with comments). Use `wolf context --for=search` for AI-prompt context.')
+  .action(async () => { await profileShow(); });
+profileCmd
+  .command('get <key>')
+  .description('Read a single field by dot-path (e.g. contact.email, question.tell_me_about_failure.answer)')
+  .action(async (key: string) => { await profileGet(key); });
+profileCmd
+  .command('set <key> [value]')
+  .description('Write a field; surgical edit preserves comments. Use --from-file for long values, multi-line content, or values starting with "-" (commander treats those as flags).')
+  .option('--from-file <path>', 'Read the value from a file instead of the CLI argument')
+  .action(async (key: string, value: string | undefined, opts: { fromFile?: string }) => {
+    await profileSet(key, value, opts);
+  });
+profileCmd
+  .command('add <type>')
+  .description(
+    'Add a new entry. <type> = experience / project / education / question. ' +
+    'For experience/project/education use --slug-from "<text>" for AI-friendly id generation. ' +
+    'For question use --prompt "<question>" and optionally --answer "<text>".',
+  )
+  .option('--id <id>', 'Explicit id (slug-style)')
+  .option('--slug-from <text>', '(experience/project/education) Free-form description; wolf slugifies into an id')
+  .option('--prompt <text>', '(question only) The question text — also the source of the slug-id')
+  .option('--answer <text>', '(question only) Pre-fill the answer answer')
+  .option('--prompt-from-file <path>', '(question only) Read --prompt from a file')
+  .option('--answer-from-file <path>', '(question only) Read --answer from a file')
+  .action(async (type: string, opts: {
+    id?: string;
+    slugFrom?: string;
+    prompt?: string;
+    answer?: string;
+    promptFromFile?: string;
+    answerFromFile?: string;
+  }) => {
+    if (type === 'question') {
+      await profileAddQuestion({
+        prompt: opts.prompt,
+        answer: opts.answer,
+        promptFromFile: opts.promptFromFile,
+        answerFromFile: opts.answerFromFile,
+        id: opts.id,
+      });
+      return;
+    }
+    if (type !== 'experience' && type !== 'project' && type !== 'education') {
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / question.`);
+    }
+    await profileAdd(type, { id: opts.id, slugFrom: opts.slugFrom });
+  });
+profileCmd
+  .command('remove <type> <id>')
+  .description('Remove a resume entry by id. Builtin questions cannot be removed (clear answer instead).')
+  .option('-y, --yes', 'Confirm removal (typo guard)')
+  .action(async (type: string, id: string, opts: { yes?: boolean }) => {
+    if (type !== 'experience' && type !== 'project' && type !== 'education' && type !== 'question') {
+      throw new Error(`Unknown type "${type}". Allowed: experience / project / education / question.`);
+    }
+    await profileRemove(type, id, opts);
+  });
+profileCmd
+  .command('fields [path]')
+  .description('Print field reference for profile.toml. With [path], prints just that field. --required / --json supported.')
+  .option('--required', 'Only list REQUIRED fields')
+  .option('--json', 'Output JSON for AI / MCP consumers')
+  .action(async (pathArg: string | undefined, opts: { required?: boolean; json?: boolean }) => {
+    await profileFields(pathArg, opts);
+  });
+const profilePromptsCmd = new Command('prompts')
+  .description('Inspect or repair the active profile prompt-pack skeleton');
+profilePromptsCmd
+  .command('path')
+  .description('Print profiles/<name>/prompts path')
+  .action(async () => { await profilePromptsPath(); });
+profilePromptsCmd
+  .command('list')
+  .description('List prompt-pack files and whether each is empty, custom, or missing')
+  .option('--json', 'Output JSON for AI / MCP consumers')
+  .action(async (opts: { json?: boolean }) => { await profilePromptsList(opts); });
+profilePromptsCmd
+  .command('repair')
+  .description('Create missing prompt-pack files without overwriting edits')
+  .action(async () => { await profilePromptsRepair(); });
+profileCmd.addCommand(profilePromptsCmd);
 program.addCommand(profileCmd);
 
 const envCmd = new Command('env').description('Manage WOLF_ environment variables (API keys)');

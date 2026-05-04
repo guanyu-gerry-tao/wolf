@@ -32,16 +32,14 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wol
 - 退出码是 `0`。
 - stderr 出现 dev banner。
 - `wolf.toml` 存在于测试 workspace 下。
-- `profiles/default/profile.md` 存在于测试 workspace 下。
-- `profiles/default/standard_questions.md` 存在于测试 workspace 下。
-- `profiles/default/resume_pool.md` 存在于测试 workspace 下。
+- `profiles/default/profile.toml` 存在于测试 workspace 下。
 - `profiles/default/attachments/README.md` 存在于测试 workspace 下。
 - `data/` 存在于测试 workspace 下。
 - `wolf.toml` 包含 `[instance]` 和 `mode = "dev"`。
 - `wolf.toml` 包含 `default = "default"`(profile 文件夹指针)。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有文件写入 `~/wolf`、`~/wolf-dev`，也没有运行时文件写入 repo 内 `data/`；
+  忽略被 git 跟踪的占位文件 `data/.gitkeep`。
 
 ### 报告要求
 
 记录 command、exit code、stdout path、stderr path、文件存在性检查、证明 dev mode 的 `wolf.toml` 摘录，以及安全检查结果。
-

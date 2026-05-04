@@ -1,9 +1,13 @@
 import { loadConfig, saveConfig, backupConfig } from '../../utils/config.js';
 import { getByPath, setByPath, coerceToShape } from '../../utils/dotPath.js';
 import { AppConfigSchema } from '../../utils/schemas.js';
+import { DEFAULT_WORKSPACE_CONFIG } from '../../utils/appConfigDefaults.js';
+import type { AppConfig } from '../../utils/types/index.js';
 import type {
   ConfigApplicationService,
   ConfigSetResult,
+  WorkspaceConfigUpdate,
+  WorkspaceConfigView,
 } from '../configApplicationService.js';
 
 /**
@@ -33,4 +37,50 @@ export class ConfigApplicationServiceImpl implements ConfigApplicationService {
     await saveConfig(validated);
     return { key, coerced };
   }
+
+  /** @inheritdoc */
+  async getWorkspaceConfig(): Promise<WorkspaceConfigView> {
+    const config = AppConfigSchema.parse(await loadConfig());
+    return toWorkspaceConfigView(config);
+  }
+
+  /** @inheritdoc */
+  async updateWorkspaceConfig(update: WorkspaceConfigUpdate): Promise<WorkspaceConfigView> {
+    const config = AppConfigSchema.parse(await loadConfig());
+    const updated = AppConfigSchema.parse({
+      ...config,
+      default: update.default ?? config.default,
+      hunt: { ...config.hunt, ...update.hunt },
+      tailor: { ...config.tailor, ...update.tailor },
+      score: { ...config.score, ...update.score },
+      reach: { ...config.reach, ...update.reach },
+      fill: { ...config.fill, ...update.fill },
+    });
+    await backupConfig();
+    await saveConfig(updated);
+    return toWorkspaceConfigView(updated);
+  }
+
+  /** @inheritdoc */
+  async resetWorkspaceConfig(): Promise<WorkspaceConfigView> {
+    const config = AppConfigSchema.parse(await loadConfig());
+    const updated = AppConfigSchema.parse({
+      ...config,
+      ...DEFAULT_WORKSPACE_CONFIG,
+    });
+    await backupConfig();
+    await saveConfig(updated);
+    return toWorkspaceConfigView(updated);
+  }
+}
+
+function toWorkspaceConfigView(config: AppConfig): WorkspaceConfigView {
+  return {
+    default: config.default,
+    hunt: config.hunt,
+    tailor: config.tailor,
+    score: config.score,
+    reach: config.reach,
+    fill: config.fill,
+  };
 }

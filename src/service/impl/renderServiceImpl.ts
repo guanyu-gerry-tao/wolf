@@ -1,58 +1,14 @@
 import { chromium } from 'playwright';
-import { spawn } from 'node:child_process';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CannotFillError, CannotFitError, fit } from './render/fit.js';
 import { log } from '../../utils/logger.js';
-import { MissingChromiumError } from '../../utils/errors/missingChromiumError.js';
+import { ensurePlaywrightChromiumInstalled } from '../../utils/playwrightChromium.js';
 import type { Browser, Page } from 'playwright';
 import type { RenderService } from '../renderService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHELL_PATH = path.join(__dirname, 'render', 'shell.html');
-
-// First-launch hook. Stable users only get the `playwright` npm package via
-// `npm i -g`; the Chromium binary itself is downloaded on demand by Playwright
-// the first time `chromium.launch()` is called. Detecting the missing binary
-// up front lets us print a clean status message + spawn the official installer
-// with its progress bar visible, instead of letting Playwright's internal
-// stack trace surface.
-let chromiumChecked = false;
-async function ensureChromium(): Promise<void> {
-  if (chromiumChecked) return;
-  const exe = chromium.executablePath();
-  if (exe && fs.existsSync(exe)) {
-    chromiumChecked = true;
-    return;
-  }
-  // First-time setup: stream the installer's stderr/stdout so the user sees
-  // the download progress bar instead of a silent hang.
-  process.stderr.write(
-    'wolf: first-time setup — downloading Playwright Chromium (~150 MB, one-time). This may take a minute...\n',
-  );
-  await runPlaywrightInstall();
-  // After the installer completes, the executable should exist. If it still
-  // doesn't, we surface a typed error rather than letting `launch()` fail.
-  const exeAfter = chromium.executablePath();
-  if (!exeAfter || !fs.existsSync(exeAfter)) {
-    throw new MissingChromiumError();
-  }
-  chromiumChecked = true;
-}
-
-function runPlaywrightInstall(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn('npx', ['playwright', 'install', 'chromium'], {
-      stdio: 'inherit',
-    });
-    child.on('error', (err) => reject(new MissingChromiumError(err)));
-    child.on('exit', (code) => {
-      if (code === 0) resolve();
-      else reject(new MissingChromiumError(new Error(`installer exited with code ${code}`)));
-    });
-  });
-}
 
 /**
  * Playwright-backed `RenderService`. Routes to two distinct pipelines —
@@ -91,7 +47,7 @@ async function renderResumePdfFit(htmlBody: string): Promise<Buffer> {
 
   // Each render spawns a fresh browser — simpler state model than a pool,
   // and Playwright cold-start is only a few hundred ms.
-  await ensureChromium();
+  await ensurePlaywrightChromiumInstalled();
   const browser = await chromium.launch();
   try {
     const page = await loadShellPage(browser, htmlBody);
@@ -125,7 +81,7 @@ async function renderHtmlToPdfNatural(htmlBody: string): Promise<Buffer> {
   log.debug('render.start', { kind, contentLength: htmlBody.length, mode: 'natural' });
   const startedAt = Date.now();
 
-  await ensureChromium();
+  await ensurePlaywrightChromiumInstalled();
   const browser = await chromium.launch();
   try {
     const page = await loadShellPage(browser, htmlBody);

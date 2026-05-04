@@ -3,37 +3,50 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { parse } from 'smol-toml';
-import { profileList, profileCreate, profileUse, profileDelete } from '../profile.js';
+import {
+  profileList,
+  profileCreate,
+  profileUse,
+  profileDelete,
+  profilePromptsList,
+  profilePromptsRepair,
+} from '../profile.js';
 import { saveConfig } from '../../../utils/config.js';
 import type { AppConfig } from '../../../utils/types/index.js';
 
 // Minimal config — `default` points at the conventional initial profile dir.
 const CONFIG: AppConfig = {
+  schemaVersion: 1,
   default: 'default',
   hunt: { minScore: 0.5, maxResults: 50 },
   tailor: { model: 'anthropic/claude-sonnet-4-6', defaultCoverLetterTone: 'professional' },
   score: { model: 'anthropic/claude-sonnet-4-6' },
   reach: { model: 'anthropic/claude-sonnet-4-6', defaultEmailTone: 'professional', maxEmailsPerDay: 10 },
   fill: { model: 'anthropic/claude-haiku-4-5-20251001' },
+  companion: { servePort: 47823, maxStagehandSessions: 3, browserMode: 'wolf_persistent_profile' },
 };
 
 let tmpDir: string;
 let logSpy: ReturnType<typeof vi.spyOn>;
 const originalEnv = { ...process.env };
 
-// Helper: lay down a fresh profile directory at profiles/<name>/ with the four
-// MD files and an attachments dir, mimicking what `wolf init` would create.
-// Tests can override the file contents via `overrides`.
+// Helper: lay down a fresh v2 profile directory at profiles/<name>/ with a
+// minimal valid profile.toml and an attachments dir, mimicking what
+// `wolf init` would create. Tests can override profile.toml content via
+// `overrides.profileToml`.
 async function writeProfileDir(
   name: string,
-  overrides: Partial<{ profileMd: string; resumePool: string; standardQuestions: string }> = {},
+  overrides: Partial<{ profileToml: string; promptStrategy: string }> = {},
 ): Promise<void> {
   const dir = path.join(tmpDir, 'profiles', name);
   await fs.mkdir(path.join(dir, 'attachments'), { recursive: true });
-  await fs.writeFile(path.join(dir, 'profile.md'), overrides.profileMd ?? `# ${name}\n`, 'utf-8');
-  await fs.writeFile(path.join(dir, 'resume_pool.md'), overrides.resumePool ?? '# Resume Pool\n', 'utf-8');
-  await fs.writeFile(path.join(dir, 'standard_questions.md'), overrides.standardQuestions ?? '# Standard Questions\n', 'utf-8');
+  await fs.mkdir(path.join(dir, 'prompts'), { recursive: true });
+  // Minimal valid profile.toml: schemaVersion + a marker the test can detect.
+  const defaultToml = `schemaVersion = 2\n# profile: ${name}\n`;
+  await fs.writeFile(path.join(dir, 'profile.toml'), overrides.profileToml ?? defaultToml, 'utf-8');
   await fs.writeFile(path.join(dir, 'attachments', 'README.md'), '# attachments\n', 'utf-8');
+  await fs.writeFile(path.join(dir, 'prompts', 'README.md'), '# prompts\n', 'utf-8');
+  await fs.writeFile(path.join(dir, 'prompts', 'resume-strategy.md'), overrides.promptStrategy ?? '', 'utf-8');
 }
 
 beforeEach(async () => {
@@ -73,30 +86,40 @@ describe('profileList', () => {
 });
 
 describe('profileCreate', () => {
-  // Default: --from unset, clones from the default profile. Verifies the new
-  // profile directory and its MD files all land on disk.
+  // Default: --from unset, clones from the default profile. Verifies
+  // profile.toml + the attachments dir land on disk.
   it('clones from the default profile when --from is not given', async () => {
     await profileCreate('gc-persona');
     const cloned = path.join(tmpDir, 'profiles', 'gc-persona');
-    for (const file of ['profile.md', 'resume_pool.md', 'standard_questions.md']) {
-      const exists = await fs.access(path.join(cloned, file)).then(() => true).catch(() => false);
-      expect(exists).toBe(true);
-    }
+    const tomlExists = await fs.access(path.join(cloned, 'profile.toml')).then(() => true).catch(() => false);
+    expect(tomlExists).toBe(true);
     // attachments dir + README come along too.
     const att = await fs.access(path.join(cloned, 'attachments', 'README.md')).then(() => true).catch(() => false);
     expect(att).toBe(true);
+    const prompts = await fs.access(path.join(cloned, 'prompts', 'README.md')).then(() => true).catch(() => false);
+    expect(prompts).toBe(true);
   });
 
-  // Source MD content is preserved verbatim — clone is a deep copy of the
-  // four files, no rewriting.
-  it('preserves source MD content in the clone', async () => {
+  // Source TOML content is preserved verbatim — clone is a deep copy.
+  it('preserves source profile.toml content in the clone', async () => {
     // Customize source content so we can detect the copy.
-    await writeProfileDir('default', { profileMd: '# default\n\n## marker\nclone-source\n' });
+    await writeProfileDir('default', { profileToml: 'schemaVersion = 2\n# clone-source-marker\n' });
     await profileCreate('jane', { from: 'default' });
-    const janeProfile = await fs.readFile(
-      path.join(tmpDir, 'profiles', 'jane', 'profile.md'), 'utf-8',
+    const janeToml = await fs.readFile(
+      path.join(tmpDir, 'profiles', 'jane', 'profile.toml'), 'utf-8',
     );
-    expect(janeProfile).toContain('clone-source');
+    expect(janeToml).toContain('clone-source-marker');
+  });
+
+  // Prompt strategy files are profile-owned assets. Cloning a profile must
+  // copy them verbatim so personas can carry different tailoring policies.
+  it('preserves source prompt strategy content in the clone', async () => {
+    await writeProfileDir('default', { promptStrategy: 'Prefer backend infrastructure roles.\n' });
+    await profileCreate('jane', { from: 'default' });
+    const strategy = await fs.readFile(
+      path.join(tmpDir, 'profiles', 'jane', 'prompts', 'resume-strategy.md'), 'utf-8',
+    );
+    expect(strategy).toBe('Prefer backend infrastructure roles.\n');
   });
 
   // Invalid names would create unusable or unsafe paths; the command rejects
@@ -157,5 +180,31 @@ describe('profileDelete', () => {
     const exists = await fs.access(path.join(tmpDir, 'profiles', 'scratch'))
       .then(() => true).catch(() => false);
     expect(exists).toBe(false);
+  });
+});
+
+describe('profilePrompts', () => {
+  // Listing exposes the stable filenames and states for agents without
+  // requiring them to guess the workspace directory layout.
+  it('lists prompt pack files for the active profile', async () => {
+    await profilePromptsList();
+    const lines = logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+    expect(lines.some((l: string) => l.includes('resume-strategy.md'))).toBe(true);
+    expect(lines.some((l: string) => l.includes('empty'))).toBe(true);
+  });
+
+  // Repair creates missing skeleton files but preserves any existing edits.
+  it('repairs missing prompt pack files without overwriting existing strategy text', async () => {
+    const promptsDir = path.join(tmpDir, 'profiles', 'default', 'prompts');
+    await fs.writeFile(path.join(promptsDir, 'resume-strategy.md'), 'custom strategy\n', 'utf-8');
+    await fs.rm(path.join(promptsDir, 'README.md'));
+    await fs.rm(path.join(promptsDir, 'cover-letter-strategy.md'), { force: true });
+
+    await profilePromptsRepair();
+
+    const resume = await fs.readFile(path.join(promptsDir, 'resume-strategy.md'), 'utf-8');
+    expect(resume).toBe('custom strategy\n');
+    await expect(fs.access(path.join(promptsDir, 'README.md'))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(promptsDir, 'cover-letter-strategy.md'))).resolves.toBeUndefined();
   });
 });

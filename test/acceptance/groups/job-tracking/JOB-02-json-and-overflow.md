@@ -50,10 +50,10 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run w
 - JSON contains a `jobs` array with three entries.
 - JSON contains `totalMatching` and `limited` fields.
 - Dev banner appears on stderr for every wolf invocation.
-- No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files are written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Report Requirements
 
 Include the table output, footer line, parsed JSON summary, exit codes, and
 safety checks.
-

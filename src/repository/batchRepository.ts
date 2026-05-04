@@ -1,5 +1,5 @@
 /** What this batch is for — drives the result handler that runs on completion. */
-export type BatchType = "score" | "tailor";
+export type BatchType = "score" | "tailor" | "inbox_promote";
 
 /** AI provider behind the batch. Different providers expose different APIs. */
 export type BatchAiProvider = "anthropic" | "openai";
@@ -14,8 +14,10 @@ export interface Batch {
   batchId: string;
   type: BatchType;
   aiProvider: BatchAiProvider;
+  model: string | null;
   profileId: string;
   status: BatchStatus;
+  errorMessage: string | null;
   /** ISO 8601 — when wolf submitted the batch. */
   submittedAt: string;
   /** ISO 8601 — when the provider reported completion; null while pending. */
@@ -30,10 +32,12 @@ export interface Batch {
 export interface BatchRepository {
   /** Inserts or replaces the batch row by `id`. */
   save(batch: Batch): Promise<void>;
+  /** Fetches one batch row by internal wolf id, or null if absent. */
+  get(id: string): Promise<Batch | null>;
   /** Returns every batch still in `pending` state. */
   getPending(): Promise<Batch[]>;
   /** Marks a batch complete and stamps `completedAt`. */
   markComplete(id: string, completedAt: string): Promise<void>;
   /** Marks a batch failed (terminal state — no retry by design). */
-  markFailed(id: string): Promise<void>;
+  markFailed(id: string, errorMessage?: string): Promise<void>;
 }

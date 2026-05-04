@@ -6,6 +6,54 @@ export interface ProfileEntry {
   isDefault: boolean;
 }
 
+/** Result of `setField` — concise enough that callers can render it directly. */
+export interface ProfileSetResult {
+  path: string;
+  oldValue: string;
+  newValue: string;
+}
+
+/** Result of `addEntry` / `addQuestion`. */
+export interface ProfileAddEntryResult {
+  arrayName: 'experience' | 'project' | 'education' | 'question';
+  id: string;
+}
+
+/** What `wolf profile fields` returns: structured so the CLI can render
+ *  either markdown (default) or JSON (--json) without reparsing strings. */
+export interface ProfileFieldRow {
+  path: string;
+  required: boolean;
+  type: 'multilineString' | 'scalar';
+  help: string;
+}
+
+/** One file in `profiles/<name>/prompts/`. Strategy files may be empty;
+ *  empty means "use wolf defaults". */
+export interface ProfilePromptFileRow {
+  filename: string;
+  path: string;
+  exists: boolean;
+  empty: boolean;
+  kind: 'readme' | 'strategy';
+}
+
+/** Status for the active profile's prompt pack. */
+export interface ProfilePromptsResult {
+  profileName: string;
+  dir: string;
+  files: ProfilePromptFileRow[];
+}
+
+/** Result of repairing the prompt pack skeleton. Existing files are never
+ *  overwritten; missing files are created. */
+export interface ProfilePromptsRepairResult {
+  profileName: string;
+  dir: string;
+  created: string[];
+  preserved: string[];
+}
+
 /**
  * `list()` result — distinguishes "no profiles dir at all" (run `wolf init`),
  * "dir exists but empty" (run `wolf profile create`), and the populated case.
@@ -63,4 +111,98 @@ export interface ProfileApplicationService {
    * the deleted directory path for the success message.
    */
   delete(name: string, opts?: { yes?: boolean }): Promise<string>;
+
+  /**
+   * Returns the raw text of `profiles/<name>/profile.toml` (or the active
+   * profile when `name` is omitted). The CLI's `wolf profile show` cats
+   * this verbatim — comments / formatting / everything intact.
+   */
+  show(name?: string): Promise<string>;
+
+  /**
+   * Reads a single field by dot-path. Returns the value as a string for
+   * the CLI to print. Throws if the path doesn't resolve.
+   *
+   * Path shapes accepted (same as `wolf profile set`):
+   *   - `<table>.<field>`           e.g. `contact.email`
+   *   - `<type>.<id>.<field>`        e.g. `experience.amazon-2024.bullets`
+   */
+  getField(path: string, opts?: { profileName?: string }): Promise<string>;
+
+  /**
+   * Surgically writes a new value at the given dot-path, preserving
+   * comments and other fields in profile.toml. Returns oldValue / newValue
+   * so the CLI can render a diff-y "set X to Y" line.
+   *
+   * @throws if the path can't be resolved, the value contains `"""`
+   *   (would break TOML termination — use `--from-file` instead), or the
+   *   field is not user-writable (story.<id>.prompt on a wolf-builtin etc).
+   */
+  setField(path: string, value: string, opts?: { profileName?: string }): Promise<ProfileSetResult>;
+
+  /**
+   * Appends a new array-of-table entry (`[[experience]]` / `[[project]]` /
+   * `[[education]]`) with a stable id. wolf generates the id from
+   * `opts.slugFrom` (slugified) or uses `opts.id` verbatim, falling back
+   * to a UUID-style slug if neither is given. Returns the resolved id so
+   * the CLI can echo it back to the agent.
+   */
+  addEntry(
+    arrayName: 'experience' | 'project' | 'education',
+    opts?: { id?: string; slugFrom?: string; profileName?: string },
+  ): Promise<ProfileAddEntryResult>;
+
+  /**
+   * Appends a user-custom `[[question]]` entry. Different signature from
+   * `addEntry` because stories carry the question text in a `prompt`
+   * field rather than deriving id-only from a slug.
+   *
+   * - `opts.prompt` (REQUIRED): the question text. Becomes both the
+   *   `prompt` field AND the source of the slugified id (unless
+   *   `opts.id` is given explicitly).
+   * - `opts.answer` (OPTIONAL): pre-fills `answer`. If omitted,
+   *   the user can fill it later via `wolf profile set
+   *   question.<id>.answer <text>`.
+   * - `opts.id` (OPTIONAL): override the generated slug.
+   *
+   * Custom stories always get `required = false` (only wolf-builtin
+   * stories carry `required = true`). The id can collide with a builtin
+   * id; in that case wolf appends `-2` / `-3` rather than overwriting.
+   */
+  addQuestion(opts: {
+    prompt: string;
+    answer?: string;
+    id?: string;
+    profileName?: string;
+  }): Promise<ProfileAddEntryResult>;
+
+  /**
+   * Removes a `[[<arrayName>]]` entry by id. Refuses to delete a
+   * wolf-builtin story (clear `answer` to skip instead). Requires
+   * `opts.yes` so a typo in id can't silently drop the wrong entry.
+   */
+  removeEntry(
+    arrayName: 'experience' | 'project' | 'education' | 'question',
+    id: string,
+    opts?: { yes?: boolean; profileName?: string },
+  ): Promise<void>;
+
+  /**
+   * Returns the field reference for `wolf profile fields`. Filters to
+   * `required: true` when `opts.requiredOnly` is set; looks up a single
+   * entry by `opts.path` for `wolf profile fields <path>`.
+   */
+  fields(opts?: { requiredOnly?: boolean; path?: string }): Promise<ProfileFieldRow[]>;
+
+  /**
+   * Reports the prompt-pack skeleton for the active profile. This is a
+   * strategy-only customization surface; runtime protocol prompts stay bundled.
+   */
+  prompts(): Promise<ProfilePromptsResult>;
+
+  /**
+   * Creates any missing prompt-pack files for the active profile without
+   * overwriting user-edited strategy files.
+   */
+  repairPrompts(): Promise<ProfilePromptsRepairResult>;
 }

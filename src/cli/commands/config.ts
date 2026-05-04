@@ -1,4 +1,5 @@
-import { createAppContext, type AppContext } from '../../runtime/appContext.js';
+import { ConfigApplicationServiceImpl } from '../../application/impl/configApplicationServiceImpl.js';
+import type { ConfigApplicationService } from '../../application/configApplicationService.js';
 
 /**
  * Prints the value at a dot-path key in wolf.toml.
@@ -8,9 +9,9 @@ import { createAppContext, type AppContext } from '../../runtime/appContext.js';
  */
 export async function configGet(
   key: string,
-  ctx: AppContext = createAppContext(),
+  configApp: ConfigApplicationService = new ConfigApplicationServiceImpl(),
 ): Promise<void> {
-  const value = await ctx.configApp.get(key);
+  const value = await configApp.get(key);
   printValue(value);
 }
 
@@ -22,9 +23,9 @@ export async function configGet(
 export async function configSet(
   key: string,
   valueStr: string,
-  ctx: AppContext = createAppContext(),
+  configApp: ConfigApplicationService = new ConfigApplicationServiceImpl(),
 ): Promise<void> {
-  const { coerced } = await ctx.configApp.set(key, valueStr);
+  const { coerced } = await configApp.set(key, valueStr);
   console.log(`Set ${key} = ${formatValue(coerced)}`);
 }
 

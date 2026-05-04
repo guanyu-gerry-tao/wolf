@@ -35,17 +35,15 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wol
 - Exit code is `0`.
 - Dev banner appears on stderr.
 - `wolf.toml` exists under the test workspace.
-- `profiles/default/profile.md` exists under the test workspace.
-- `profiles/default/standard_questions.md` exists under the test workspace.
-- `profiles/default/resume_pool.md` exists under the test workspace.
+- `profiles/default/profile.toml` exists under the test workspace.
 - `profiles/default/attachments/README.md` exists under the test workspace.
 - `data/` exists under the test workspace.
 - `wolf.toml` contains `[instance]` and `mode = "dev"`.
 - `wolf.toml` contains `default = "default"` (the profile-folder pointer).
-- No files were created under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No files were created under `~/wolf`, `~/wolf-dev`, or repo-local runtime
+  paths under `data/`; ignore the tracked placeholder `data/.gitkeep`.
 
 ### Report Requirements
 
 Record the command, exit code, stdout path, stderr path, file existence checks,
 the `wolf.toml` excerpt proving dev mode, and the safety check result.
-

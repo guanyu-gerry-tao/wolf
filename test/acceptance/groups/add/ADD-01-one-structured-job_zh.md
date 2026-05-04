@@ -55,7 +55,8 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/add-ADD-01 npm run w
 - `add` stdout 是 JSON，且包含非空 `jobId` 字符串。
 - `status` 显示 `tracked  1`。
 - `job list --search "Fixture Company"` 显示 `Fixture Company` 和 `Member of Technical Staff, Backend`。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 

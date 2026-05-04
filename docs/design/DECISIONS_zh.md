@@ -329,3 +329,31 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** 想和朋友一起 dogfood wolf 改简历，同时自己还在重构。稳定版用户要 `npm i -g wolf` 的简单体验；我自己的 dev 环境要继续迭代但不能影响他们。约束：两个二进制必须能在同一台笔记本上共存（npm 装的稳定版 + clone 出来的 dev 版）。开放问题：包名、版本号、Chromium 怎么发、未实装命令怎么处理、发布怎么 gate、版本更新怎么检测。
 **AI：** 采用 scoped 名字 `@gerryt/wolf`（避开有争议的 unscoped `wolf`）。双 bin 策略：稳定版发布 `bin: { wolf }`，根 dev `package.json` 是 `private: true`，`bin: { "wolf-dev" }`。稳定版清单 `package.stable.json` 留在 repo，发布时**复制**到 staging 目录 `dist-package/` —— 根 `package.json` 在发布流程中永不被修改（否决了 sed-rewrite 方案——脆弱；否决了双 bin 方案——污染稳定版用户 PATH）。首版 `0.1.0` 匹配当前状态（tailor 全流程可用；M2/M4/M5 是 stub）。Hunt/score/fill/reach 在 `--help` 里保留并标 `[NOT YET IMPLEMENTED — Mn]`，stub action handler 打 clean stderr + exit 1（不打栈）—— 完全隐藏会让 AI orchestrator 对 scope 困惑。Workspace 模板（`AGENTS.md`/`CLAUDE.md`）加 Command status 表，镜像 `src/utils/commandStatus.ts`，让 workspace 里的 AI agent 知道该建议什么。`better-sqlite3` 升到 `^12.9.0`（Node 20–25 prebuild 覆盖）；`engines.node >=20`。`playwright` 移到 `dependencies`（render service 运行时 import `chromium`）。Chromium 二进制不打包 —— render service 首次 launch 时自动跑 `npx playwright install chromium`（`stdio: 'inherit'`），无询问（小白用户不应被 quiz 一个 150 MB 下载）。两个新 typed error `MissingApiKeyError` 和 `MissingChromiumError` 通过 CLI 顶层 catch + MCP 工具 handler 序列化为 `isError: true` + `errorCode`，AI orchestrator 可以分支。`wolf doctor` 扩展报告 API key + Chromium 状态。`update-notifier` 集成（缓存、forked、~1 RTT/天，dev build 跳过）。发布硬性 gate：(a) 全 smoke + acceptance 包含 paid 组；(b) git tag 匹配版本；(c) `CHANGELOG.md` 更新；(d) main 分支 + clean tree。`scripts/publish-stable.sh` 检查 (b)/(d) 并在 `npm publish` *之前*停下，由人类跑最后一条命令（触发 npm 2FA）。
 **结果：** PR1 `feat/runtime-hardening`（typed error、守卫、update-notifier、依赖调整）+ PR2 `feat/npm-publish-prep`（bin 分离、`package.stable.json`、发布脚本、command-status 系统、README + workspace 模板 + 本 DECISIONS 条目）。Migration 框架有意推迟到第一次 breaking change 时再做；`CLAUDE.md` § Workspace migrations 记录契约，免得未来忘了。PR 计划在 `docs/plans/2026-04-28-npm-dual-line-release.md`。
+
+---
+
+**2026-04-30 — Profile prompt pack 只暴露策略，不暴露运行时协议**
+**我：** 我希望用户和 AI assistant 能自定义某个 profile 的包装策略，但不能因为改 prompt 而破坏 tailor/fill 流水线。不能暴露的是流程/协议类 prompt：输入 section 叫什么、输出 schema 是什么、HTML/JSON 契约是什么、parser/renderer 依赖哪些规则。真正该暴露的是策略：保守还是激进、resume 风格、cover letter 是否写公司名、form answer 策略等。
+**AI：** 把 prompt 分成两层。运行时协议 prompt 继续内置在代码里，负责机器契约：prompt section 存在哪些、名字是什么、模型必须输出什么形状、renderer/parser 依赖什么约束。每个 profile 下面新增一个可选策略 prompt pack：`profiles/<name>/prompts/`，文件名稳定，默认空文件：`tailoring-strategy.md`、`resume-strategy.md`、`cover-letter-strategy.md`、`fill-strategy.md`，外加 README 说明边界。空策略文件表示"使用 wolf 默认策略"。用户可以改内容，但不能改文件名。工具只暴露骨架：`wolf profile prompts path`、`wolf profile prompts list`、`wolf profile prompts repair`；repair 只创建缺失文件，不覆盖已有编辑。
+**结果：** 采用为设计方向。初始实现提交 `01fdab8` 创建了 prompt-pack 骨架和 CLI 查看/修复工具，但还没有把策略文件注入运行时 AI 调用，也没有 seed 任何带立场的策略内容。后续接 runtime 时，应只把非空策略文件作为 user strategy section 注入，协议 prompt 仍然保持内置。
+
+---
+
+**2026-05-01 — Base AI batch 先持久化标准化 item 结果，再由业务消费**
+**我：** 我想要一个所有未来 batch workflow 都能复用的底层 AI batch 层（`score`、input extraction、tailor 等），而不是一个 score 专用实现。难点在 provider polling 之后：不同 service 可能在不同时间 poll 或消费结果，而且一批里可能部分成功、部分失败。
+**AI：** 把 batch 生命周期和业务解释拆开。`BatchService` 只负责 provider 提交、provider 轮询，以及把标准化结果持久化。每个 provider batch 在 `batches` 里一行；每个 request/result 在 `batch_items` 里一行。`batch_items` 记录 `custom_id`、item 状态、标准化文本输出或错误，以及 `consumed_at`。底层 batch 层不解析 score JSON、不验证 resume HTML、不更新 job fields；application services 后续消费成功的 `batch_items`，再写自己的业务状态。Provider-specific API 通过 adapter 隔离，例如 Anthropic Message Batches adapter 把 `custom_id`、provider status、JSONL row、content block、provider error 转成 wolf 自己的类型。
+**结果：** 采用为 base batch runtime 的边界。这样 polling 很 dumb 且可恢复，支持部分 item 失败，进程重启不丢结果，也避免 batch 层耦合 score/tailor/input 语义。未来业务 service 应把 `batch_items.result_text` 当作输入，只有在自己的业务写入成功之后才把 item 标记为 consumed。
+
+---
+
+**2026-04-30 — `wolf serve` 是平行 HTTP transport，不是新的 CLI 后端**
+**我：** Companion extension 需要一个常驻本地 daemon，但这是否意味着整个项目都应该 HTTP-first，让 CLI/MCP 都变成 HTTP client？
+**AI：** 保持 CLI、MCP、HTTP 三个入口平行。`wolf serve` 是给浏览器扩展调用的本地常驻 HTTP daemon，但它通过 `AppContext` 委托给同一套 application service；它不替代现有 CLI/MCP 的进程内调用路径。CLI 仍然可以不启动 daemon 就直接运行，保留一次性命令体验和现有 workspace 语义。
+**结果：** 采用。`src/serve/` 承载本地 HTTP daemon interface，`ServeApplicationService` 拥有 daemon 生命周期，`src/cli/commands/serve.ts` 继续保持薄 wrapper。初始 route 是 `GET /api/ping`，通过 echo nonce 支撑 companion extension 的连接检查。
+
+---
+
+**2026-04-30 — Inbox 只做 raw landing zone**
+**我：** Inbox 要同时接用户手动保存的页面和大规模 hunt 结果，不能变成另一套处理后的 job workspace。
+**AI：** Inbox 保持 raw-only，但放进 SQLite `inbox_items`，不再使用 `data/inbox/` 文件夹；手动 capture 和大规模 hunt 结果共享同一个 durable queue。
+**结果：** 采用。Inbox 不存清洗后的 JD、解析字段、tailor 产物、去重结果或 fill 快照。用户显式触发付费处理时创建 `background_ai_batches`；成功的 AI 输出会立刻应用到 canonical job state，只短期保留 debug payload。

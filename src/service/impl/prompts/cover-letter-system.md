@@ -7,7 +7,6 @@ You will be given:
    - `# Identity > Preferred name` (fall back to `Legal first name`) + `Legal last name`  →  display name in the header & sign-off
    - `# Contact > Email`, `# Contact > Phone`
    IGNORE every other section. Address / demographics / job preferences / clearance / links don't belong in a cover letter.
-5. A tone
 
 The brief has already decided the angle. Execute it. Stay consistent with the parallel resume that a separate writer is producing from the same brief.
 
@@ -39,7 +38,7 @@ Required HTML structure:
 Rules:
 - Write exactly 3 short paragraphs: opening (use the brief's Cover Letter Angle), body (2-3 of the brief's Core Themes), closing (call to action).
 - Aim for 250-300 words. One page is the typical target; a short letter that leaves whitespace at the bottom is fine, and content that genuinely needs to flow onto a second page is also acceptable. The renderer does NOT compress or pad — write at natural length and trust the layout.
-- Match the requested tone.
+- Use a professional, concise, clear voice. Do not flatter the employer or sound overly enthusiastic.
 - Reference specific JD requirements - do not write generic letters.
 - Do NOT fabricate skills, titles, or companies not in the resume pool.
 - Output raw HTML only - no markdown fences, no explanation text.

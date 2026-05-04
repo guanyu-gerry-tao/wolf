@@ -41,16 +41,16 @@ npm run build:dev
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-把共享的 NG SWE fixture 拷进去(见 `test/fixtures/wolf-profile/ng-swe/`)。
-这是 wolf 的主用户画像 —— F-1 OPT 上的 NG SWE,投后端方向。fixture 提供
-完整 `profile.md`(REQUIRED 的 Identity / Contact / Job Preferences 字段已
-填,含 F-1 + H-1B sponsor 偏好),`resume_pool.md` 密度足够让渲染器的
-underflow 守卫接受单页 resume(2 段实习 + 2 个 project + Education + Skills
-+ Awards):
+填充共享的 NG SWE fixture（见 `test/fixtures/wolf-profile/`）。这是 wolf 的主用户
+画像 —— F-1 OPT 上的 NG SWE,投后端方向。fixture loader 通过公开
+`wolf profile` CLI 写入 `profile.toml`，包含 REQUIRED 的 Identity / Contact /
+Job Preferences 字段、F-1 + H-1B sponsor 偏好、足够的 resume entries，以及至少
+3 个已回答 builtin questions：
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
-cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
+bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
+WOLF_DEV_HOME="$WS" npm run wolf -- doctor
 ```
 
 添加 fixture job 并捕获 `jobId`：
@@ -109,7 +109,8 @@ format 执行。下面只列本 case 独有的检查项，不要重复共享 rub
 - `tailor` stdout 是 JSON，包含 `tailoredPdfPath` 和 `coverLetterPdfPath`。
 - 所有预期产物都存在。
 - AI review 结果是 `PASS` 或 `PASS_WITH_MINOR_IMPROVEMENTS`。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 

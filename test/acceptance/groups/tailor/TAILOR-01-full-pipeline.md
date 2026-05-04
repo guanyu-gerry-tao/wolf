@@ -42,17 +42,17 @@ Initialize the workspace:
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
 ```
 
-Drop in the shared NG SWE fixture (see `test/fixtures/wolf-profile/ng-swe/`).
+Populate the shared NG SWE fixture (see `test/fixtures/wolf-profile/`).
 This is wolf's primary user persona — a new-grad SWE on F-1 OPT applying
-to backend-flavored roles. The fixture has a populated `profile.md`
-(REQUIRED Identity / Contact / Job Preferences fields filled, including
-F-1 + H-1B sponsorship preference) and a `resume_pool.md` dense enough
-that the renderer's underflow guard accepts the resulting single-page
-resume (2 internships + 2 projects + Education + Skills + Awards):
+to backend-flavored roles. The fixture loader writes `profile.toml` through
+the public `wolf profile` CLI, including REQUIRED Identity / Contact / Job
+Preferences fields, F-1 + H-1B sponsorship preference, enough resume entries
+for the renderer, and at least three answered builtin questions:
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01
-cp -r test/fixtures/wolf-profile/ng-swe/* "$WS/profiles/default/"
+bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
+WOLF_DEV_HOME="$WS" npm run wolf -- doctor
 ```
 
 Add the fixture job and capture `jobId`:
@@ -114,7 +114,8 @@ shared rubric — do not duplicate the shared checks here.
 - `tailor` stdout is JSON containing `tailoredPdfPath` and `coverLetterPdfPath`.
 - All expected artifacts exist.
 - AI review result is `PASS` or `PASS_WITH_MINOR_IMPROVEMENTS`.
-- No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files are written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Report Requirements
 

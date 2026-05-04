@@ -25,7 +25,8 @@
 
 ## Setup
 
-使用和 [TAILOR-01](TAILOR-01-full-pipeline_zh.md) 相同的 fixture profile、resume pool 和 add-job setup，但放在 TAILOR-03 workspace 下。
+使用和 [TAILOR-01](TAILOR-01-full-pipeline_zh.md) 相同的 CLI-populated fixture
+profile、resume content 和 add-job setup，但放在 TAILOR-03 workspace 下。
 
 ## 步骤
 
@@ -64,9 +65,9 @@ data/jobs/<job-dir>/src/tailoring-brief.md
 - `tailoring-brief.md` 存在。
 - 共享 reviewer rubric 返回 `PASS` 或 `PASS_WITH_MINOR_IMPROVEMENTS`，且
   上面两条本 case 独有检查通过。
-- 没有文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`。
+- 没有运行时文件写入 `~/wolf`、`~/wolf-dev` 或 repo 内 `data/`；忽略被 git
+  跟踪的占位文件 `data/.gitkeep`。
 
 ## 报告要求
 
 包含 command logs、`jobId`、hint path、brief path、两个文件的短摘录、AI review findings 和 safety checks。
-

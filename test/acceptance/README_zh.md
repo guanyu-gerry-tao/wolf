@@ -61,8 +61,10 @@ You are the Wolf Acceptance Test Orchestrator.
 | Group | 产品领域 | 默认模式 | 当前状态 |
 |---|---|---|---|
 | `add` | 手动结构化 job 录入 | automated | implemented |
+| `profile` | Profile 字段和 question 数据治理 | automated | implemented |
 | `hunt` | Job discovery providers 和 dedupe | automated / ai-reviewed | planned |
 | `score` | Job scoring 和 hard filters | ai-reviewed | planned |
+| `job` | Job row 数据治理（`show` / `get` / `set` / `fields`） | automated | implemented |
 | `job-tracking` | 完整 `wolf job list` filters 和 output modes | automated | implemented |
 | `tailor` | Resume 和 cover-letter 产物生成 | ai-reviewed | implemented |
 | `fill` | 申请表填写 | fixture 用 automated，live submit 用 human-approval | planned |

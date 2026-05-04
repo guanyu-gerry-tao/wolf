@@ -56,7 +56,8 @@ WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/add-ADD-01 npm run w
 - `add` stdout is JSON containing a non-empty `jobId` string.
 - `status` shows `tracked  1`.
 - `job list --search "Fixture Company"` shows `Fixture Company` and `Member of Technical Staff, Backend`.
-- No files are written under `~/wolf`, `~/wolf-dev`, or repo-local `data/`.
+- No runtime files are written under `~/wolf`, `~/wolf-dev`, or repo-local
+  `data/` (ignore the tracked `data/.gitkeep` placeholder).
 
 ## Report Requirements
 

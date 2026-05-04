@@ -63,6 +63,7 @@ You are the Wolf Smoke Test Orchestrator.
 | `profile` | Default profile bootstrap | automated | free |
 | `env` | Environment key display safety | automated | free |
 | `job-workflows` | Add/status/list job workflow | automated | free |
+| `serve` | Local HTTP daemon ping route | automated | free |
 
 ## Report Addendum
 
@@ -71,4 +72,5 @@ In addition to the global report contract, smoke reports must include:
 - whether the dev banner appeared for each wolf invocation
 - the exact `WOLF_DEV_HOME` path used by each case
 - a safety check confirming no files were written to `~/wolf`, `~/wolf-dev`, or
-  repo-local `data/`
+  repo-local runtime paths under `data/`; the tracked placeholder
+  `data/.gitkeep` is allowed and must not make the check fail

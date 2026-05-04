@@ -6,16 +6,47 @@ import type { Profile } from '../../utils/types/index.js';
 import { AppConfigSchema } from '../../utils/schemas.js';
 import { WorkspaceNotInitializedError } from '../../utils/errors/workspaceNotInitializedError.js';
 import { workspaceEnvVarName, currentBinaryName } from '../../utils/instance.js';
+import {
+  parseProfileToml,
+  type ProfileToml,
+} from '../../utils/profileToml.js';
+import {
+  renderProfileMarkdown,
+  renderResumePoolMarkdown,
+  renderStandardQuestionsMarkdown,
+} from '../../utils/profileTomlRender.js';
 
 /**
- * Reads profiles from `<workspace>/profiles/<name>/`. Each profile is a folder
- * with profile.md, resume_pool.md, standard_questions.md and an attachments/ dir.
+ * Reads profiles from `<workspace>/profiles/<name>/`. As of v2 each profile
+ * is a directory with a single `profile.toml` plus an `attachments/` dir.
  *
  * The default profile name comes from `wolf.toml.default`. If that field
  * points at a directory that doesn't exist, `getDefault()` throws — the user
  * either renamed the folder without updating wolf.toml, or wolf init wasn't run.
+ *
+ * # v2 read path
+ *
+ * `getProfileToml` returns the parsed structured object directly. The
+ * legacy `getProfileMd` / `getResumePool` / `getStandardQuestions` methods
+ * read profile.toml and *render* their respective markdown views via
+ * `profileTomlRender`. Existing AI prompt builders that call these methods
+ * keep working without changes; over time they'll migrate to consuming
+ * `ProfileToml` directly.
+ *
+ * # v1 workspaces
+ *
+ * If a profile directory still has the old .md trio (no profile.toml), the
+ * accessors throw a clear error pointing at `wolf migrate`. The migration
+ * runtime is the only blessed path to v2.
  */
 export class FileProfileRepositoryImpl implements ProfileRepository {
+  // Cache the parsed TOML per name so multi-method calls (e.g. tailor calling
+  // getProfileMd + getResumePool + getStandardQuestions) parse once. Cleared
+  // implicitly when the repo instance is rebuilt (which happens per-command
+  // via createAppContext). No invalidation logic — single-process CLI usage
+  // means the on-disk file doesn't mutate while we hold the parsed object.
+  private readonly tomlCache = new Map<string, ProfileToml>();
+
   constructor(private readonly workspaceDir: string) {}
 
   private profileDir(name: string): string {
@@ -87,37 +118,51 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
     return dirs.filter((d): d is string => d !== null).sort();
   }
 
-  async getProfileMd(name: string): Promise<string> {
-    const mdPath = path.join(this.profileDir(name), 'profile.md');
+  async getProfileToml(name: string): Promise<ProfileToml> {
+    const cached = this.tomlCache.get(name);
+    if (cached) return cached;
+
+    const tomlPath = path.join(this.profileDir(name), 'profile.toml');
+    let raw: string;
     try {
-      return await fs.readFile(mdPath, 'utf-8');
+      raw = await fs.readFile(tomlPath, 'utf-8');
     } catch {
-      throw new Error(
-        `profile.md for profile '${name}' not found. Expected profiles/${name}/profile.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
-      );
+      // If the v1 profile.md still exists, surface a migration hint
+      // rather than the bare ENOENT — most likely cause of this branch
+      // is a v1 workspace that hasn't been migrated yet.
+      const v1Md = path.join(this.profileDir(name), 'profile.md');
+      try {
+        await fs.access(v1Md);
+        throw new Error(
+          `Profile '${name}' is on the v1 schema (profile.md present, profile.toml missing). ` +
+          `Run \`${currentBinaryName()} migrate\` to upgrade.`,
+        );
+      } catch (_) {
+        // No v1 file either — workspace truly missing this profile's TOML.
+        throw new Error(
+          `profile.toml for profile '${name}' not found. Expected ${tomlPath} to exist. ` +
+          `Run \`${currentBinaryName()} init\` to create it.`,
+        );
+      }
     }
+    const parsed = parseProfileToml(raw);
+    this.tomlCache.set(name, parsed);
+    return parsed;
+  }
+
+  async getProfileMd(name: string): Promise<string> {
+    const toml = await this.getProfileToml(name);
+    return renderProfileMarkdown(toml);
   }
 
   async getResumePool(name: string): Promise<string> {
-    const mdPath = path.join(this.profileDir(name), 'resume_pool.md');
-    try {
-      return await fs.readFile(mdPath, 'utf-8');
-    } catch {
-      throw new Error(
-        `Resume pool for profile '${name}' not found. Expected profiles/${name}/resume_pool.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
-      );
-    }
+    const toml = await this.getProfileToml(name);
+    return renderResumePoolMarkdown(toml);
   }
 
   async getStandardQuestions(name: string): Promise<string> {
-    const mdPath = path.join(this.profileDir(name), 'standard_questions.md');
-    try {
-      return await fs.readFile(mdPath, 'utf-8');
-    } catch {
-      throw new Error(
-        `standard_questions.md for profile '${name}' not found. Expected profiles/${name}/standard_questions.md to exist. Run \`${currentBinaryName()} init\` to create it.`,
-      );
-    }
+    const toml = await this.getProfileToml(name);
+    return renderStandardQuestionsMarkdown(toml);
   }
 
   async getAttachmentsList(name: string): Promise<string[]> {

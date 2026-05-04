@@ -32,7 +32,7 @@
 **AC-01-5 — 可脚本化的空初始化**
 - Given 自动化 agent 需要一个非交互式 workspace
 - When 它运行 `wolf init --empty`
-- Then wolf 写入 schema-valid 的 `wolf.toml`、三份模板 MD（`profiles/default/profile.md`、`profiles/default/resume_pool.md`、`profiles/default/standard_questions.md`）、空的 `profiles/default/attachments/` 目录，以及 `data/`，且不触发任何 prompt
+- Then wolf 写入 schema-valid 的 `wolf.toml`、`profiles/default/profile.toml`、空的 `profiles/default/attachments/` 目录，以及 `data/`，且不触发任何 prompt
 
 **AC-01-6 — Dev 初始化隔离**
 - Given dev build 以 `npm run wolf -- init --dev --empty` 调用
@@ -333,3 +333,87 @@
 - Given 任意 MCP 工具调用
 - When 工具完成（无论成功或失败）
 - Then 响应符合该工具声明的输出 schema
+
+---
+
+## AC-11 · Profile 数据治理（`wolf profile`）
+
+**故事：** US-10 · **用例：** UC-10.1, UC-10.2, UC-10.3
+
+**AC-11-1 — Profile schema 参考**
+- Given 已初始化 dev workspace
+- When 用户运行 `wolf profile fields`、`wolf profile fields --required`、`wolf profile fields --json` 或 `wolf profile fields <path>`
+- Then wolf 打印来自 `PROFILE_FIELDS` 的 source-of-truth 元数据，支持 required-only 和机器可读输出，并对未知 path 给出清晰错误
+
+**AC-11-2 — 读取和展示 profile 数据**
+- Given active profile 中包含一个已知值
+- When 用户运行 `wolf profile show` 和 `wolf profile get <path>`
+- Then `show` 原样打印 active `profile.toml` 并保留注释，`get` 只打印请求字段的值，方便管道使用
+
+**AC-11-3 — 更新标量字段**
+- Given active profile 中包含一个可编辑顶层字段
+- When 用户运行 `wolf profile set <path> <value>`
+- Then wolf 只精确更新该字段，保留周围注释/格式，并且新值可通过 `wolf profile get <path>` 读回
+
+**AC-11-4 — 从文件更新多行字段**
+- Given 存在一个多行 profile 字段，以及 `/tmp/wolf-test/` 下的临时输入文件
+- When 用户运行 `wolf profile set <path> --from-file <file>`
+- Then wolf 保存文件内容且不加入虚假的尾随换行，之后能正确读回
+
+**AC-11-5 — 数组 entry 的新增、编辑、删除**
+- Given 用户需要管理 resume-source entry
+- When 用户运行 `wolf profile add experience|project|education`，编辑返回 id 下的字段，并用 `--yes` 删除该 entry
+- Then wolf 创建稳定的 `[[experience]]`、`[[project]]` 或 `[[education]]` entry，只允许支持的 per-entry 字段，并只删除请求的 id
+
+**AC-11-6 — 自定义 question 新增和删除**
+- Given 用户有一个可复用的申请问题
+- When 用户运行 `wolf profile add question --prompt <text> --answer <text>`，之后用 `wolf profile remove question <id> --yes` 删除返回的 id
+- Then wolf 创建一个 `required = false` 的自定义 `[[question]]` entry，保存 prompt 和 answer，并删除该自定义 entry，不影响 wolf-builtin questions
+
+**AC-11-7 — Builtin question 保护**
+- Given active profile 中存在 wolf-builtin question
+- When 用户尝试删除它，或修改它的 prompt / required flag
+- Then wolf 用清晰错误拒绝操作，并提示用户如要跳过应清空 answer
+
+**AC-11-8 — Profile 写入校验**
+- Given 用户传入未知 path、未知 array type、不安全/重复 id、缺失 value，或会破坏 TOML 的值
+- When `wolf profile set`、`add` 或 `remove` 运行
+- Then wolf 以非零退出并给出清晰消息，不会静默破坏 `profile.toml`
+
+---
+
+## AC-12 · Job 数据治理（`wolf job show|get|set|fields`）
+
+**故事：** US-08 · **用例：** UC-08
+
+**AC-12-1 — Job schema 参考**
+- Given dev workspace 中至少有一条 job
+- When 用户运行 `wolf job fields`、`wolf job fields --required`、`wolf job fields --json` 或 `wolf job fields <name>`
+- Then wolf 打印来自 `JOB_FIELDS` 的 source-of-truth 元数据，支持 required-only 和机器可读输出，并对未知字段名给出清晰错误
+
+**AC-12-2 — 读取和展示 job 数据**
+- Given 一条 job 存在且带有 JD 正文
+- When 用户运行 `wolf job show <id>`、`wolf job show <id> --json` 和 `wolf job get <id> <field>`
+- Then `show` 打印每个 flat job column 加 `description_md`，JSON 输出可被机器读取，`get` 只打印请求字段的值，方便管道使用
+
+**AC-12-3 — 更新可编辑 job 字段**
+- Given 一条 job 存在
+- When 用户对 `status`、`score`、`remote` 或 `description_md --from-file` 等可编辑字段运行 `wolf job set <id> <field> <value>`
+- Then wolf 按 `JOB_FIELDS` 对 CLI 字符串做类型转换并持久化，且值可通过 `wolf job get` 读回
+
+**AC-12-4 — Salary range 约定**
+- Given 一条 job 的 salary 字段未知
+- When 用户运行 `wolf job set <id> salaryLow 0` 和 `wolf job set <id> salaryHigh 30000`
+- Then 两个命令都成功，`salaryLow` 读回 `0`，`salaryHigh` 读回 `30000`，且 wolf 把 `0` 视为明确 unpaid，把空/null 视为 unknown
+
+**AC-12-5 — Job 写入校验**
+- Given 用户传入未知字段、非法 enum、非法 boolean、非法 number，或已移除的 sentinel（例如 `salaryLow unpaid`）
+- When `wolf job set` 运行
+- Then wolf 以非零退出并给出清晰校验错误，保留原来的 job 值不变
+
+**AC-12-6 — System-managed 字段只读**
+- Given `id`、`companyId`、`createdAt`、`updatedAt` 等 system-managed 字段存在于 job row
+- When 用户用 `wolf job show` 或 `wolf job get` 读取
+- Then 这些值可见
+- AND 当用户尝试用 `wolf job set` 更新它们
+- Then wolf 拒绝写入，并说明它们是 system-managed

@@ -2,19 +2,19 @@
 
 ## Overview
 
-wolf is a dual-interface application: it runs as both a **CLI tool** (for human users) and an **MCP server** (for AI agents like OpenClaw). Both interfaces share the same core command logic, ensuring consistent behavior regardless of how wolf is invoked.
+wolf is a multi-interface application: it runs as a **CLI tool** (for human users), an **MCP server** (for AI agents like OpenClaw), and a local **HTTP daemon** (`wolf serve`) for the companion browser extension. All interfaces share the same application services, ensuring consistent behavior regardless of how wolf is invoked.
 
 ```
-        Human (terminal)          AI Agent (OpenClaw)
+        Human (terminal)          AI Agent (OpenClaw)       Browser Extension
                │                          │
                v                          v
-        ┌─────────────┐          ┌────────────────┐
-        │  CLI Layer  │          │   MCP Layer    │   Presentation
-        │ commander.js│          │   MCP SDK      │
-        └──────┬──────┘          └───────┬────────┘
-               └────────────┬────────────┘
-                            │
-                            v
+        ┌─────────────┐          ┌────────────────┐          ┌──────────────┐
+        │  CLI Layer  │          │   MCP Layer    │          │ HTTP Layer   │   Presentation
+        │ commander.js│          │   MCP SDK      │          │ wolf serve   │
+        └──────┬──────┘          └───────┬────────┘          └──────┬───────┘
+               └────────────┬────────────┴────────────┬────────────┘
+                            │                         │
+                            v                         v
                ┌────────────────────────┐
                │       Commands         │   Commands
                │  tailor / hunt / score │
@@ -49,9 +49,9 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Presentation  src/cli/index.ts  src/mcp/            │
-│  Parse args, format output. Each src/cli/commands/   │
-│  <verb>.ts is one delegate line + a formatter.       │
+│  Presentation  src/cli/  src/mcp/  src/serve/        │
+│  Parse args/protocol, format output. CLI and HTTP    │
+│  wrappers delegate to application services.          │
 ├──────────────────────────────────────────────────────┤
 │  Application   src/application/                      │
 │  Use-case orchestration. Multi-step pipelines.       │
@@ -70,10 +70,10 @@ wolf is structured in five layers. Each layer may only depend on the layers belo
 │  in the dependency sense — anything may import it.   │
 └──────────────────────────────────────────────────────┘
 
-AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI and MCP.
+AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI, MCP, and serve HTTP.
 ```
 
-**Layer dependency direction:** `cli → application → service → repository → utils`
+**Layer dependency direction:** `cli / mcp / serve → application → service → repository → utils`
 
 ### Layer responsibilities
 
@@ -83,11 +83,11 @@ AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI an
 | **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | Contain business logic or call other layers |
 | **Service** | `src/service/` (incl. `service/ai/`) | Single-responsibility operations (AI provider registry + clients, external API fetch, rendering, batch submit) | Orchestrate multi-step flows or access DB directly |
 | **Application** | `src/application/` | Orchestrate every use-case — even one-line ones like config get/set or env list. Owns init templates. | Know about CLI options, MCP schemas, or terminal formatting |
-| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/` | Parse input, format output, hold inquirer prompts | Contain logic beyond argument mapping + formatting |
+| **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/`, `src/serve/` | Parse input/protocol, format output, hold inquirer prompts, expose local HTTP routes | Contain logic beyond argument mapping, protocol mapping, and formatting |
 
 ### Dependency injection — AppContext
 
-All concrete implementations are constructed in `src/runtime/appContext.ts`. Both `src/cli/` and `src/mcp/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
+All concrete implementations are constructed in `src/runtime/appContext.ts`. `src/cli/`, `src/mcp/`, and `src/serve/` consume the same `AppContext`. Nothing else instantiates repositories or services directly. This is the single swap point: change a real implementation for a mock by editing `appContext.ts` — nothing else changes.
 
 ```typescript
 // src/runtime/appContext.ts
@@ -96,9 +96,12 @@ export interface AppContext {
   jobRepository: JobRepository;
   companyRepository: CompanyRepository;
   batchRepository: BatchRepository;
+  backgroundAiBatchRepository: BackgroundAiBatchRepository;
+  inboxRepository: InboxRepository;
   profileRepository: ProfileRepository;
   // services
   batchService: BatchService;
+  httpServer: HttpServer;
   // ...renderService, rewriteService, briefService, fillService, ...
   // application services (one per CLI verb)
   addApp: AddApplicationService;
@@ -114,6 +117,10 @@ export interface AppContext {
   scoreApp: ScoreApplicationService;
   statusApp: StatusApplicationService;
   tailorApp: TailorApplicationService;
+  inboxApp: InboxApplicationService;
+  inboxPromotionApp: InboxPromotionApplicationService;
+  backgroundAiBatchWorker: BackgroundAiBatchWorker;
+  serveApp: ServeApplicationService;
 }
 ```
 
@@ -143,6 +150,10 @@ src/
 │       ├── job/                            # multi-subcommand verbs get a folder
 │       └── __tests__/                      # CLI-edge tests
 ├── mcp/                                # Presentation — MCP SDK (shares AppContext)
+├── serve/                              # Presentation — local HTTP daemon
+│   ├── httpServer.ts                       # Interface for wolf serve
+│   ├── protocol.ts                         # HTTP request/response schemas
+│   └── impl/nodeHttpServerImpl.ts          # Node HTTP implementation
 ├── runtime/
 │   └── appContext.ts                       # Manual DI — wires every repo + service + app
 ├── application/                        # Use-case orchestration
@@ -192,12 +203,15 @@ CLI parses --job abc123 [--hint "focus on ML ops"]
                   → Anthropic API → returns HTML body
                   → [Service] RenderService.renderPdf(html)       # Playwright + fit() binary search
                   → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
-              → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+              → [Service] ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, ai)
                   → Anthropic API → returns HTML body
                   → [Service] RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
                   → writeFile data/jobs/<dir>/{src/cover_letter.html, cover_letter.pdf}
-      → ctx.jobRepository.update(jobId, { tailoredResumePdfPath, coverLetterPaths })
+      → ctx.jobRepository.update(jobId, { hasTailoredResume: true, hasTailoredCoverLetter: true })
       → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
+        # β.10h: Job row stores booleans only; paths are convention-derived
+        # via JobRepository.getArtifactPath(id, kind). The CLI return value
+        # still echoes the actual paths for the caller's convenience.
   → CLI prints JSON summary
 ```
 
@@ -213,10 +227,9 @@ grep-friendly and lets users hand-edit any checkpoint.
 
 ```
 data/
-├── wolf.sqlite                             ← structured metadata only (no prose columns)
+├── wolf.sqlite                             ← structured metadata + JD prose (jobs.description_md, β.7+)
 ├── jobs/
-│   └── <company>_<title>_<jobIdShort8>/
-│       ├── jd.md                           ← source of truth for the JD
+│   └── <company>_<title>_<jobIdShort8>/    ← per-job artifact dir; β.10h paths convention-derived
 │       ├── src/
 │       │   ├── hint.md                     ← // comment header + user guidance
 │       │   ├── tailoring-brief.md          ← analyst output; editable checkpoint
@@ -348,7 +361,7 @@ The types module defines shared data structures across all layers — the single
 - `Company` — a first-class entity, stored separately from jobs. Multiple jobs share one company record. `Job.companyId` is a foreign key to `Company.id`. The `reach` command uses `Company.domain` to infer email patterns.
 - `Job` — job listing data, the core object persisted to SQLite.
 - `Profile` — per-profile identity. As of 2026-04-26 a profile is a small `{ name, md }` envelope plus three sibling files on disk: `profile.md` (identity, contact, address, links, job preferences, demographics, clearance — all H2-keyed prose), `resume_pool.md` (the full resume content pool), `standard_questions.md` (Q&A bank for `wolf fill`). Plus an `attachments/` directory for uploadable files (transcripts, etc.). Loaded by `FileProfileRepositoryImpl`. There is no zod schema for the prose: validation is content-shape only (REQUIRED H2 sections are filled, resume pool has enough substantive lines), enforced at command time by `assertReadyForTailor` and surfaced proactively by `wolf doctor`.
-- `AppConfig` — workspace-level config, loaded from `wolf.toml`. Contains `defaultProfileId` and provider/hunt/reach settings. Validated at parse time by `AppConfigSchema` (zod). Does **not** embed profile data.
+- `AppConfig` — workspace-level config, loaded from `wolf.toml`. Contains the default profile name, command model settings, and companion settings (`servePort`, `maxStagehandSessions`, fixed `browserMode`). The fixed companion browser mode means a separate Google Chrome instance with a wolf-owned persistent profile under the workspace; users may install wolf companion and password-manager extensions there once, and the profile is reused by later `wolf serve` runs. Validated at parse time by `AppConfigSchema` (zod). Does **not** embed profile data.
 - Per-command Options/Result pairs.
 
 Full definitions in `src/utils/types/`.
@@ -544,11 +557,11 @@ CLI parses args
           → Claude → HTML body
           → RenderService.renderPdf(html)  # Playwright + fit() binary search
           → writeFile data/jobs/<dir>/{src/resume.html, resume.pdf}
-        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, tone, ai)
+        → ResumeCoverLetterService.generateCoverLetter(pool, jd, profile, brief, ai)
           → Claude → HTML body
           → RenderService.renderCoverLetterPdf(html)  # Playwright, natural layout (no fit loop)
           → writeFile data/<jobId>/{src/cover_letter.html, cover_letter.pdf}
-    → db.updateJob(jobId, { tailoredResumePdfPath, coverLetterPaths })
+    → db.updateJob(jobId, { hasTailoredResume: true, hasTailoredCoverLetter: true })
     → return { tailoredPdfPath, coverLetterHtmlPath, coverLetterPdfPath, ... }
   ← CLI prints JSON summary
 ```
@@ -557,9 +570,15 @@ Writer-only steps: `wolf tailor brief|resume|cover --job <id>` run just that
 phase. Brief is read from disk on resume/cover; missing brief produces a clear
 error directing the user to run `wolf tailor brief` first.
 
-JD text lives at `data/jobs/<dir>/jd.md` (grep-friendly, hand-editable). The
-tailor app service reads it through `JobRepository.readJdText(jobId)` — the row
-in SQLite carries only structured metadata.
+β.10h: artifact paths are convention-derived under `data/jobs/<dir>/` via
+`JobRepository.getArtifactPath(id, kind)`. The Job row stores 4 booleans
+(`hasTailoredResume` / `hasTailoredCoverLetter` / `hasScreenshots` /
+`hasOutreachDraft`) — `hasX = true` means "wolf produced this artifact",
+not "file currently exists on disk"; consumers handle ENOENT.
+
+β.7+: JD text lives in the SQLite `jobs.description_md` column (no longer
+on disk as `jd.md`). The tailor app service reads it through
+`JobRepository.readJdText(jobId)`.
 
 ### `wolf fill --job <job_id> --dry-run`
 
@@ -575,6 +594,23 @@ CLI parses args
     → return { fields, mapping, screenshotPath }
   ← CLI prints detected fields table
 ```
+
+### Companion `Autofill this page`
+
+```
+Side panel POST /api/fill/quick
+  → CompanionActionApplicationService.quickFill({ jobId, tabId, userPrompt })
+    → ServeBrowserManager.getPage(tabId)          # wolf-controlled browser only
+    → StagehandFillService.fill(...)              # TODO: LOCAL observe/cache/replay
+    → if Stagehand not wired, safe Playwright fallback fills obvious profile/contact fields
+    → never clicks submit
+    → return run status through GET /api/runs/:runId
+```
+
+The Stagehand dependency is present, but the first companion MVP keeps real
+Stagehand execution behind `StagehandFillService`. Until that service is wired
+to a CDP session pool and selector cache, autofill remains a conservative
+Playwright fallback and preserves the no-auto-submit rule.
 
 ## File System Layout
 
@@ -602,10 +638,10 @@ This design aligns with how AI agents work: Claude Code's working context is the
 ├── .gitignore          # Auto-generated by wolf init
 ├── credentials/        # OAuth tokens (Gmail) — gitignored
 └── data/               # Generated artifacts — gitignored
-    ├── wolf.sqlite      # Structured metadata only (no prose columns)
+    ├── wolf.sqlite      # Structured metadata, raw inbox, background AI batches
+    ├── wolf-browser-profile/ # Persistent profile for the wolf-controlled browser
     ├── jobs/
     │   └── <company>_<title>_<jobIdShort>/
-    │       ├── jd.md               # Job description (source of truth)
     │       ├── src/
     │       │   ├── hint.md
     │       │   ├── tailoring-brief.md
@@ -617,6 +653,16 @@ This design aligns with how AI agents work: Claude Code's working context is the
         └── <company>_<companyIdShort>/
             └── info.md             # Free-form employer notes
 ```
+
+Raw inbox data lives in SQLite `inbox_items`, not per-capture folders. The
+table stores only original manual-page or hunt-result payloads plus processing
+state (`raw`, `queued`, `promoted`, `failed`, etc.). Explicit user actions can
+create `background_ai_batches` / shards / items for paid processing. The current
+companion MVP can also promote manual raw pages directly into canonical `jobs`
+rows with a conservative local extraction path; future AI promotion can replace
+that path without changing the inbox contract. Successful AI output is applied
+immediately to canonical job state; only short-lived debug payloads remain in
+`background_ai_batch_items`.
 
 > API keys (`WOLF_ANTHROPIC_API_KEY`, etc.) are stored as shell environment variables — never in the workspace. Use `wolf env show` / `wolf env clear` to manage.
 
@@ -633,35 +679,31 @@ Commands do not call each other directly. **SQLite is the shared communication b
 Each command reads input from the database, does its work, and writes results back:
 
 ```
-hunt()   ── writes → [SQLite: jobs row + data/jobs/<dir>/jd.md] ── reads → tailor()
-tailor() ── writes → [SQLite: tailored_resume_pdf_path + data/jobs/<dir>/resume.pdf] ── reads → fill()
-fill()   ── writes → [SQLite: status="applied" + screenshot_path] ── reads → reach()
-reach()  ── writes → [SQLite: outreach_draft_path]
+hunt()   ── writes → [SQLite: jobs row incl. description_md] ── reads → tailor()
+tailor() ── writes → [SQLite: has_tailored_resume=true + data/jobs/<dir>/resume.pdf] ── reads → fill()
+fill()   ── writes → [SQLite: status="applied" + has_screenshots=true] ── reads → reach()
+reach()  ── writes → [SQLite: has_outreach_draft=true]
 ```
 
 Concrete example:
 
 ```typescript
-// add/hunt: metadata in SQL, JD prose on disk
+// add/hunt: every metadata column on Job, JD prose written via repo
 await jobRepo.save({ id: "abc", title: "SDE", companyId: "company-uuid", status: "new", score: 0.9, /* ...other fields */ })
-await jobRepo.writeJdText("abc", jdText)
+await jobRepo.writeJdText("abc", jdText)   // β.7+: persists to jobs.description_md SQLite column
 
-// tailor: read JD from disk, write rendered PDF paths back to SQL
-const jdText    = await jobRepo.readJdText("abc")
-const outputDir = await jobRepo.getWorkspaceDir("abc")   // data/jobs/<company>_<title>_<shortId>/
-await jobRepo.update("abc", {
-  tailoredResumePdfPath: `${outputDir}/resume.pdf`,
-  coverLetterHtmlPath:   `${outputDir}/src/cover_letter.html`,
-  coverLetterPdfPath:    `${outputDir}/cover_letter.pdf`,
-})
+// tailor: read JD, flip the produced-this-artifact booleans on the Job row.
+// β.10h: paths are convention-derived from getWorkspaceDir + a fixed name.
+const jdText  = await jobRepo.readJdText("abc")
+const pdfPath = await jobRepo.getArtifactPath("abc", "resume_pdf")  // <workspaceDir>/resume.pdf
+await jobRepo.update("abc", { hasTailoredResume: true, hasTailoredCoverLetter: true })
 
-// fill: read job, update status + screenshot path
-const job = await jobRepo.get("abc")  // has job.url + job.tailoredResumePdfPath
-await jobRepo.update("abc", { status: "applied", screenshotPath: `${outputDir}/screenshot.png` })
+// fill: read job, mark screenshots produced + bump status.
+const job = await jobRepo.get("abc")  // job.hasTailoredResume tells us tailor already ran
+await jobRepo.update("abc", { status: "applied", hasScreenshots: true })
 
-// reach: read job, write outreach draft path
-const job = await jobRepo.get("abc")  // has job.companyId, job.title
-await jobRepo.update("abc", { outreachDraftPath: `${outputDir}/outreach.md` })
+// reach: write outreach draft, mark the boolean.
+await jobRepo.update("abc", { hasOutreachDraft: true })
 ```
 
 This design means:
