@@ -702,6 +702,59 @@
     @apply min-h-[40px] px-4 rounded-button text-[14px];
   }
 
+  /* FeatureCard — locked roadmap surfaces */
+  .feature-card-grid {
+    @apply grid gap-2;
+  }
+
+  .feature-card {
+    @apply flex items-start gap-3 p-3 rounded-card;
+    background: rgba(248, 248, 250, 0.65);
+    box-shadow: inset 0 0 0 1px rgba(210, 210, 215, 0.6);
+    opacity: 0.78;
+    transition: opacity 200ms ease;
+    cursor: default;
+  }
+
+  .feature-card:hover {
+    opacity: 1;
+  }
+
+  .feature-card__icon {
+    @apply flex-none grid place-items-center w-7 h-7 rounded-full;
+    background: theme('colors.line');
+    color: theme('colors.muted');
+  }
+
+  .feature-card__body {
+    @apply min-w-0 grid gap-0.5;
+  }
+
+  .feature-card__title {
+    @apply m-0 text-[13px] font-semibold;
+    color: theme('colors.ink');
+  }
+
+  .feature-card__description {
+    @apply m-0 text-[12px] leading-snug;
+    color: theme('colors.muted');
+  }
+
+  .feature-card__coming {
+    @apply m-0 text-[11px] uppercase tracking-wide font-medium;
+    color: theme('colors.accent.DEFAULT');
+  }
+
+  .roadmap-section {
+    @apply grid gap-2 p-3 rounded-card shadow-card;
+    background: theme('colors.panel');
+  }
+
+  .roadmap-heading {
+    @apply m-0 text-[13px] font-semibold;
+    color: theme('colors.ink');
+  }
+
   /* Welcome card */
   .welcome-card {
     @apply rounded-card shadow-card p-4 grid gap-3;

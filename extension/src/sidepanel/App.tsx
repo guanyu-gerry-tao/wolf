@@ -8,6 +8,7 @@ import { ProgressStrip } from './components/ProgressStrip';
 import { ConnectionPill } from './components/ConnectionPill';
 import { Hero } from './components/Hero';
 import { WelcomeCard, useFirstRunSeen } from './components/WelcomeCard';
+import { FeatureCard } from './components/FeatureCard';
 import {
   AUTOFILL_BLOCKED_REASON,
   OUTREACH_BLOCKED_REASON,
@@ -49,6 +50,7 @@ function AppShell() {
       <Hero phase={phase} />
 
       <CurrentPanel state={state} actions={actions} ready={ready} blockReason={blockReason} hidden={state.view !== 'main'} />
+      {state.view === 'main' && <Roadmap />}
       <ArtifactEditPanel state={state} actions={actions} ready={ready} blockReason={blockReason} hidden={state.view !== 'artifact-edit'} />
       <ConfigPanel actions={actions} hidden={state.view !== 'config'} />
 
@@ -300,28 +302,11 @@ function CurrentPanel({ state, actions, ready, blockReason, hidden }: CurrentPan
           </div>
         </div>
 
-        <div className="action-step action-step--quiet">
-          <div className="action-step__header">
-            <span>Next</span>
-            <small>Planned after the import-process-tailor flow.</small>
-          </div>
-          <button
-            id="autofillQuickButton"
-            type="button"
-            disabled
-            title={`${INCOMPLETE_TOOLTIP}: ${AUTOFILL_BLOCKED_REASON}`}
-          >
-            Autofill this page <IncompleteBadge reason={AUTOFILL_BLOCKED_REASON} />
-          </button>
-          <button
-            id="outreachDraftButton"
-            type="button"
-            disabled
-            title={`${INCOMPLETE_TOOLTIP}: ${OUTREACH_BLOCKED_REASON}`}
-          >
-            Generate outreach draft <IncompleteBadge reason={OUTREACH_BLOCKED_REASON} />
-          </button>
-        </div>
+        {/* The legacy Autofill/Outreach buttons stay hidden in DOM so harness
+            selectors continue to find them. Their roadmap presentation has
+            moved into the visible <Roadmap /> section below the panel. */}
+        <button id="autofillQuickButton" type="button" disabled hidden title={`${INCOMPLETE_TOOLTIP}: ${AUTOFILL_BLOCKED_REASON}`}>Autofill this page</button>
+        <button id="outreachDraftButton" type="button" disabled hidden title={`${INCOMPLETE_TOOLTIP}: ${OUTREACH_BLOCKED_REASON}`}>Generate outreach draft</button>
       </div>
 
       {state.promptOpen.tailor && (
@@ -391,6 +376,38 @@ function DuplicateNotice({ state }: { state: CompanionState }) {
     );
   }
   return null;
+}
+
+// Roadmap section: presents future features as locked cards. Reads as
+// product surface ("here's what's coming") rather than broken UI. Lives
+// outside the action grid so it does not compete with the per-step
+// controls when the daemon is connected.
+function Roadmap() {
+  return (
+    <section className="roadmap-section" aria-label="upcoming features">
+      <p className="roadmap-heading">Coming next</p>
+      <div className="feature-card-grid">
+        <FeatureCard
+          id="roadmapScore"
+          title="Score"
+          description="Rank Ready jobs by your fit so you tailor the best ones first."
+          coming="After Tailor ships"
+        />
+        <FeatureCard
+          id="roadmapAutofill"
+          title="Autofill"
+          description="Stagehand observe + replay fills application forms with your profile."
+          coming="After Stagehand wires up"
+        />
+        <FeatureCard
+          id="roadmapReach"
+          title="Reach out"
+          description="Find the hiring manager and draft a tailored outreach email."
+          coming="Q3"
+        />
+      </div>
+    </section>
+  );
 }
 
 function IncompleteBadge({ reason }: { reason: string }) {
