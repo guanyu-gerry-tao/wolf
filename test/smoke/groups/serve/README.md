@@ -127,16 +127,22 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 
 ### TODO Endpoint Check
 
-Use one unfinished endpoint to confirm stable TODO behavior:
+Use one genuinely unfinished endpoint to confirm stable TODO behavior. Pick a
+route that still maps to `todoRoute` in `nodeHttpServerImpl.ts` (grep
+`Run listing is not implemented yet`); `GET /api/runs` has been the canonical
+TODO route since serve landed.
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/artifacts/regenerate" \
-  -H "content-type: application/json" \
-  -d '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"","userPrompt":"tighten bullets"}'
+curl -sS "http://127.0.0.1:$WOLF_SERVE_PORT/api/runs"
 ```
 
-Expected: HTTP `501` with `status:"todo"` and a `nextStep` naming the missing
-application/service method.
+Expected: HTTP `501` with body shape `{"status":"todo","todo":"...","nextStep":"..."}`
+where `nextStep` names the missing application/service method.
+
+Note: `POST /api/artifacts/regenerate` was the earlier canonical TODO check
+but is now wired to `companionActionApp.regenerateArtifact` and returns
+`202`. Update this section if `/api/runs` ever gets implemented; pick
+another route still matched by `todoRouteSpec`.
 
 ### Report Requirements
 
