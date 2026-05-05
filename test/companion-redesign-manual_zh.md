@@ -35,7 +35,12 @@ ls extension/dist/          # manifest.json + service-worker-loader.js + src/sid
 ## 阶段 1 — 装到真 Chrome（5 分钟）
 
 1. 地址栏 `chrome://extensions` → 右上角打开 **Developer mode**
-2. **Load unpacked** → 选 `extension/dist`
+2. **Load unpacked** → 选 **`extension/dist`**（build 产物）
+   - ⚠️ **不要选 `extension/`**。选源码目录的话 manifest 能跑起来，
+     但 side panel HTML 引用的文件没被打包，面板会**白屏且没明显报错**。
+     如果你看到白屏，最常见原因就是这个 —— 在 `chrome://extensions`
+     卡片上确认 Source 路径是 `.../extension/dist`，如果是
+     `.../extension` 就 Remove 再 Load 一次正确路径。
 3. 列表里出现 "**wolf companion** v0.0.23"，无红色错误横幅
 4. 把 wolf 图标 pin 到工具栏
 

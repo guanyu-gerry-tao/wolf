@@ -38,7 +38,14 @@ ls extension/dist/          # manifest.json + service-worker-loader.js + src/sid
 ## Stage 1 — Load into real Chrome (5 min)
 
 1. `chrome://extensions` → **Developer mode** on
-2. **Load unpacked** → select `extension/dist`
+2. **Load unpacked** → select **`extension/dist`** (the build output)
+   - ⚠️ **NOT `extension/`**. Loading the source folder gives a working
+     manifest but the side panel HTML references files that have not
+     been bundled, so the panel renders blank with no obvious error.
+     If you see a white side panel, this is the most common cause —
+     verify the extension's source path on the `chrome://extensions`
+     card matches `.../extension/dist`, remove + re-add if it points
+     at `.../extension`.
 3. Extension list shows "**wolf companion** v0.0.23" with no red error banner
 4. Pin the wolf icon to the toolbar
 
