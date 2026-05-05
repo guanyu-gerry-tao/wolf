@@ -87,6 +87,7 @@ export function ConnectionPanel({ open, onClose }: ConnectionPanelProps) {
         <button id="reconnectButton" type="submit" disabled={!portValid}>Reconnect</button>
       </div>
       <p id="connectionDetail" className="muted">{state.connection.detail}</p>
+      <ApiKeyStatus />
       <p className="port-help">Start <strong>wolf serve</strong>, then copy the printed port here.</p>
       <div className="connection-panel-actions">
         <button
@@ -114,4 +115,33 @@ function labelFor(status: string): string {
     case 'disconnected': return 'Offline';
     default: return 'Setup';
   }
+}
+
+// API-key status row inside the expanded connection form. Three states:
+//
+//   1. Daemon hasn't reported env yet (still pinging or not connected) →
+//      render nothing so we don't misinform.
+//   2. Key present → green "API ready" + the env var name so the user
+//      can confirm which slot is filled (dev vs stable env vars
+//      diverge, this disambiguates).
+//   3. Key missing → red warning + the exact env var name they need to
+//      export. The Hero's missing-api-key phase already blocks paid
+//      actions, but surfacing it here too means a connected user can
+//      verify their setup without hunting.
+function ApiKeyStatus() {
+  const { state } = useCompanionState();
+  const env = state.runtime.env?.anthropic;
+  if (!env) return null;
+  if (env.present) {
+    return (
+      <p className="api-status api-status--ok">
+        <span aria-hidden>✓</span> API ready · <code>{env.envVarName}</code>
+      </p>
+    );
+  }
+  return (
+    <p className="api-status api-status--missing">
+      <span aria-hidden>⚠</span> API key missing · <code>{env.envVarName}</code>
+    </p>
+  );
 }

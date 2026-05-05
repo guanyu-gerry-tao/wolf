@@ -12,6 +12,16 @@ export const PingResponseSchema = z.object({
 });
 export type PingResponse = z.infer<typeof PingResponseSchema>;
 
+export const EnvKeyStatusSchema = z.object({
+  /** True when the env var is set in the daemon's process. */
+  present: z.boolean(),
+  /** Full env var name expected, e.g. `WOLF_ANTHROPIC_API_KEY` (or
+   * `WOLF_DEV_ANTHROPIC_API_KEY` in dev builds). Lets the companion
+   * show the right setup command. */
+  envVarName: z.string(),
+});
+export type EnvKeyStatus = z.infer<typeof EnvKeyStatusSchema>;
+
 export const RuntimeStatusResponseSchema = z.object({
   version: z.string(),
   workspacePath: z.string(),
@@ -24,6 +34,12 @@ export const RuntimeStatusResponseSchema = z.object({
     status: z.enum(['unknown', 'ready', 'not_ready']),
   }),
   features: z.record(z.string(), z.boolean()),
+  /** API-key presence flags, surfaced so the companion can block paid
+   * actions before the user clicks Process / Tailor and fails with a
+   * MissingApiKeyError. Optional in the schema for older daemons. */
+  env: z.object({
+    anthropic: EnvKeyStatusSchema,
+  }).optional(),
 });
 export type RuntimeStatusResponse = z.infer<typeof RuntimeStatusResponseSchema>;
 

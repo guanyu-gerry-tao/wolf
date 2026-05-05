@@ -26,6 +26,7 @@ import type { CompanyRepository } from '../../repository/companyRepository.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ServeBrowserManager } from '../browserManager.js';
 import type { HttpServer } from '../httpServer.js';
+import { getEnvValue, isDevBuild } from '../../utils/instance.js';
 
 export interface NodeHttpServerOptions {
   version: string;
@@ -166,6 +167,11 @@ export async function dispatchHttpRequest(input: {
   }
 
   if (input.method === 'GET' && url.pathname === '/api/runtime/status') {
+    // Resolve the actual env var name for the running daemon's instance
+    // (dev or stable). The companion shows it back so users see exactly
+    // which line to add to their shell rc.
+    const anthropicVarName = isDevBuild() ? 'WOLF_DEV_ANTHROPIC_API_KEY' : 'WOLF_ANTHROPIC_API_KEY';
+    const anthropicPresent = Boolean(getEnvValue('ANTHROPIC_API_KEY'));
     const body: RuntimeStatusResponse = {
       version: input.version,
       workspacePath: input.workspacePath ?? '',
@@ -182,6 +188,9 @@ export async function dispatchHttpRequest(input: {
         quickTailor: Boolean(input.companionActionApp),
         batchTailor: Boolean(input.companionActionApp),
         quickFill: Boolean(input.companionActionApp && input.browserManager),
+      },
+      env: {
+        anthropic: { present: anthropicPresent, envVarName: anthropicVarName },
       },
     };
     return { status: 200, body };

@@ -9,6 +9,7 @@ export type AppPhase =
   | 'disconnected'
   | 'connecting'
   | 'runtime-not-ready'
+  | 'missing-api-key'
   | 'connected-empty'
   | 'has-imports'
   | 'has-processed'
@@ -20,6 +21,11 @@ export function computeAppPhase(state: CompanionState, firstRunSeen: boolean): A
   if (state.connection.status === 'idle') return 'connecting';
   if (state.connection.status !== 'connected') return 'disconnected';
   if (state.runtime.browser.status !== 'ready') return 'runtime-not-ready';
+  // Once the daemon + browser are both ready, gate on API-key presence
+  // before letting the user enter any phase that triggers a paid Claude
+  // call. The daemon would otherwise reject Process / Tailor with
+  // MissingApiKeyError after the click — we surface the fix earlier.
+  if (state.runtime.env && !state.runtime.env.anthropic.present) return 'missing-api-key';
   if (state.activeRunId) return 'run-active';
   if (state.inbox.hasRaw) return 'has-imports';
   if (state.tailor.untailoredJobCount > 0) return 'has-processed';
@@ -34,6 +40,7 @@ export function progressIndex(phase: AppPhase): number {
     case 'disconnected':
     case 'connecting':
     case 'runtime-not-ready':
+    case 'missing-api-key':
       return 0;
     case 'connected-empty':
       return 0;

@@ -670,6 +670,27 @@
     @apply flex items-center justify-between gap-2;
   }
 
+  /* API-key status pill rendered inside .connection-panel-row. Tinted
+   * green when ready, red when missing, with a monospace env-var name
+   * so the user can copy it to their shell rc directly. */
+  .api-status {
+    @apply inline-flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-full self-start;
+  }
+
+  .api-status code {
+    @apply font-mono text-[11px];
+  }
+
+  .api-status--ok {
+    background: theme('colors.success.soft');
+    color: theme('colors.success.DEFAULT');
+  }
+
+  .api-status--missing {
+    background: theme('colors.danger.soft');
+    color: theme('colors.danger.DEFAULT');
+  }
+
   /* Progress strip */
   .progress-strip {
     @apply flex items-center gap-1;

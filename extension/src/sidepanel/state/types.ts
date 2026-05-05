@@ -11,11 +11,21 @@ export interface ConnectionState {
 
 export type RuntimeBrowserStatus = 'unknown' | 'not_started' | 'starting' | 'ready' | string;
 
+export interface EnvKeyStatus {
+  present: boolean;
+  envVarName: string;
+}
+
 export interface RuntimeState {
   browser: {
     status: RuntimeBrowserStatus;
     detail: string;
     requiredAction: string;
+  };
+  /** Optional because older daemons (or the very first runtime/status
+   * payload before the daemon enriches it) won't carry the field. */
+  env?: {
+    anthropic: EnvKeyStatus;
   };
 }
 

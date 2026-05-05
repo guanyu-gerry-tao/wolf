@@ -107,6 +107,19 @@ function computeHero(
           onClick: () => void actions.openWolfBrowser(),
         },
       };
+    case 'missing-api-key': {
+      // The daemon reported that its Anthropic key is unset. We block
+      // entry to any paid phase here and tell the user exactly which
+      // shell variable to export. The dev/stable name is read straight
+      // from the daemon so the suggested command always matches the
+      // running binary.
+      const varName = state.runtime.env?.anthropic.envVarName ?? 'WOLF_ANTHROPIC_API_KEY';
+      return {
+        kicker: 'Setup',
+        title: 'Add your Anthropic API key',
+        body: `wolf needs ${varName} in your shell to run paid Process / Tailor calls. Add the line below to your ~/.zshrc (or shell rc), restart wolf serve, then click the connection pill to reconnect.`,
+      };
+    }
     case 'connected-empty':
       return {
         kicker: 'Step 2 of 4',
