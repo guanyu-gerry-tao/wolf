@@ -191,3 +191,42 @@ Human tests should be rare. For resume, cover-letter, and other quality checks,
 prefer `ai-reviewed`: generate the artifact, have an AI reviewer inspect it
 against a rubric, write the review into `report.md`, and leave human review as
 an optional follow-up.
+
+## Companion Visual Review
+
+The Chrome extension has its own Playwright-driven harness at
+`extension/test/visual/`. It is independent of the smoke + acceptance suites
+above: it does not run `wolf` commands, it does not touch a workspace, and it
+does not need `wolf serve` to be running. Instead, it boots a tiny mock
+daemon, static-serves the `extension/dist/` build, and renders every named
+companion UI scenario across three side panel widths.
+
+Run from the repo root:
+
+```bash
+cd extension
+npm install      # once
+npm run build    # produce dist/
+npm run review   # capture state matrix
+```
+
+Outputs:
+
+- `extension/test/visual/snapshots/current/<state>--<viewport>.png` — one
+  PNG per scenario × viewport. Twenty-four files in total today.
+- `extension/test/visual/report.md` — markdown table listing every captured
+  file. Regenerated on every run.
+- `extension/test/visual/snapshots/baseline/` — reference PNGs that should
+  be committed to git so future runs can be diff-compared. Not yet
+  populated; promote `current/` to `baseline/` once a render passes review.
+
+Scenarios are defined in `extension/test/visual/states.ts` (e.g. `first-run`,
+`disconnected`, `connected-empty`, `has-imports`, `has-processed`,
+`has-tailored`, `runtime-not-ready`, `config-open`). Add a new scenario by
+appending a new entry there with its mock-server preset and any in-page
+setup script. Viewports are listed in
+`extension/test/visual/viewports.ts` (320, 400, 560).
+
+The harness only requires Node 22+ (it uses `--experimental-strip-types` to
+run TypeScript without a separate compile step) and the Playwright Chromium
+already installed for the wider repo. No new dev dependencies.

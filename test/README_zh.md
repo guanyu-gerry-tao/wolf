@@ -158,3 +158,39 @@ human-guided 测试必须包含：
 - 清理步骤
 
 人工测试应该很少。对于简历、cover letter 等质量检查，优先使用 `ai-reviewed`：先生成产物，让 AI reviewer 按 rubric 检查，把评审写入 `report.md`，人类复核只作为可选后续。
+
+## Companion 视觉审查
+
+Chrome extension 有自己一套 Playwright 驱动的 harness，放在
+`extension/test/visual/`。它跟上面的 smoke / acceptance 套件**互相独立**：
+不跑 `wolf` 命令、不动 workspace、也不需要 `wolf serve` 起来。它会启一个
+极小的 mock daemon，静态 serve `extension/dist/` 构建产物，然后跨三档
+side panel 宽度渲染所有命名场景。
+
+从仓库根目录运行：
+
+```bash
+cd extension
+npm install      # 只装一次
+npm run build    # 出 dist/
+npm run review   # 抓状态矩阵
+```
+
+输出：
+
+- `extension/test/visual/snapshots/current/<state>--<viewport>.png` —
+  每个场景 × viewport 一张 PNG，目前共 24 张。
+- `extension/test/visual/report.md` — markdown 表格列出所有截图，
+  每次跑都重新生成。
+- `extension/test/visual/snapshots/baseline/` — 应该 commit 进 git 的
+  基线 PNG，将来 diff 用。还没填，等某次渲染通过审核后把 `current/`
+  提升成 `baseline/`。
+
+场景定义在 `extension/test/visual/states.ts`（`first-run`、
+`disconnected`、`connected-empty`、`has-imports`、`has-processed`、
+`has-tailored`、`runtime-not-ready`、`config-open`）。新增场景就在那里
+加一条，附 mock 预设和可选页面 setup 脚本。viewports 在
+`extension/test/visual/viewports.ts`（320 / 400 / 560）。
+
+harness 只需要 Node 22+（用 `--experimental-strip-types` 直接跑 TS，
+没有额外编译步骤），以及全仓已经装好的 Playwright Chromium。零新依赖。

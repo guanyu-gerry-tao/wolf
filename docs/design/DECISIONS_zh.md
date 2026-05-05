@@ -357,3 +357,17 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **我：** Inbox 要同时接用户手动保存的页面和大规模 hunt 结果，不能变成另一套处理后的 job workspace。
 **AI：** Inbox 保持 raw-only，但放进 SQLite `inbox_items`，不再使用 `data/inbox/` 文件夹；手动 capture 和大规模 hunt 结果共享同一个 durable queue。
 **结果：** 采用。Inbox 不存清洗后的 JD、解析字段、tailor 产物、去重结果或 fill 快照。用户显式触发付费处理时创建 `background_ai_batches`；成功的 AI 输出会立刻应用到 canonical job state，只短期保留 debug payload。
+
+---
+
+**2026-05-04 — companion 保留独立 Chrome profile，是有意为之**
+**Me:** 朋友问为什么 wolf 非要开一个独立 Chrome 窗口而不复用我日常浏览器。我考虑过把主 profile 复制进 wolf 以保留登录态和密码管理器，但不想动主浏览器 session，也不想跟 user-data-dir 锁冲突。
+**AI:** wolf profile 独立持久化在 `<workspace>/data/wolf-browser-profile/`。在 companion 顶层文档老实讲清四条理由：Chrome user-data-dir 锁、Google Sync 污染、Stagehand 稳定性、企业 MDM 禁止任意 `--user-data-dir`。同样的解释也出现在 `wolf init` 输出和 runtime overlay 里，让用户在感到摩擦之前就知道为什么。不实现 profile 复制；它解决登录疲劳，但代价转嫁到脆弱的生命周期假设上。
+**Result:** 已采纳。`docs/overview/COMPANION.md`（和 `_zh`）明确写了四条理由；companion WelcomeCard 和 runtime overlay 复用同样措辞，用户不会被第二个 Chrome 窗口意外。
+
+---
+
+**2026-05-04 — companion 重设计：buildless 迁移到 React + Vite + crxjs**
+**Me:** 1772 行 buildless `extension/src/sidepanel/main.js` + 808 行 vanilla CSS 已经撞墙：在 vanilla 里再加 onboarding 状态机、动画过渡、Apple 风 design tokens 会把代码推到 3000+ 行命令式 DOM 操作。考虑过保留 buildless 只做视觉打磨，但接下来的 Hunt + Score 面板只会放大这个问题。
+**AI:** 一次大 PR 把 side panel 迁移到 React 18 + TypeScript + `@crxjs/vite-plugin` + Tailwind 3 + `framer-motion` + `lucide-react`，分 8 个可独立 review 的 stage：搭工具链；React 挂载行为不变；vanilla 逻辑切成 typed hooks（`useDaemonApi`、`useDaemonConnection`、`useRunPolling`、`useCurrentTab`、`usePageSnapshot`、`useChromeStorage`、`useExtensionState`、`useCompanionActions`）；手写 CSS 换成 Tailwind tokens；上 onboarding 状态机 + Hero 模式 + ProgressStrip + ConnectionPill；FeatureCard 把未实现功能做成路线图而不是 broken UI；framer-motion 加动效；Playwright 视觉审查 harness。
+**Result:** 已采纳。bundle 落在 ~306 KB JS / ~96 KB gzip，accent 锁定 Apple 系统蓝 `#0a84ff` 在 `extension/tailwind.config.ts`。companion 每个阶段只暴露一个 primary action（Hero）、顶部 4 段进度条、Score / Autofill / Reach out 三张 locked roadmap 卡。视觉 harness 在 `extension/test/visual/` 通过 `npm run review` 跑 8 场景 × 3 viewport = 24 张 baseline PNG，不需要真起 `wolf serve`。Plan 记录在 `docs/plans/2026-05-04-enhance-companion.md`；companion 架构文档在 `docs/overview/COMPANION.md`。
