@@ -624,13 +624,17 @@
     background: theme('colors.muted');
   }
 
-  /* Brighter than the status-badge success color so the connected
-   * state reads as alive at the small dot size. Apple system green. */
-  .pill-dot--connected {
+  /* Modifier rules use a doubled .pill-dot.pill-dot--X selector so they
+   * always win over the base .pill-dot rule (same specificity but the
+   * base would otherwise tie and let Tailwind's @apply layering decide
+   * unpredictably). Brighter green than the status-badge success
+   * color so the connected dot reads as alive at the 8px size — Apple
+   * system green. */
+  .pill-dot.pill-dot--connected {
     background: #34c759;
   }
 
-  .pill-dot--disconnected {
+  .pill-dot.pill-dot--disconnected {
     background: theme('colors.danger.DEFAULT');
   }
 
@@ -638,11 +642,11 @@
    * waiting" — gray. The `--pinging` modifier kicks in only during the
    * brief active reconnect window and lights the dot up so the user
    * can see something is happening. */
-  .pill-dot--idle {
+  .pill-dot.pill-dot--idle {
     background: theme('colors.muted');
   }
 
-  .pill-dot--pinging {
+  .pill-dot.pill-dot--pinging {
     background: theme('colors.warning.DEFAULT');
   }
 

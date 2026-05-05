@@ -75,7 +75,7 @@ interface RawApiQueues {
  */
 export function useCompanionActions(): CompanionActions {
   const { state, dispatch, log } = useCompanionState();
-  const { port, setPort } = usePersistedPort();
+  const { port, setPort, loaded: portLoaded } = usePersistedPort();
   const api = useDaemonApi(port);
   const snapshot = usePageSnapshot();
   const tab = useCurrentTab();
@@ -83,6 +83,14 @@ export function useCompanionActions(): CompanionActions {
   // Page-status request sequencing protects against stale duplicate-check
   // responses overwriting newer ones when the user switches tabs quickly.
   const pageStatusSeqRef = useRef(0);
+
+  // One-shot auto-connect after the persisted port loads from
+  // chrome.storage. If the daemon is up the side panel transitions
+  // straight to connected without the user clicking Reconnect; if not,
+  // the connection flips to disconnected after the 2.5s ping timeout
+  // and the pill auto-expands its form. Stored in a ref so we never
+  // attempt twice (e.g., on rerenders).
+  const autoConnectAttemptedRef = useRef(false);
 
   // Stable refs to live state and api. Inside async handlers we read state
   // through stateRef to avoid closure staleness while still keeping the
@@ -708,6 +716,20 @@ export function useCompanionActions(): CompanionActions {
   }, [dispatch]);
 
   // ---- effects ---------------------------------------------------------
+
+  // Auto-connect once after the persisted port loads. Skips if the user
+  // has already manually moved the connection state (e.g. clicked
+  // Reconnect themselves before the persisted port arrived).
+  useEffect(() => {
+    if (autoConnectAttemptedRef.current) return;
+    if (!portLoaded) return;
+    if (stateRef.current.connection.status !== 'idle') return;
+    autoConnectAttemptedRef.current = true;
+    void reconnect(port);
+    // reconnect identity changes per render but we only run once via
+    // the ref guard above, so the linter rule does not apply here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portLoaded, port]);
 
   // When the active Chrome tab changes (or first loads), mirror the legacy
   // refreshCurrentTab cascade: re-check duplicate status and artifact
