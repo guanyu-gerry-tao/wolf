@@ -89,10 +89,9 @@ side panel 上右键 → **Inspect**。然后：
 > 你可以在 Chrome 启动前就连上 side panel（比如只想看 status）。
 > runtime overlay 会在需要 Chrome 时提示你点按钮。
 
-整个测试**用真实的前台 terminal 窗口跑**（两个可见的 session，
-**terminal A** 和 **terminal B**）。不要 `&` 后台 serve，不要 `nohup`，
-不要 `tmux detach`。把进程留在真 terminal 里，才能实时看 heartbeat 日志、
-能 Ctrl-C 干净关 daemon、能立刻观察错误。
+daemon **用一个真实前台 terminal 跑**（不要 `&`，不要 `nohup`，
+不要 `tmux detach`）。挂在真 terminal 上才能看 heartbeat 日志、
+跑完 Ctrl-C 干净退出。
 
 这一阶段用 **`/tmp/wolf-test/` 下的临时 workspace**，所以阶段 5 创建的
 wolf 浏览器 profile 会落在
@@ -100,44 +99,34 @@ wolf 浏览器 profile 会落在
 不污染你日常 workspace。这跟 CLAUDE.md 里"smoke / acceptance 测试只能
 用 `/tmp/wolf-test/` 路径"的规则一致。
 
-### 4a — 编译 dev binary（每个 session 一次）
+### 4a — 编译 dev binary + 启动 daemon（一个 terminal 一气呵成）
 
-**terminal A**：
+开**一个 terminal**，从上到下执行。整个测试期间（直到阶段 7 跑完）
+都**保持前台、挂在真 terminal 上、不要 `&`/`nohup`/detach**。
 
 ```bash
 cd /Users/guanyutao/developers/personal-projects/wolf
-npm run build:dev   # 出 dist/cli/index.js（dev workspace 用）
-```
 
-### 4b — 初始化临时 workspace（一次）
+# 1. 编译 dev CLI 到 dist/cli/index.js
+npm run build:dev
 
-**terminal B**（这个保持开着跑 serve）：
-
-```bash
-# 临时 workspace 路径；init 和 serve 用同一个值
+# 2. 给本次测试钉一个 /tmp/wolf-test/ 下的临时 workspace 路径
 export WOLF_DEV_HOME="/tmp/wolf-test/manual-companion-$(date +%Y%m%d-%H%M%S)/ws"
 mkdir -p "$WOLF_DEV_HOME"
 
-# 一次性 init 这个临时 workspace（不弹问题）
+# 3. 初始化这个临时 workspace（不弹任何问题）
 node dist/cli/index.js init --here --empty --dev
-```
 
-### 4c — 启动 daemon（前台跑，保持打开）
-
-仍然在 terminal B（前台跑，挂在真 terminal 上 —— **不要 `&`，
-不要 `nohup`，不要 detach**）：
-
-```bash
+# 4. 启动 daemon（仅 HTTP server —— Chrome 在阶段 5 才打开）
 node dist/cli/index.js serve --port 47823
 ```
 
-等到 `wolf serve listening on http://127.0.0.1:47823`。**直到阶段 7
-跑完之前都不要关这个 terminal** —— side panel 每个动作都需要 daemon
-活着。wolf 浏览器 profile 只有在你阶段 5 点 **Open wolf browser** 时
-才会被创建在 `$WOLF_DEV_HOME/data/wolf-browser-profile/` 下；
-现在 `data/` 还是空的。
+等到 `wolf serve listening on http://127.0.0.1:47823`。wolf 浏览器
+profile **不会**在 daemon 启动时创建，要等你阶段 5 点
+**Open wolf browser** 才创建在 `$WOLF_DEV_HOME/data/wolf-browser-profile/`；
+现在 `$WOLF_DEV_HOME/data/` 还是空的。
 
-### 4d — 在 side panel 里 Reconnect
+### 4b — 在 side panel 里 Reconnect
 
 回到 side panel：
 

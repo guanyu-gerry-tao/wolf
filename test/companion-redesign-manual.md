@@ -97,12 +97,9 @@ every action the companion tries is rejected.
 > needed (e.g., to check status). The runtime overlay tells you to
 > click the button when Chrome is required.
 
-Run everything **in real foreground terminal windows** (two visible
-sessions, **terminal A** and **terminal B**). Do not `&`-background
-serve, do not use `nohup`, do not use `tmux detach`. Keeping the
-processes attached to a real terminal is what lets you read the
-heartbeat logs, kill the daemon with Ctrl-C cleanly, and observe
-errors in real time.
+Run the daemon in **one real foreground terminal** (no `&`, no `nohup`,
+no `tmux detach`). Keeping it attached lets you read the heartbeat
+logs and Ctrl-C cleanly when done.
 
 This stage uses a **throwaway workspace under `/tmp/wolf-test/`** so the
 wolf browser profile created in Stage 5 lands at
@@ -111,45 +108,34 @@ instead of polluting your real workspace. Aligns with the CLAUDE.md
 rule that smoke + acceptance tests must only use `/tmp/wolf-test/`
 paths.
 
-### 4a — Build the dev binary (once per session)
+### 4a — Build the dev binary + start the daemon (one terminal, one go)
 
-In **terminal A**:
+Open **one terminal**, run these commands top to bottom. Keep this
+terminal **foreground, attached, no `&`/`nohup`/detach** — the daemon
+must stay alive through Stage 7.
 
 ```bash
 cd /Users/guanyutao/developers/personal-projects/wolf
-npm run build:dev   # produces dist/cli/index.js for the dev workspace
-```
 
-### 4b — Init throwaway workspace (once)
+# 1. Compile the dev CLI binary into dist/cli/index.js
+npm run build:dev
 
-In **terminal B** (keep this one open for serve):
-
-```bash
-# Throwaway workspace path; same value reused for init + serve.
+# 2. Pin a throwaway workspace path under /tmp/wolf-test/ for this run
 export WOLF_DEV_HOME="/tmp/wolf-test/manual-companion-$(date +%Y%m%d-%H%M%S)/ws"
 mkdir -p "$WOLF_DEV_HOME"
 
-# One-time init for the throwaway workspace (no prompts).
+# 3. Initialize the throwaway workspace (no prompts)
 node dist/cli/index.js init --here --empty --dev
-```
 
-### 4c — Start the daemon (foreground, keep running)
-
-Still in terminal B (foreground, attached to your real terminal —
-**no `&`, no `nohup`, no detach**):
-
-```bash
+# 4. Start the daemon (HTTP server only — Chrome opens later in Stage 5)
 node dist/cli/index.js serve --port 47823
 ```
 
-Wait for `wolf serve listening on http://127.0.0.1:47823`. **Do not
-close this terminal** until you finish Stage 7 — the side panel needs
-the daemon alive for every action. The wolf browser profile will be
-created under `$WOLF_DEV_HOME/data/wolf-browser-profile/` only when
-you click **Open wolf browser** in Stage 5; right now `data/` is still
-empty.
+Wait for `wolf serve listening on http://127.0.0.1:47823`. The wolf
+browser profile is **not** created until you click **Open wolf browser**
+in Stage 5; until then, `$WOLF_DEV_HOME/data/` stays empty.
 
-### 4d — Reconnect from the side panel
+### 4b — Reconnect from the side panel
 
 Back in side panel:
 
