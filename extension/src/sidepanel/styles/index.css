@@ -647,7 +647,21 @@
     @apply absolute right-0 top-full mt-2 z-20 grid gap-2 p-3 rounded-card shadow-elevated;
     background: theme('colors.panel');
     width: 280px;
+    /* Cap to viewport width minus a small inset so the popover never
+     * overflows the side panel's left edge in narrow widths (320px). */
     max-width: calc(100vw - 24px);
+  }
+
+  /* When the side panel is too narrow to fit the 280px popover beside
+   * the pill, fall back to a full-width drop that anchors to the
+   * panel's gutters instead of the pill's right edge. 320px is the
+   * narrowest Chrome side panel width. */
+  @media (max-width: 360px) {
+    .pill-popover {
+      right: auto;
+      left: 8px;
+      width: calc(100vw - 16px);
+    }
   }
 
   /* Progress strip */
@@ -755,10 +769,18 @@
     color: theme('colors.ink');
   }
 
-  /* Welcome card */
+  /* Welcome card — first-run modal that blocks the rest of the UI
+   * (including the ConnectionPill popover) until dismissed. */
+  .welcome-backdrop {
+    @apply fixed inset-0 z-30 flex items-center justify-center p-4;
+    background: rgba(29, 29, 31, 0.32);
+    backdrop-filter: blur(6px);
+  }
+
   .welcome-card {
-    @apply rounded-card shadow-card p-4 grid gap-3;
+    @apply rounded-card shadow-elevated p-5 grid gap-3 w-full;
     background: theme('colors.panel');
+    max-width: 420px;
   }
 
   .welcome-title {
