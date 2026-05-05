@@ -45,19 +45,10 @@ interface WelcomeCardProps {
 
 export function WelcomeCard({ onDismiss }: WelcomeCardProps) {
   return (
-    <motion.div
-      className="welcome-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18 }}
-      aria-hidden
-    >
     <motion.section
       className="welcome-card"
       role="dialog"
       aria-label="welcome to wolf"
-      aria-modal="true"
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -75,6 +66,5 @@ export function WelcomeCard({ onDismiss }: WelcomeCardProps) {
       </ul>
       <button type="button" className="hero-primary" onClick={onDismiss}>Got it</button>
     </motion.section>
-    </motion.div>
   );
 }

@@ -6,7 +6,7 @@ import { useCompanionActions, type ConfigPayload } from './hooks/useCompanionAct
 import type { CompanionState } from './state/types';
 import { computeAppPhase, progressIndex } from './state/phase';
 import { ProgressStrip } from './components/ProgressStrip';
-import { ConnectionPill } from './components/ConnectionPill';
+import { ConnectionPill, ConnectionPanel } from './components/ConnectionPill';
 import { Hero } from './components/Hero';
 import { WelcomeCard, useFirstRunSeen } from './components/WelcomeCard';
 import { FeatureCard } from './components/FeatureCard';
@@ -76,6 +76,20 @@ function Topbar({ phase }: { phase: ReturnType<typeof computeAppPhase> }) {
   const { openConfigPanel, closeConfigPanel } = useCompanionActions();
   const onClickConfig = state.view === 'config' ? closeConfigPanel : openConfigPanel;
 
+  // Pill expansion state lives here so the expanded form can render as
+  // an in-flow sibling between the topbar row and the progress strip.
+  // That layout pushes the WelcomeCard / Hero down rather than floating
+  // a popover on top of them, which avoids the narrow-panel overlap
+  // that surfaced during real-Chrome smoke.
+  const [pillOpen, setPillOpen] = useState(false);
+
+  // Auto-expand on a real disconnect (not on the initial idle state) so
+  // a heartbeat failure surfaces the controls without burying the
+  // welcome card on first run.
+  useEffect(() => {
+    if (state.connection.status === 'disconnected') setPillOpen(true);
+  }, [state.connection.status]);
+
   return (
     <header className="topbar">
       <div className="topbar-row">
@@ -84,7 +98,7 @@ function Topbar({ phase }: { phase: ReturnType<typeof computeAppPhase> }) {
           <h1>Apply Console</h1>
         </div>
         <div className="topbar-controls">
-          <ConnectionPill />
+          <ConnectionPill open={pillOpen} onToggle={() => setPillOpen((v) => !v)} />
           <button
             id="configButton"
             type="button"
@@ -101,6 +115,7 @@ function Topbar({ phase }: { phase: ReturnType<typeof computeAppPhase> }) {
           </span>
         </div>
       </div>
+      <ConnectionPanel open={pillOpen} onClose={() => setPillOpen(false)} />
       <ProgressStrip active={progressIndex(phase)} />
     </header>
   );

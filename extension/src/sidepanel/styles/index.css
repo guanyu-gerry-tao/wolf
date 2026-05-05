@@ -616,11 +616,7 @@
     @apply min-h-[34px] px-3 rounded-button;
   }
 
-  /* Connection pill */
-  .connection-pill {
-    @apply relative;
-  }
-
+  /* Connection pill summary chip */
   .pill-summary {
     @apply inline-flex items-center gap-2 min-h-[30px] px-3 rounded-full;
     box-shadow: inset 0 0 0 1px theme('colors.line');
@@ -643,25 +639,19 @@
     background: theme('colors.warning.DEFAULT');
   }
 
-  .pill-popover {
-    @apply absolute right-0 top-full mt-2 z-20 grid gap-2 p-3 rounded-card shadow-elevated;
-    background: theme('colors.panel');
-    width: 280px;
-    /* Cap to viewport width minus a small inset so the popover never
-     * overflows the side panel's left edge in narrow widths (320px). */
-    max-width: calc(100vw - 24px);
+  /* Expanded connection form. Renders as an in-flow sibling of
+   * .topbar-row so it pushes the page below it down instead of
+   * floating absolutely on top of the WelcomeCard / Hero. The whole
+   * form spans the topbar's width, so port input + Reconnect button
+   * are always fully visible at any side-panel width. */
+  .connection-panel-row {
+    @apply grid gap-2 mt-2 p-3 rounded-card;
+    background: rgba(248, 248, 250, 0.85);
+    box-shadow: inset 0 0 0 1px rgba(210, 210, 215, 0.6);
   }
 
-  /* When the side panel is too narrow to fit the 280px popover beside
-   * the pill, fall back to a full-width drop that anchors to the
-   * panel's gutters instead of the pill's right edge. 320px is the
-   * narrowest Chrome side panel width. */
-  @media (max-width: 360px) {
-    .pill-popover {
-      right: auto;
-      left: 8px;
-      width: calc(100vw - 16px);
-    }
+  .connection-panel-actions {
+    @apply flex items-center justify-between gap-2;
   }
 
   /* Progress strip */
@@ -769,18 +759,12 @@
     color: theme('colors.ink');
   }
 
-  /* Welcome card — first-run modal that blocks the rest of the UI
-   * (including the ConnectionPill popover) until dismissed. */
-  .welcome-backdrop {
-    @apply fixed inset-0 z-30 flex items-center justify-center p-4;
-    background: rgba(29, 29, 31, 0.32);
-    backdrop-filter: blur(6px);
-  }
-
+  /* Welcome card — inline first-run callout. Sits in the normal flow
+   * above the Hero so users can read it while still seeing the rest of
+   * the workflow underneath. */
   .welcome-card {
-    @apply rounded-card shadow-elevated p-5 grid gap-3 w-full;
+    @apply rounded-card shadow-card p-4 grid gap-3;
     background: theme('colors.panel');
-    max-width: 420px;
   }
 
   .welcome-title {
