@@ -230,3 +230,10 @@ setup script. Viewports are listed in
 The harness only requires Node 22+ (it uses `--experimental-strip-types` to
 run TypeScript without a separate compile step) and the Playwright Chromium
 already installed for the wider repo. No new dev dependencies.
+
+For the **one-shot manual acceptance pass** that goes with the companion
+redesign PR — load unpacked into real Chrome, walk through onboarding,
+import → process → tailor, resize the panel, etc. — see
+[`companion-redesign-manual.md`](companion-redesign-manual.md). Run that
+once before merging the redesign branch; the visual harness covers
+ongoing regressions.
