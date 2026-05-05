@@ -1,7 +1,13 @@
-import { useEffect, useState, useMemo, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { Settings } from 'lucide-react';
 import { CompanionStateProvider, useCompanionState } from './state/StateContext';
 import { useCompanionActions, type ConfigPayload } from './hooks/useCompanionActions';
 import type { CompanionState } from './state/types';
+import { computeAppPhase, progressIndex } from './state/phase';
+import { ProgressStrip } from './components/ProgressStrip';
+import { ConnectionPill } from './components/ConnectionPill';
+import { Hero } from './components/Hero';
+import { WelcomeCard, useFirstRunSeen } from './components/WelcomeCard';
 import {
   AUTOFILL_BLOCKED_REASON,
   OUTREACH_BLOCKED_REASON,
@@ -9,12 +15,13 @@ import {
   TAILOR_DELETE_BLOCKED_REASON,
   QUEUE_COMING_SOON_MESSAGE,
   INCOMPLETE_TOOLTIP,
-  isValidPort,
 } from './utils';
 
-// Top-level App wraps the companion shell in the Context provider so any
-// child component can read state via useCompanionState. The shell holds all
-// hook composition + JSX; component decomposition is deferred to S3.
+// S4 layout: TopBar (brand + ProgressStrip + ConnectionPill + ConfigGear)
+// → optional WelcomeCard → Hero (one primary action) → secondary
+// CurrentPanel for fine-grained controls → modals (config + artifact edit)
+// → queue placeholder → activity log.
+
 export function App() {
   return (
     <CompanionStateProvider>
@@ -26,20 +33,25 @@ export function App() {
 function AppShell() {
   const { state } = useCompanionState();
   const actions = useCompanionActions();
+  const { seen, markSeen } = useFirstRunSeen();
 
+  const phase = computeAppPhase(state, seen);
   const ready = isRuntimeReady(state);
-  const workflow = computeWorkflow(state);
   const blockReason = runtimeBlockReason(state);
 
   return (
     <main className="shell">
-      <Topbar />
+      <Topbar phase={phase} />
       <RuntimeOverlay actions={actions} />
-      <ConnectionPanel actions={actions} />
-      <WorkflowPanel state={state} actions={actions} ready={ready} workflow={workflow} blockReason={blockReason} />
+
+      {!seen && <WelcomeCard onDismiss={markSeen} />}
+
+      <Hero phase={phase} />
+
       <CurrentPanel state={state} actions={actions} ready={ready} blockReason={blockReason} hidden={state.view !== 'main'} />
       <ArtifactEditPanel state={state} actions={actions} ready={ready} blockReason={blockReason} hidden={state.view !== 'artifact-edit'} />
       <ConfigPanel actions={actions} hidden={state.view !== 'config'} />
+
       <QueueDisplay state={state} />
       <ActivityFooter state={state} />
     </main>
@@ -48,25 +60,37 @@ function AppShell() {
 
 // ---- Topbar -----------------------------------------------------------
 
-function Topbar() {
+function Topbar({ phase }: { phase: ReturnType<typeof computeAppPhase> }) {
   const { state } = useCompanionState();
   const { openConfigPanel, closeConfigPanel } = useCompanionActions();
   const onClickConfig = state.view === 'config' ? closeConfigPanel : openConfigPanel;
-  const badgeLabel = {
-    connected: 'Online',
-    disconnected: 'Offline',
-    idle: 'Idle',
-  }[state.connection.status];
+
   return (
     <header className="topbar">
-      <div>
-        <p className="eyebrow">wolf companion</p>
-        <h1>Apply Console</h1>
+      <div className="topbar-row">
+        <div className="topbar-brand">
+          <p className="eyebrow">wolf companion</p>
+          <h1>Apply Console</h1>
+        </div>
+        <div className="topbar-controls">
+          <ConnectionPill />
+          <button
+            id="configButton"
+            type="button"
+            className="config-gear ghost-button"
+            onClick={onClickConfig}
+            aria-label="Settings"
+            title="Settings"
+          >
+            <Settings size={16} />
+          </button>
+          <span id="connectionBadge" className={`status-badge status-badge--${state.connection.status}`} hidden>
+            {/* Hidden for harness compatibility; visible status moved to ConnectionPill. */}
+            {state.connection.status}
+          </span>
+        </div>
       </div>
-      <div className="top-actions">
-        <button id="configButton" className="ghost-button" type="button" onClick={onClickConfig}>Config</button>
-        <span id="connectionBadge" className={`status-badge status-badge--${state.connection.status}`}>{badgeLabel}</span>
-      </div>
+      <ProgressStrip active={progressIndex(phase)} />
     </header>
   );
 }
@@ -96,101 +120,6 @@ function RuntimeOverlay({ actions }: { actions: ReturnType<typeof useCompanionAc
   );
 }
 
-// ---- Connection panel -------------------------------------------------
-
-function ConnectionPanel({ actions }: { actions: ReturnType<typeof useCompanionActions> }) {
-  const { state } = useCompanionState();
-  const [portInput, setPortInput] = useState<string>(actions.port);
-
-  // Sync the input when the persisted port loads from chrome.storage.
-  useEffect(() => {
-    setPortInput(actions.port);
-  }, [actions.port]);
-
-  const inlineButtonLabel = labelForButton(
-    'openBrowser',
-    state,
-    state.runtime.browser.status === 'ready' ? 'Show wolf browser' : 'Open wolf browser',
-  );
-  const inlineDisabled = state.connection.status !== 'connected';
-  const portValid = isValidPort(portInput);
-
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    void actions.reconnect(portInput);
-  };
-
-  return (
-    <section className="panel connection-panel" aria-label="daemon connection">
-      <form onSubmit={onSubmit}>
-        <label className="field-label" htmlFor="portInput">Port</label>
-        <div className="port-row">
-          <input
-            id="portInput"
-            inputMode="numeric"
-            maxLength={5}
-            pattern="[0-9]{4,5}"
-            value={portInput}
-            onChange={(e) => setPortInput(e.target.value)}
-          />
-          <button id="reconnectButton" type="submit" disabled={!portValid && portInput.length > 0}>Reconnect</button>
-        </div>
-        <p className="port-help">Start <strong>wolf serve</strong>, then copy the printed port here.</p>
-        <p id="connectionDetail" className="muted">{state.connection.detail}</p>
-        <button
-          id="openBrowserInlineButton"
-          className="ghost-button browser-open-button"
-          type="button"
-          disabled={inlineDisabled}
-          title={inlineDisabled ? 'Connect to wolf serve first.' : ''}
-          onClick={() => void actions.openWolfBrowser()}
-        >
-          {inlineButtonLabel}
-        </button>
-      </form>
-    </section>
-  );
-}
-
-// ---- Workflow panel ---------------------------------------------------
-
-interface WorkflowPanelProps {
-  state: CompanionState;
-  actions: ReturnType<typeof useCompanionActions>;
-  ready: boolean;
-  workflow: WorkflowStatus;
-  blockReason: string;
-}
-
-function WorkflowPanel({ state, actions, ready, workflow, blockReason }: WorkflowPanelProps) {
-  const checkRunDisabled = !ready || !state.activeRunId;
-  const checkRunTitle = !ready ? blockReason : (!state.activeRunId ? 'No active AI run to check yet.' : 'Check the latest local status for the active AI run.');
-  const checkRunLabel = state.activeRunId ? 'Check run' : 'No run';
-  return (
-    <section id="workflowPanel" className="panel workflow-panel" aria-label="workflow status">
-      <div className="workflow-progress" aria-hidden="true">
-        <span id="workflowProgressNumber">{workflow.progress}</span>
-      </div>
-      <div className="workflow-copy">
-        <p id="workflowStageKicker" className="eyebrow">{workflow.kicker}</p>
-        <h2 id="workflowStageTitle">{workflow.title}</h2>
-        <p id="actionHint" className="workflow-hint">{workflow.hint}</p>
-        <p className="workflow-steps">Steps: 1 Import, 2 Process, 3 Tailor. TODO: Fill and Reach out.</p>
-      </div>
-      <button
-        id="refreshRunStatusButton"
-        className="ghost-button refresh-chip"
-        type="button"
-        disabled={checkRunDisabled}
-        title={checkRunTitle}
-        onClick={() => void actions.refreshActiveRun()}
-      >
-        {checkRunLabel}
-      </button>
-    </section>
-  );
-}
-
 // ---- Current panel ----------------------------------------------------
 
 interface CurrentPanelProps {
@@ -213,32 +142,26 @@ function CurrentPanel({ state, actions, ready, blockReason, hidden }: CurrentPan
   const isDuplicate = state.currentPageStatus.kind === 'duplicate';
   const isAggregator = state.currentPageStatus.kind === 'aggregator';
 
-  // Delete-import visibility matches legacy renderImportDeleteState.
   const canDelete = ready &&
     state.currentPageStatus.kind === 'duplicate' &&
     Boolean(state.currentPageStatus.detail.inboxId);
 
-  // Process this page gating matches legacy renderProcessCurrentPageState.
   const processCurrentDisabled = !ready ||
     state.currentPageStatus.kind !== 'duplicate' ||
     state.currentPageStatus.detail.status !== 'raw';
 
-  // Process inbox.
   const processInboxLabel = labelForButton('processInbox', state, `Batch Process (${state.inbox.rawCount})`);
   const processInboxDisabled = !ready || !state.inbox.hasRaw || Boolean(state.buttonOverrides.processInbox?.disabled);
 
-  // Tailor instant.
   const tailorInstantBaseLabel = state.promptOpen.tailor
     ? (state.promptText.tailor.trim() ? 'Send' : 'Tailor this job instantly')
     : 'Tailor this job instantly';
   const tailorInstantLabel = labelForButton('tailorInstant', state, tailorInstantBaseLabel);
   const tailorInstantDisabled = !ready || !state.currentJobId || Boolean(state.buttonOverrides.tailorInstant?.disabled);
 
-  // Batch tailor.
   const batchTailorLabel = labelForButton('batchTailor', state, `Batch Tailor (${state.tailor.untailoredJobCount})`);
   const batchTailorDisabled = !ready || state.tailor.untailoredJobCount === 0 || Boolean(state.buttonOverrides.batchTailor?.disabled);
 
-  // Artifacts.
   const resumeReady = state.artifacts.resume.status === 'ready';
   const coverReady = state.artifacts.coverLetter.status === 'ready';
 
@@ -427,6 +350,20 @@ function CurrentPanel({ state, actions, ready, blockReason, hidden }: CurrentPan
           <p className="prompt-help">Optional page-specific instructions. wolf will fill the form but will not submit it.</p>
         </div>
       )}
+
+      {/* Hidden harness target for the legacy refresh-status chip; the new
+          layout exposes the same behavior via the Hero's "Check run" button.
+          Kept in DOM so harness selectors do not break. */}
+      <button
+        id="refreshRunStatusButton"
+        type="button"
+        className="ghost-button refresh-chip"
+        hidden
+        disabled={!ready || !state.activeRunId}
+        onClick={() => void actions.refreshActiveRun()}
+      >
+        {state.activeRunId ? 'Check run' : 'No run'}
+      </button>
     </section>
   );
 }
@@ -528,7 +465,6 @@ function ConfigPanel({ actions, hidden }: { actions: ReturnType<typeof useCompan
   const [values, setValues] = useState<ConfigPayload>(DEFAULT_CONFIG);
   const { state, log } = useCompanionState();
 
-  // Hydrate from the daemon when it loads or when reset returns a fresh config.
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<ConfigPayload>).detail;
@@ -540,7 +476,6 @@ function ConfigPanel({ actions, hidden }: { actions: ReturnType<typeof useCompan
 
   const onSave = () => {
     try {
-      // Validation matches legacy readConfigForm: minScore in [0,1], counts >= 1.
       const minScore = Number(values.hunt.minScore);
       const maxResults = Number(values.hunt.maxResults);
       const maxEmails = Number(values.reach.maxEmailsPerDay);
@@ -642,13 +577,21 @@ function QueueDisplay({ state }: { state: CompanionState }) {
           </ol>
         </article>
       ))}
-      {/* Counts hidden but kept in DOM for legacy harness selectors */}
       <span hidden>{state.queues.filling.length}</span>
     </section>
   );
 }
 
 function ActivityFooter({ state }: { state: CompanionState }) {
+  // Hidden when there is nothing yet — keeps the cleaner Apple-style hierarchy.
+  if (state.activity.length === 0) {
+    return (
+      <footer className="activity" hidden>
+        <p className="field-label">Activity</p>
+        <ul id="activityLog"></ul>
+      </footer>
+    );
+  }
   return (
     <footer className="activity">
       <p className="field-label">Activity</p>
@@ -663,13 +606,6 @@ function ActivityFooter({ state }: { state: CompanionState }) {
 
 // ---- Derived helpers ------------------------------------------------
 
-interface WorkflowStatus {
-  progress: string;
-  kicker: string;
-  title: string;
-  hint: string;
-}
-
 function isRuntimeReady(state: CompanionState): boolean {
   return state.connection.status === 'connected' && state.runtime.browser.status === 'ready';
 }
@@ -677,47 +613,6 @@ function isRuntimeReady(state: CompanionState): boolean {
 function runtimeBlockReason(state: CompanionState): string {
   if (state.connection.status !== 'connected') return 'Connect to wolf serve first.';
   return state.runtime.browser.requiredAction || 'Start the browser from wolf serve, then reconnect.';
-}
-
-function computeWorkflow(state: CompanionState): WorkflowStatus {
-  if (!isRuntimeReady(state)) {
-    return {
-      progress: '0/3',
-      kicker: 'Setup',
-      title: 'Connect wolf',
-      hint: runtimeBlockReason(state),
-    };
-  }
-  if (state.activeRunId) {
-    return {
-      progress: state.activeRunUi?.stepProgress ?? '2/3',
-      kicker: state.activeRunUi?.stepKicker ?? 'AI run active',
-      title: 'Processing',
-      hint: 'wolf checks provider status every 60 seconds. Use Check run for the latest local run state.',
-    };
-  }
-  if (state.inbox.hasRaw) {
-    return {
-      progress: '1/3',
-      kicker: 'Step 1 of 3',
-      title: 'Import done',
-      hint: `${state.inbox.rawCount} imported page(s) are waiting. Process Inbox turns them into Ready jobs.`,
-    };
-  }
-  if (state.tailor.untailoredJobCount > 0) {
-    return {
-      progress: '2/3',
-      kicker: 'Step 2 of 3',
-      title: 'Process done',
-      hint: `${state.tailor.untailoredJobCount} job(s) are ready for tailoring. Use instant tailor for this page or Batch Tailor for the queue.`,
-    };
-  }
-  return {
-    progress: '3/3',
-    kicker: 'Ready',
-    title: 'All caught up',
-    hint: 'MVP steps: 1 Import, 2 Process, 3 Tailor. TODO: Fill and Reach are planned after this flow.',
-  };
 }
 
 function labelForButton(buttonId: string, state: CompanionState, defaultLabel: string): string {
@@ -739,5 +634,3 @@ function computeImportVariant(state: CompanionState, ready: boolean): 'success' 
   return null;
 }
 
-// Suppress an unused export warning when memoization helpers are not in use.
-void useMemo;

@@ -586,6 +586,146 @@
   }
 }
 
+/* S4 components ---------------------------------------------------------- */
+
+@layer components {
+  .topbar {
+    @apply rounded-card shadow-card p-3;
+    background: theme('colors.panel');
+    grid-template-columns: 1fr;
+    gap: 0.625rem;
+  }
+
+  .topbar-row {
+    @apply flex items-center justify-between gap-2 min-w-0;
+  }
+
+  .topbar-brand {
+    @apply min-w-0 flex-1;
+  }
+
+  .topbar-brand h1 {
+    @apply text-[20px];
+  }
+
+  .topbar-controls {
+    @apply flex items-center gap-2;
+  }
+
+  .config-gear {
+    @apply min-h-[34px] px-3 rounded-button;
+  }
+
+  /* Connection pill */
+  .connection-pill {
+    @apply relative;
+  }
+
+  .pill-summary {
+    @apply inline-flex items-center gap-2 min-h-[30px] px-3 rounded-full;
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .pill-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+    background: theme('colors.muted');
+  }
+
+  .pill-dot--connected {
+    background: theme('colors.success.DEFAULT');
+  }
+
+  .pill-dot--disconnected {
+    background: theme('colors.danger.DEFAULT');
+  }
+
+  .pill-dot--idle {
+    background: theme('colors.warning.DEFAULT');
+  }
+
+  .pill-popover {
+    @apply absolute right-0 top-full mt-2 z-20 grid gap-2 p-3 rounded-card shadow-elevated;
+    background: theme('colors.panel');
+    width: 280px;
+    max-width: calc(100vw - 24px);
+  }
+
+  /* Progress strip */
+  .progress-strip {
+    @apply flex items-center gap-1;
+  }
+
+  .progress-segment {
+    @apply h-1 flex-1 rounded-full;
+    background: theme('colors.line');
+    transition: background-color 200ms ease;
+  }
+
+  .progress-segment--active {
+    background: theme('colors.accent.DEFAULT');
+  }
+
+  /* Hero */
+  .hero {
+    @apply rounded-card shadow-card p-4 grid gap-2;
+    background: theme('colors.panel');
+  }
+
+  .hero-title {
+    @apply text-[20px] font-bold tracking-tight leading-[1.15];
+    color: theme('colors.ink');
+  }
+
+  .hero-body {
+    @apply m-0 text-[13px] text-muted leading-snug;
+  }
+
+  .hero-actions {
+    @apply flex items-center gap-2 mt-1 flex-wrap;
+  }
+
+  .hero-primary {
+    @apply min-h-[40px] px-4 rounded-button text-[14px] font-semibold;
+    background: theme('colors.accent.DEFAULT');
+  }
+
+  .hero-primary:hover {
+    background: #006fdc;
+  }
+
+  .hero-primary:disabled {
+    background: theme('colors.line');
+    color: theme('colors.subtle');
+  }
+
+  .hero-secondary {
+    @apply min-h-[40px] px-4 rounded-button text-[14px];
+  }
+
+  /* Welcome card */
+  .welcome-card {
+    @apply rounded-card shadow-card p-4 grid gap-3;
+    background: theme('colors.panel');
+  }
+
+  .welcome-title {
+    @apply text-[22px] font-bold tracking-tight leading-tight;
+  }
+
+  .welcome-body {
+    @apply m-0 text-sm text-muted leading-snug;
+  }
+
+  .welcome-steps {
+    @apply m-0 p-0 list-none grid gap-1.5 text-[13px] text-muted leading-snug;
+  }
+
+  .welcome-steps code {
+    @apply px-1 py-0.5 rounded text-[12px];
+    background: #f0ebe0;
+  }
+}
+
 @media (max-width: 380px) {
   .shell {
     @apply p-3;
