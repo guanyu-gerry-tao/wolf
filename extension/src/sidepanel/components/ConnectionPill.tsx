@@ -19,8 +19,20 @@ export function ConnectionPill({ open, onToggle }: ConnectionPillProps) {
   const { state } = useCompanionState();
   const actions = useCompanionActions();
 
-  const dotClass = `pill-dot pill-dot--${state.connection.status}`;
-  const summary = state.connection.status === 'connected' ? `:${actions.port}` : labelFor(state.connection.status);
+  // Disambiguate the idle state. wolf does not auto-ping the daemon at
+  // mount; an idle status with a generic "Waiting for local wolf serve"
+  // detail is just "the user has not clicked Reconnect yet" — labeling
+  // that as "Connecting" was actively misleading. Active reconnect
+  // attempts set detail to "Pinging wolf serve...", so we look for that
+  // marker to distinguish the two flavors of idle.
+  const isPinging = state.connection.status === 'idle'
+    && state.connection.detail.toLowerCase().includes('ping');
+  const dotClass = `pill-dot pill-dot--${state.connection.status}${isPinging ? ' pill-dot--pinging' : ''}`;
+  const summary = state.connection.status === 'connected'
+    ? `:${actions.port}`
+    : isPinging
+      ? 'Connecting…'
+      : labelFor(state.connection.status);
 
   return (
     <button
@@ -95,7 +107,10 @@ export function ConnectionPanel({ open, onClose }: ConnectionPanelProps) {
 function labelFor(status: string): string {
   switch (status) {
     case 'connected': return 'Connected';
-    case 'idle': return 'Connecting';
+    // The user has not started a connection attempt yet. "Not
+    // connected" makes the click-to-set-up affordance discoverable
+    // without falsely implying that wolf is actively trying.
+    case 'idle': return 'Not connected';
     case 'disconnected': return 'Offline';
     default: return 'Setup';
   }

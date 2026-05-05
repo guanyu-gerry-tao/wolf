@@ -8,6 +8,12 @@ interface HeroProps {
   phase: AppPhase;
 }
 
+// Threshold below which batch actions (Process Inbox, Batch Tailor) are
+// hidden from the Hero so users can keep "taking in" individual items
+// without being pushed into a paid AI batch run too early. The legacy
+// per-step CurrentPanel still exposes Batch buttons for power users.
+const BATCH_THRESHOLD = 5;
+
 interface HeroContent {
   kicker: string;
   title: string;
@@ -112,26 +118,62 @@ function computeHero(
           disabled: state.currentPageStatus.kind === 'duplicate',
         },
       };
-    case 'has-imports':
+    case 'has-imports': {
+      // Batch threshold is 5: below that, hide Process Inbox entirely
+      // and just keep the per-page Import action visible so the user
+      // is encouraged to keep adding to the queue. At or above 5 the
+      // batch button appears as primary with Import demoted to a
+      // secondary chip.
+      const count = state.inbox.rawCount;
+      const batchWorthwhile = count >= BATCH_THRESHOLD;
+      const importBtn = {
+        label: 'Import this page',
+        onClick: () => void actions.importCurrentPage(),
+        disabled: state.currentPageStatus.kind === 'duplicate',
+      };
+      if (batchWorthwhile) {
+        return {
+          kicker: 'Step 3 of 4',
+          title: `${count} pages in your inbox`,
+          body: 'Process Inbox turns raw imports into structured Ready jobs with company, title, and location parsed.',
+          primary: { label: `Process Inbox (${count})`, onClick: () => void actions.processInbox() },
+          secondary: { label: 'Import another', onClick: () => void actions.importCurrentPage() },
+        };
+      }
+      return {
+        kicker: 'Step 2 of 4',
+        title: count === 1 ? '1 page in your inbox' : `${count} pages in your inbox`,
+        body: `Keep adding pages — batch processing unlocks at ${BATCH_THRESHOLD}.`,
+        primary: importBtn,
+      };
+    }
+    case 'has-processed': {
+      // Same threshold as imports: hide Batch Tailor below 5 and let
+      // the user finish jobs one at a time. At or above 5 surface the
+      // batch action as primary with the per-job tailor as secondary.
+      const count = state.tailor.untailoredJobCount;
+      const batchWorthwhile = count >= BATCH_THRESHOLD;
+      const tailorOneBtn = state.currentJobId
+        ? { label: 'Tailor this job instantly', onClick: () => void actions.tailorInstantly() }
+        : undefined;
+      if (batchWorthwhile) {
+        return {
+          kicker: 'Step 4 of 4',
+          title: `${count} jobs ready to tailor`,
+          body: 'Batch Tailor generates resume + cover letter for every Ready job in one go.',
+          primary: { label: `Batch Tailor (${count})`, onClick: () => void actions.batchTailor() },
+          secondary: tailorOneBtn,
+        };
+      }
       return {
         kicker: 'Step 3 of 4',
-        title: `${state.inbox.rawCount} imported page${state.inbox.rawCount === 1 ? '' : 's'} ready`,
-        body: 'Process Inbox turns raw imports into structured Ready jobs with company, title, and location parsed.',
-        primary: {
-          label: `Process Inbox (${state.inbox.rawCount})`,
-          onClick: () => void actions.processInbox(),
-        },
+        title: count === 1 ? '1 job ready to tailor' : `${count} jobs ready to tailor`,
+        body: tailorOneBtn
+          ? `Tailor this one now, or keep importing — batch tailoring unlocks at ${BATCH_THRESHOLD}.`
+          : `Open a Ready job in the wolf browser to tailor it. Batch tailoring unlocks at ${BATCH_THRESHOLD}.`,
+        primary: tailorOneBtn,
       };
-    case 'has-processed':
-      return {
-        kicker: 'Step 4 of 4',
-        title: `${state.tailor.untailoredJobCount} job${state.tailor.untailoredJobCount === 1 ? '' : 's'} ready to tailor`,
-        body: 'Tailor generates a resume and cover letter for each Ready job. Use Batch Tailor for the whole queue, or Tailor this job instantly for the current page.',
-        primary: {
-          label: `Batch Tailor (${state.tailor.untailoredJobCount})`,
-          onClick: () => void actions.batchTailor(),
-        },
-      };
+    }
     case 'run-active':
       return {
         kicker: state.activeRunUi?.stepKicker ?? 'AI run active',

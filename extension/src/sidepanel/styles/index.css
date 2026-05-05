@@ -624,15 +624,25 @@
     background: theme('colors.muted');
   }
 
+  /* Brighter than the status-badge success color so the connected
+   * state reads as alive at the small dot size. Apple system green. */
   .pill-dot--connected {
-    background: theme('colors.success.DEFAULT');
+    background: #34c759;
   }
 
   .pill-dot--disconnected {
     background: theme('colors.danger.DEFAULT');
   }
 
+  /* Static idle (user has not clicked Reconnect yet) reads as "neutral
+   * waiting" — gray. The `--pinging` modifier kicks in only during the
+   * brief active reconnect window and lights the dot up so the user
+   * can see something is happening. */
   .pill-dot--idle {
+    background: theme('colors.muted');
+  }
+
+  .pill-dot--pinging {
     background: theme('colors.warning.DEFAULT');
   }
 
