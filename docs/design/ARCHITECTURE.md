@@ -314,7 +314,7 @@ src/cli/commands/
 │   └── list.ts           # → ctx.jobApp.list + formatJobList
 ├── profile.ts        # → ctx.profileApp.list/create/use/delete
 ├── reach.ts          # → ctx.reachApp.reach (stub-M5)
-├── score.ts          # → ctx.scoreApp.score (stub-M2)
+├── score.ts          # → ctx.scoreApp.score + formatScoreResult
 ├── status.ts         # → ctx.statusApp.summarize + formatStatus
 └── tailor.ts         # → ctx.tailorApp.tailor / analyze / writeResume / writeCoverLetter
 ```
@@ -344,13 +344,22 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
   // 5. Return ingested count
 }
 
-// src/application/impl/score/index.ts — process only
+// src/application/impl/scoreApplicationServiceImpl.ts — AI-only scoring
 export async function score(options: ScoreOptions): Promise<ScoreResult> {
-  // 1. Read unscored jobs (score: null) from DB
-  // 2. AI field extraction (sponsorship, tech stack, remote, salary)
-  // 3. Apply dealbreakers — save disqualified as status: filtered
-  // 4. Submit remaining jobs to Claude Batch API for async scoring
-  // 5. Return batch ID and pending count
+  // poll  : drain BatchService.pollAiBatches, walk completed score batches,
+  //         parse each item, and write Job.score + Job.scoreJustification
+  //         (parse failure → status='error', error='score_error'). Items
+  //         are marked consumed so a second --poll is a no-op.
+  // single: load profile + 1 candidate; ScoringService.scoreOne runs aiClient
+  //         synchronously, parses, persists, and returns singleScore +
+  //         singleComment for inline AI-orchestrator presentation.
+  // default: load profile + every score:null job (or explicit --jobs);
+  //         ScoringService.submitBatch enqueues N requests via
+  //         BatchService.submitAiBatch (type='score'); poll later.
+  //
+  // No code-side dealbreakers — the user's `scoring_notes` (free prose) is
+  // fed straight to the prompt and the AI emits the verdict. See
+  // DECISIONS.md (2026-05-04) which supersedes the older hybrid design.
 }
 ```
 
@@ -426,19 +435,44 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
 }
 ```
 
-**How `score` processes ingested jobs:**
+**How `score` processes ingested jobs (AI-only, no code dealbreakers — see DECISIONS.md 2026-05-04):**
 
 ```typescript
-// src/application/impl/score/index.ts
+// src/application/impl/scoreApplicationServiceImpl.ts
 export async function score(options: ScoreOptions): Promise<ScoreResult> {
-  const jobs = await db.getJobs({ score: null });           // unscored only
-  const extracted = await ai.extractFields(jobs);           // AI: sponsorship, techStack, remote, salary
-  const { pass, filtered } = applyDealbreakers(extracted, profile);
-  await db.updateJobs(filtered, { status: 'filtered' });
-  await batch.submit(pass, { type: 'score', profile });     // stores batchId in batches table
-  return { submitted: pass.length, filtered: filtered.length };
+  // poll: drain pending provider batches and apply unconsumed score items.
+  if (options.poll) {
+    await batchService.pollAiBatches();
+    for (const batch of await batchRepo.listCompletedByType('score')) {
+      for (const item of await batchItemRepo.listByBatch(batch.id)) {
+        if (item.consumedAt) continue;
+        const parsed = parseScoreResponse(item.resultText ?? '');
+        if (parsed.ok) await jobRepo.update(item.customId, { score: parsed.value.score, scoreJustification: parsed.value.justification });
+        else            await jobRepo.update(item.customId, { status: 'error', error: 'score_error' });
+        await batchItemRepo.markConsumed(item.id, new Date().toISOString());
+      }
+    }
+    return { submitted: 0, filtered: 0, polled: completedCount };
+  }
+
+  const profileMd = await profileRepo.getProfileMd(profileId);
+  const aiConfig = options.aiModel ? parseModelRef(options.aiModel) : defaultAiConfig;
+  assertApiKey('ANTHROPIC_API_KEY');
+
+  if (options.single) {
+    const target = await pickOneCandidate(options);
+    const { score, justification } = await scoring.scoreOne(target, jdText, profileMd, aiConfig);
+    await jobRepo.update(target.id, { score, scoreJustification: justification });
+    return { submitted: 1, filtered: 0, singleScore: score, singleComment: justification };
+  }
+
+  const candidates = await loadUnscoredJobs(options);
+  const submission = await scoring.submitBatch(candidates, profileMd, profileId, aiConfig);
+  return { submitted: submission.submitted, filtered: 0 };  // filtered always 0 — kept for type stability
 }
 ```
+
+The single AI prompt is composed of the user's full `profile.md` (especially `## Job Preferences > Scoring notes`) + the JD body + an output contract. The model emits `<score>0–10</score><justification>...</justification>`; `parseScoreResponse` divides by 10 for storage in `Job.score`. Filtering is handled downstream — `wolf tailor` decides thresholds.
 
 **Configuration (in `wolf.toml` in workspace root):**
 
@@ -520,13 +554,13 @@ User shares job with AI (screenshot / pasted text / URL)
     → add({ title, company, jdText })
       → db.saveJob({ ...structured, status: 'raw', score: null })
       → return { jobId }
-  → wolf_score({ jobIds: [jobId], single: true })
+  → wolf_score({ jobIds: [jobId], single: true })   # OR POST /api/score with { jobIds, single: true }
     → score({ jobIds: [jobId], single: true })
-      → ai.extractFields([job])               # Claude: structured field extraction
-      → applyDealbreakers(job, profile)       # hard filter check
-      → claude.haiku.score(job, profile)      # synchronous Haiku call, returns immediately
-      → return { submitted: 1, filtered: 0 }
-  ← AI presents score + analysis to user, offers to tailor
+      → scoring.scoreOne(job, jdText, profileMd, aiConfig)  # one synchronous Haiku call
+      → parse <score>0–10</score><justification>...</justification>
+      → jobRepo.update(jobId, { score, scoreJustification })
+      → return { submitted: 1, filtered: 0, singleScore, singleComment }
+  ← AI presents score + justification to user, offers to tailor
 ```
 
 ### `wolf score` (bulk batch flow)
@@ -534,10 +568,9 @@ User shares job with AI (screenshot / pasted text / URL)
 ```
 CLI parses args
   → score({ profileId })
-    → db.getJobs({ score: null, orStatus: 'score_error' })  # fetch unscored + previously errored jobs
-    → ai.extractFields(jobs)                  # Claude: extract sponsorship, techStack, remote, salary from JD text
-    → applyDealbreakers(jobs, profile)        # hard filter — disqualified → status: filtered
-    → ai.submitBatch(remaining, profile)      # submit to Claude Batch API (async, returns immediately)
+    → jobRepo.query({ limit: 10_000 }).filter(j => j.score === null)   # unscored only
+    → scoring.submitBatch(jobs, profileMd, profileId, aiConfig)        # one prompt per job, all enqueued
+    → BatchService.submitAiBatch(...)         # writes batches + batch_items rows; returns wolf-internal batchId
     → return { submitted, filtered }
   ← CLI prints batch summary; scoring completes in background
 ```

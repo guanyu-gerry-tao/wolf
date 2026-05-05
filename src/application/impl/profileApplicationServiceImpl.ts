@@ -480,7 +480,73 @@ export class ProfileApplicationServiceImpl implements ProfileApplicationService 
       preserved: [...result.preserved],
     };
   }
+
+  /** @inheritdoc */
+  async scoreMdPath(): Promise<{ profileName: string; path: string }> {
+    const profileName = await resolveActiveProfileName();
+    return { profileName, path: scoreMdPath(profileName) };
+  }
+
+  /** @inheritdoc */
+  async scoreMdContent(): Promise<{ profileName: string; path: string; content: string }> {
+    const profileName = await resolveActiveProfileName();
+    const filePath = scoreMdPath(profileName);
+    let content = '';
+    try {
+      content = await fs.readFile(filePath, 'utf-8');
+    } catch {
+      // Missing file is acceptable — caller renders empty.
+    }
+    return { profileName, path: filePath, content };
+  }
+
+  /** @inheritdoc */
+  async scoreMdInit(): Promise<{ profileName: string; path: string; created: boolean }> {
+    const profileName = await resolveActiveProfileName();
+    const filePath = scoreMdPath(profileName);
+    try {
+      await fs.access(filePath);
+      return { profileName, path: filePath, created: false };
+    } catch {
+      // not present — create with placeholder
+    }
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, SCORE_MD_PLACEHOLDER, 'utf-8');
+    return { profileName, path: filePath, created: true };
+  }
 }
+
+function scoreMdPath(profileName: string): string {
+  return path.join(profileDir(profileName), 'score.md');
+}
+
+// Keep in sync with `scoreMdTemplate` in initApplicationServiceImpl and
+// `SCORE_MD_PLACEHOLDER` in fileProfileRepositoryImpl. Three copies because
+// each lives in its own layer (init bootstrap / profile app / file repo)
+// and TypeScript module isolation doesn't justify a shared template
+// indirection for one short string. Update all three together.
+const SCORE_MD_PLACEHOLDER = `> [!TODO]
+> score.md — profile-level scoring guide.
+>
+> Wolf merges this file into the score-system prompt on every \`wolf score\`
+> invocation. Use it to give long-form steering the AI follows when picking
+> a tier (skip / mass_apply / tailor / invest):
+>
+>   - "I really only want backend infra; PMs and frontend are skip."
+>   - "These are the patterns that make me say invest vs tailor."
+>   - "Salary below \$130k is tailor, never invest, regardless of stack."
+>
+> Short preferences (one or two lines) belong in
+> profile.toml > [job_preferences].scoring_notes — that field is also fed to
+> hunt and tailor. score.md is for longer narrative guidance the score
+> command reads.
+>
+> The whole \`>\` block above is stripped before the file reaches the AI
+> (see stripComments). Anything you write below the block is included
+> verbatim. Leave the file empty below to run scoring without extra
+> guidance.
+
+`;
 
 // ---------------------------------------------------------------------------
 // helpers

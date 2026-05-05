@@ -52,6 +52,8 @@ export class AddApplicationServiceImpl implements AddApplicationService {
       clearanceRequired: false,
       score: null,
       scoreJustification: null,
+      tierAi: null,
+      tierUser: null,
       status: 'new',
       error: null,
       appliedProfileId: null,

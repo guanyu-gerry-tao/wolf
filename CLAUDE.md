@@ -13,7 +13,9 @@ AI-powered job hunting CLI + MCP server. Finds roles, tailors resumes, fills for
 
 Post-M3 enhancement batch done: E1 (willingToRelocate string), E2 (per-command model + combined provider/model format), E3 (wolf config/profile get/set + multi-profile management), E4 (prompts externalized to MD), E5/E6 (prompt polish), E7 (analyst + writers checkpoint architecture with hint.md), E8 (profile governance consolidated into `profile.toml` with `wolf profile` show/get/set/fields/add/remove, unified builtin questions, `assertReadyForTailor`, and `wolf doctor` content-shape validation).
 
-**Next: Milestone 2 — Hunter** (application layer + hunt/score commands)
+**Milestone 2 — Hunter** in progress: `wolf score` landed with tier-based AI triage (`skip` / `mass_apply` / `tailor` / `invest` + pros/cons markdown). Two tier columns per Job: `tierAi` (AI verdict) and `tierUser` (manual override). User-override path: `wolf job set <id> tierUser <name|index>`. Profile-level scoring guide at `profiles/<name>/score.md`. See DECISIONS.md (2026-05-04 entries) for the design pivot away from numeric scoring + code dealbreakers. Still pending: `wolf hunt` ingestion + provider system.
+
+**Next: complete Milestone 2 — Hunter** (`wolf hunt` ingestion, pluggable provider system)
 
 See [docs/overview/MILESTONES.md](docs/overview/MILESTONES.md) for full milestone plan.
 
@@ -72,7 +74,10 @@ wolf/
 | `wolf init` | Interactive setup wizard; defaults to `~/wolf` |
 | `wolf init --empty` | Non-interactive skeleton workspace |
 | `wolf init --dev --empty` | Dev skeleton workspace (dev build only; tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
-| `wolf hunt` | Find and score jobs |
+| `wolf hunt` | Find jobs (Milestone 2 — not yet) |
+| `wolf score` | Triage unscored jobs into 4 tiers (`skip` / `mass_apply` / `tailor` / `invest`) via Claude Batch API. `--single` for synchronous Haiku; `--poll` to drain pending; `--jobs <ids>` to (re)score specific jobs. AI writes `Job.tierAi`. |
+| `wolf job set <id> tierUser <name\|index>` | Manual tier override that survives any `wolf score` call. AI never writes `tierUser`. |
+| `wolf profile score show / edit / init` | Read/edit `profiles/<name>/score.md` — long-form scoring guide merged into the score-system prompt. |
 | `wolf tailor` | Tailor resume to a JD |
 | `wolf fill` | Auto-fill job application form |
 | `wolf reach` | Find HR contacts and send outreach |
@@ -84,6 +89,16 @@ wolf/
 ## MCP tools
 
 Stable: `wolf_hunt`, `wolf_tailor`, `wolf_fill`, `wolf_reach`. Dev builds expose `wolfdev_*` names.
+
+`wolf_score` MCP exposure is **paused** for now — the score CLI + `POST /api/score` HTTP route are the supported AI-orchestrator surfaces.
+
+## HTTP daemon (companion + AI orchestrators)
+
+`wolf serve` starts a local HTTP daemon (`POST /api/score`, etc.). Score-relevant routes:
+
+| Route | Body / response |
+|---|---|
+| `POST /api/score` | Body matches `ScoreOptions` (`profileId?`, `jobIds?`, `single?`, `poll?`, `aiModel?`); response matches `ScoreResult`. 503 if scoreApp unwired, 400 on schema violation. |
 
 ## Environment variables
 

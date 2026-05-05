@@ -62,6 +62,7 @@ You are the Wolf Smoke Test Orchestrator.
 | `env` | 环境变量显示安全性 | automated | free |
 | `job-workflows` | add/status/list job 工作流 | automated | free |
 | `serve` | 本地 HTTP daemon ping route | automated | free |
+| `score` | Score CLI 确定性入口（help、缺 API key、缺 profile、空 `--poll`） | automated | free |
 
 ## 报告补充要求
 

@@ -54,4 +54,23 @@ export interface ProfileRepository {
 
   /** List attachment file names (relative to profiles/<name>/attachments/). */
   getAttachmentsList(name: string): Promise<string[]>;
+
+  /**
+   * Read the profile-level scoring guide (`profiles/<name>/score.md`). This
+   * is appended to the score-system prompt so the user can steer AI tier
+   * decisions with long-form prose. Returns an empty string if the file is
+   * missing — score command treats that as "no extra steer".
+   */
+  getScoreMd(name: string): Promise<string>;
+
+  /** Write `profiles/<name>/score.md`. Used by `wolf profile score edit`. */
+  writeScoreMd(name: string, content: string): Promise<void>;
+
+  /**
+   * Idempotently create `profiles/<name>/score.md` with a placeholder
+   * `> [!TODO]` header if the file does not yet exist. Mirrors the
+   * `hint.md` pattern in tailor — leaves an editable, self-documenting
+   * stub for the user.
+   */
+  ensureScoreMd(name: string): Promise<void>;
 }

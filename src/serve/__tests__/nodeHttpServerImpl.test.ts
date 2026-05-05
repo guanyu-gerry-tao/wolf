@@ -680,7 +680,6 @@ describe('NodeHttpServerImpl', () => {
     ['POST', '/api/config', '{}'],
     ['POST', '/api/config/reset', '{}'],
     ['POST', '/api/tailor', '{}'],
-    ['POST', '/api/score', '{}'],
     ['POST', '/api/fill', '{}'],
     ['GET', '/api/status', '{}'],
     ['GET', '/api/profile', '{}'],

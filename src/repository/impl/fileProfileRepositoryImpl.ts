@@ -180,4 +180,60 @@ export class FileProfileRepositoryImpl implements ProfileRepository {
       .filter(entry => entry.toLowerCase() !== 'readme.md')
       .sort();
   }
+
+  async getScoreMd(name: string): Promise<string> {
+    const filePath = path.join(this.profileDir(name), 'score.md');
+    try {
+      return await fs.readFile(filePath, 'utf-8');
+    } catch {
+      // Missing file is fine — score command treats it as no extra steer.
+      return '';
+    }
+  }
+
+  async writeScoreMd(name: string, content: string): Promise<void> {
+    const dir = this.profileDir(name);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'score.md'), content, 'utf-8');
+  }
+
+  async ensureScoreMd(name: string): Promise<void> {
+    const filePath = path.join(this.profileDir(name), 'score.md');
+    try {
+      await fs.access(filePath);
+      return; // already exists
+    } catch {
+      // create with placeholder header
+    }
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, SCORE_MD_PLACEHOLDER, 'utf-8');
+  }
 }
+
+// Placeholder content written by `ensureScoreMd` and `wolf profile score init`.
+// `> [!TODO]` blocks are stripped before the AI sees the file (project's
+// stripComments convention), so this header is a self-documenting cue for
+// the user without polluting the score prompt.
+const SCORE_MD_PLACEHOLDER = `> [!TODO]
+> score.md — profile-level scoring guide.
+>
+> Wolf merges this file into the score-system prompt on every \`wolf score\`
+> invocation. Use it to give long-form steering the AI follows when picking
+> a tier (skip / mass_apply / tailor / invest):
+>
+>   - "I really only want backend infra; PMs and frontend are skip."
+>   - "These are the patterns that make me say invest vs tailor."
+>   - "Salary below \$130k is tailor, never invest, regardless of stack."
+>
+> Short preferences (one or two lines) belong in
+> profile.toml > [job_preferences].scoring_notes — that field is also fed to
+> hunt and tailor. score.md is for longer narrative guidance the score
+> command reads.
+>
+> The whole \`>\` block above is stripped before the file reaches the AI
+> (see stripComments). Anything you write below the block is included
+> verbatim. Leave the file empty below to run scoring without extra
+> guidance.
+
+`;
+

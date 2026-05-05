@@ -35,6 +35,7 @@ import { BatchServiceImpl } from '../service/impl/batchServiceImpl.js';
 import { RenderServiceImpl } from '../service/impl/renderServiceImpl.js';
 import { ResumeCoverLetterServiceImpl } from '../service/impl/resumeCoverLetterServiceImpl.js';
 import { TailoringBriefServiceImpl } from '../service/impl/tailoringBriefServiceImpl.js';
+import { ScoringServiceImpl } from '../service/impl/scoringServiceImpl.js';
 import { StagehandFillServiceImpl } from '../service/impl/stagehandFillServiceImpl.js';
 import { StatusApplicationServiceImpl } from '../application/impl/statusApplicationServiceImpl.js';
 import { TailorApplicationServiceImpl } from '../application/impl/tailorApplicationServiceImpl.js';
@@ -80,6 +81,7 @@ import type { JobProvider } from '../service/jobProvider.js';
 import type { RenderService } from '../service/renderService.js';
 import type { ResumeCoverLetterService } from '../service/resumeCoverLetterService.js';
 import type { TailoringBriefService } from '../service/tailoringBriefService.js';
+import type { ScoringService } from '../service/scoringService.js';
 import type { StagehandFillService } from '../service/stagehandFillService.js';
 import type {
   StatusApplicationService,
@@ -125,6 +127,7 @@ export interface AppContext {
   renderService: RenderService;
   rewriteService: ResumeCoverLetterService;
   briefService: TailoringBriefService;
+  scoringService: ScoringService;
   stagehandFillService: StagehandFillService;
   httpServer: HttpServer;
   // application services
@@ -153,6 +156,8 @@ export interface AppContext {
   fillService: FillService;
   // config
   defaultAiConfig: AiConfig;
+  scoreAiConfig: AiConfig;
+  defaultProfileId: string;
 }
 
 /**
@@ -167,6 +172,8 @@ function wireContext(
   profileRepository: ProfileRepository,
   workspaceDir: string,
   defaultAiConfig: AiConfig,
+  scoreAiConfig: AiConfig,
+  defaultProfileId: string,
 ): AppContext {
   const db = drizzle(sqlite);
   initializeSchema(db);
@@ -188,6 +195,7 @@ function wireContext(
   const renderService = new RenderServiceImpl();
   const rewriteService = new ResumeCoverLetterServiceImpl();
   const briefService = new TailoringBriefServiceImpl();
+  const scoringService = new ScoringServiceImpl(batchService);
   const stagehandFillService = new StagehandFillServiceImpl();
   const tailorApp = new TailorApplicationServiceImpl(
     jobRepo, profileRepository, renderService, rewriteService, briefService,
@@ -243,6 +251,18 @@ function wireContext(
   const doctorApp = new DoctorApplicationServiceImpl(profileRepository);
   const initApp = new InitApplicationServiceImpl();
   const jobApp = new JobApplicationServiceImpl(jobRepo, companyRepo);
+  const huntApp = new HuntApplicationServiceImpl();
+  const scoreApp = new ScoreApplicationServiceImpl(
+    jobRepo,
+    profileRepository,
+    batchRepo,
+    batchItemRepo,
+    batchService,
+    scoringService,
+    scoreAiConfig,
+    defaultProfileId,
+  );
+  // HTTP server is constructed AFTER scoreApp so the /api/score handler is wired.
   const httpServer = new NodeHttpServerImpl({
     version: WOLF_VERSION,
     workspacePath: workspaceDir,
@@ -256,11 +276,10 @@ function wireContext(
     statusApp,
     configApp,
     profileApp,
+    scoreApp,
     jobRepository: jobRepo,
     companyRepository: companyRepo,
   });
-  const huntApp = new HuntApplicationServiceImpl();
-  const scoreApp = new ScoreApplicationServiceImpl();
   const fillApp = new FillApplicationServiceImpl();
   const reachApp = new ReachApplicationServiceImpl();
   const contextApp = new ContextApplicationServiceImpl(profileRepository);
@@ -280,6 +299,7 @@ function wireContext(
     renderService,
     rewriteService,
     briefService,
+    scoringService,
     stagehandFillService,
     httpServer,
     tailorApp,
@@ -306,6 +326,8 @@ function wireContext(
     serveApp,
     fillService,
     defaultAiConfig,
+    scoreAiConfig,
+    defaultProfileId,
   };
 }
 
@@ -337,9 +359,10 @@ export function createAppContext(): AppContext {
   // Load config synchronously so default-parameter pattern in commands works.
   const config = loadConfigSync();
   const defaultAiConfig: AiConfig = parseModelRef(config.tailor.model);
+  const scoreAiConfig: AiConfig = parseModelRef(config.score.model);
 
   return wireContext(
-    sqlite, profileRepository, workspaceDir, defaultAiConfig,
+    sqlite, profileRepository, workspaceDir, defaultAiConfig, scoreAiConfig, config.default,
   );
 }
 
@@ -358,7 +381,8 @@ export function createTestAppContext(): AppContext {
   const sqlite = new BetterSqlite3(':memory:');
   const profileRepository = new InMemoryProfileRepositoryImpl();
   const defaultAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
+  const scoreAiConfig: AiConfig = { provider: 'anthropic', model: 'claude-sonnet-4-6' };
   return wireContext(
-    sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig,
+    sqlite, profileRepository, '/tmp/wolf-test', defaultAiConfig, scoreAiConfig, 'default',
   );
 }

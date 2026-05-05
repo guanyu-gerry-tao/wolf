@@ -36,6 +36,12 @@ export interface BatchRepository {
   get(id: string): Promise<Batch | null>;
   /** Returns every batch still in `pending` state. */
   getPending(): Promise<Batch[]>;
+  /**
+   * Returns every completed batch of the given type, regardless of when the
+   * provider finished it. Used by per-type apply loops (e.g. score writeback)
+   * that need to drain unconsumed items left over from prior poll runs.
+   */
+  listCompletedByType(type: BatchType): Promise<Batch[]>;
   /** Marks a batch complete and stamps `completedAt`. */
   markComplete(id: string, completedAt: string): Promise<void>;
   /** Marks a batch failed (terminal state — no retry by design). */

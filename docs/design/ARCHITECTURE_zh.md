@@ -398,19 +398,44 @@ export async function hunt(options: HuntOptions): Promise<HuntResult> {
 }
 ```
 
-**`score` 如何处理接入的职位：**
+**`score` 如何处理接入的职位（纯 AI 打分，无代码 dealbreaker —— 见 DECISIONS.md 2026-05-04）：**
 
 ```typescript
-// src/application/impl/score/index.ts
+// src/application/impl/scoreApplicationServiceImpl.ts
 export async function score(options: ScoreOptions): Promise<ScoreResult> {
-  const jobs = await db.getJobs({ score: null });           // 只取未评分职位
-  const extracted = await ai.extractFields(jobs);           // AI 提取：sponsorship、技术栈、远程、薪资
-  const { pass, filtered } = applyDealbreakers(extracted, profile);
-  await db.updateJobs(filtered, { status: 'filtered' });
-  await batch.submit(pass, { type: 'score', profile });     // batchId 存入 batches 表
-  return { submitted: pass.length, filtered: filtered.length };
+  // poll：拉取 provider 结果，把所有已完成的 score batch 中未消费的 item 落库。
+  if (options.poll) {
+    await batchService.pollAiBatches();
+    for (const batch of await batchRepo.listCompletedByType('score')) {
+      for (const item of await batchItemRepo.listByBatch(batch.id)) {
+        if (item.consumedAt) continue;
+        const parsed = parseScoreResponse(item.resultText ?? '');
+        if (parsed.ok) await jobRepo.update(item.customId, { score: parsed.value.score, scoreJustification: parsed.value.justification });
+        else            await jobRepo.update(item.customId, { status: 'error', error: 'score_error' });
+        await batchItemRepo.markConsumed(item.id, new Date().toISOString());
+      }
+    }
+    return { submitted: 0, filtered: 0, polled: completedCount };
+  }
+
+  const profileMd = await profileRepo.getProfileMd(profileId);
+  const aiConfig = options.aiModel ? parseModelRef(options.aiModel) : defaultAiConfig;
+  assertApiKey('ANTHROPIC_API_KEY');
+
+  if (options.single) {
+    const target = await pickOneCandidate(options);
+    const { score, justification } = await scoring.scoreOne(target, jdText, profileMd, aiConfig);
+    await jobRepo.update(target.id, { score, scoreJustification: justification });
+    return { submitted: 1, filtered: 0, singleScore: score, singleComment: justification };
+  }
+
+  const candidates = await loadUnscoredJobs(options);
+  const submission = await scoring.submitBatch(candidates, profileMd, profileId, aiConfig);
+  return { submitted: submission.submitted, filtered: 0 };  // filtered 恒为 0，仅为类型兼容
 }
 ```
+
+打分 prompt 直接喂入用户完整的 `profile.md`（特别是 `## Job Preferences > Scoring notes`）+ JD 正文 + 输出契约。模型输出 `<score>0–10</score><justification>...</justification>`，`parseScoreResponse` 把 `score / 10` 写入 `Job.score`。门槛由下游命令（如 `wolf tailor`）自行决定。
 
 这个设计意味着：
 - 新增职位来源 = 新增一个实现 `JobProvider` 的文件，不需要修改 `hunt.ts`
@@ -478,13 +503,13 @@ CLI 解析参数
     → add({ title, company, jdText })
       → db.saveJob({ ...structured, status: 'raw', score: null })
       → return { jobId }
-  → wolf_score({ jobIds: [jobId], single: true })
+  → wolf_score({ jobIds: [jobId], single: true })   # 或 POST /api/score 携带 { jobIds, single: true }
     → score({ jobIds: [jobId], single: true })
-      → ai.extractFields([job])               # Claude 结构化字段提取
-      → applyDealbreakers(job, profile)       # 硬性过滤检查
-      → claude.haiku.score(job, profile)      # 同步 Haiku 调用，立即返回
-      → return { submitted: 1, filtered: 0 }
-  ← AI 向用户呈现评分和分析，询问是否定制简历
+      → scoring.scoreOne(job, jdText, profileMd, aiConfig)  # 同步 Haiku 调用
+      → 解析 <score>0–10</score><justification>...</justification>
+      → jobRepo.update(jobId, { score, scoreJustification })
+      → return { submitted: 1, filtered: 0, singleScore, singleComment }
+  ← AI 把分数和 justification 内联展示给用户，并询问是否定制简历
 ```
 
 ### `wolf score`（批量 batch 流程）
@@ -492,12 +517,11 @@ CLI 解析参数
 ```
 CLI 解析参数
   → score({ profileId })
-    → db.getJobs({ score: null })             # 获取所有未评分职位
-    → ai.extractFields(jobs)                  # Claude 提取：sponsorship、技术栈、远程、薪资
-    → applyDealbreakers(jobs, profile)        # 硬性过滤 — 不合格职位 → status: filtered
-    → batch.submit(remaining, profile)        # 提交至 Claude Batch API（异步，立即返回）
-    → return { submitted, filtered }
-  ← CLI 输出 batch 摘要；评分在后台完成
+    → jobRepo.query({ limit: 10_000 }).filter(j => j.score === null)   # 只取未评分职位
+    → scoring.submitBatch(jobs, profileMd, profileId, aiConfig)         # 每个 job 一份 prompt，统一入队
+    → BatchService.submitAiBatch(...)         # 写入 batches + batch_items；返回 wolf 内部 batchId
+    → return { submitted, filtered: 0 }
+  ← CLI 输出 batch 摘要；用户稍后 `wolf score --poll` 拉取结果
 ```
 
 ### `wolf tailor full --job <job_id> [--hint "..."]`

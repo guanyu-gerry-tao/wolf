@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import updateNotifier from 'update-notifier';
-// hunt / score / fill / reach are not yet implemented — registered with
-// stub action handlers via notYetMessage() rather than imported here. When
-// each milestone lands, re-import its command function and replace the stub.
+// hunt / fill / reach are not yet implemented — registered with stub action
+// handlers via notYetMessage() rather than imported here. When each milestone
+// lands, re-import its command function and replace the stub.
 import { tailor, tailorBrief, tailorResume, tailorCoverLetter } from './commands/tailor.js';
+import { score, formatScoreResult, type ScoreMode } from './commands/score.js';
 import { status, formatStatus } from './commands/status.js';
 import { doctor, formatDoctor } from './commands/doctor.js';
 import { runJobListCli, jobShow, jobGet, jobSet, jobFields } from './commands/job/index.js';
@@ -16,6 +17,7 @@ import {
   profileList, profileCreate, profileUse, profileDelete,
   profileShow, profileGet, profileSet, profileAdd, profileAddQuestion, profileRemove, profileFields,
   profilePromptsList, profilePromptsPath, profilePromptsRepair,
+  profileScoreShow, profileScoreEdit, profileScoreInit,
 } from './commands/profile.js';
 import { migrate } from './commands/migrate.js';
 import { context } from './commands/context.js';
@@ -130,14 +132,22 @@ program
 
 program
   .command('score')
-  .description('Process unscored jobs: extract fields, apply filters, and score via Claude Batch API' + statusTag('score'))
+  .description('Score unscored jobs against your profile via Claude Batch API' + statusTag('score'))
   .option('-p, --profile <id>', 'Profile to use')
-  .option('-j, --jobs <ids...>', 'Score only specific job IDs')
-  .option('--single', 'Score one job synchronously via Haiku (skips Batch API); requires --jobs with a single ID')
-  .option('--poll', 'Poll pending batches for results without submitting new jobs')
-  .action(async (_opts) => {
-    process.stderr.write(notYetMessage('score') + '\n');
-    process.exit(1);
+  .option('-j, --jobs <ids...>', 'Score (or re-score) only specific job IDs')
+  .option('--single', 'Score one job synchronously (no Batch API); useful for inline previews')
+  .option('--poll', 'Drain pending score batches and write results back; submits no new jobs')
+  .option('--ai-model <provider/model>', 'Override score.model from wolf.toml, e.g. anthropic/claude-haiku-4-5-20251001')
+  .action(async (opts) => {
+    const result = await score({
+      profileId: opts.profile,
+      jobIds: opts.jobs,
+      single: Boolean(opts.single),
+      poll: Boolean(opts.poll),
+      aiModel: opts.aiModel,
+    });
+    const mode: ScoreMode = opts.poll ? 'poll' : opts.single ? 'single' : 'default';
+    console.log(formatScoreResult(result, mode));
   });
 
 const tailorCmd = new Command('tailor')
@@ -488,6 +498,25 @@ profilePromptsCmd
   .description('Create missing prompt-pack files without overwriting edits')
   .action(async () => { await profilePromptsRepair(); });
 profileCmd.addCommand(profilePromptsCmd);
+
+// `wolf profile score *` — long-form scoring guide that augments the
+// score-system prompt with profile-level steering. Mirrors the
+// `wolf profile prompts` shape (path / show / edit / init).
+const profileScoreCmd = new Command('score')
+  .description('Show, edit, or initialize the profile-level scoring guide (profiles/<name>/score.md)');
+profileScoreCmd
+  .command('show')
+  .description('Print profiles/<active>/score.md to stdout')
+  .action(async () => { await profileScoreShow(); });
+profileScoreCmd
+  .command('edit')
+  .description('Open profiles/<active>/score.md in $EDITOR')
+  .action(async () => { await profileScoreEdit(); });
+profileScoreCmd
+  .command('init')
+  .description('Create profiles/<active>/score.md with the placeholder header (idempotent)')
+  .action(async () => { await profileScoreInit(); });
+profileCmd.addCommand(profileScoreCmd);
 program.addCommand(profileCmd);
 
 const envCmd = new Command('env').description('Manage WOLF_ environment variables (API keys)');

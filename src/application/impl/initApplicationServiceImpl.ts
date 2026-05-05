@@ -69,11 +69,42 @@ export class InitApplicationServiceImpl implements InitApplicationService {
 async function writeProfileSkeleton(profileDir: string): Promise<void> {
   await fs.mkdir(profileDir, { recursive: true });
   await writeIfAbsent(path.join(profileDir, 'profile.toml'), profileTomlTemplate);
+  // v3: profile-level scoring guide. Default placeholder is a `> [!TODO]`
+  // header that strips out before the AI sees the file (stripComments
+  // convention). Idempotent — re-running init does not overwrite.
+  await writeIfAbsent(path.join(profileDir, 'score.md'), scoreMdTemplate);
   const attachmentsDir = path.join(profileDir, 'attachments');
   await fs.mkdir(attachmentsDir, { recursive: true });
   await writeIfAbsent(path.join(attachmentsDir, 'README.md'), attachmentsReadmeTemplate);
   await ensureProfilePromptPack(profileDir);
 }
+
+// Default content for `profiles/<name>/score.md`. Keep in sync with the
+// `SCORE_MD_PLACEHOLDER` constant in fileProfileRepositoryImpl — both are the
+// canonical placeholder text. Storing it here too lets `wolf init` write the
+// file without depending on the repository.
+const scoreMdTemplate = `> [!TODO]
+> score.md — profile-level scoring guide.
+>
+> Wolf merges this file into the score-system prompt on every \`wolf score\`
+> invocation. Use it to give long-form steering the AI follows when picking
+> a tier (skip / mass_apply / tailor / invest):
+>
+>   - "I really only want backend infra; PMs and frontend are skip."
+>   - "These are the patterns that make me say invest vs tailor."
+>   - "Salary below \$130k is tailor, never invest, regardless of stack."
+>
+> Short preferences (one or two lines) belong in
+> profile.toml > [job_preferences].scoring_notes — that field is also fed to
+> hunt and tailor. score.md is for longer narrative guidance the score
+> command reads.
+>
+> The whole \`>\` block above is stripped before the file reaches the AI
+> (see stripComments). Anything you write below the block is included
+> verbatim. Leave the file empty below to run scoring without extra
+> guidance.
+
+`;
 
 async function writeIfAbsent(filePath: string, content: string): Promise<void> {
   const exists = await fs.access(filePath).then(() => true).catch(() => false);

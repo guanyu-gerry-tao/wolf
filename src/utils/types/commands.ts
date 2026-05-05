@@ -1,3 +1,4 @@
+import type { TierIndex, TierName } from "../scoringTiers.js";
 import type { JobSource, JobStatus } from "./job.js";
 
 export interface HuntOptions {
@@ -28,7 +29,7 @@ export interface AddResult {
 
 export interface ScoreOptions {
   profileId?: string;                    // defaults to wolf.toml.default
-  jobIds?: string[];                     // score only specific jobs; defaults to all with score: null
+  jobIds?: string[];                     // score only specific jobs; defaults to all with tierAi: null
   poll?: boolean;                        // default false — if true, poll pending batches instead of submitting new
   single?: boolean;                      // default false — if true, skip Batch API and score synchronously via Haiku
   aiModel?: string;   // overrides AppConfig.score.model for this call; format "<provider>/<model>"
@@ -36,11 +37,11 @@ export interface ScoreOptions {
 
 export interface ScoreResult {
   submitted: number;   // jobs submitted for scoring
-  filtered: number;    // jobs eliminated by dealbreakers
   polled?: number;     // pending batches polled (only when poll: true)
-  // Populated only when single: true — immediate result for AI orchestrators to present to user
-  singleScore?: number;
-  singleComment?: string;  // same as Job.scoreJustification; returned immediately so AI can present inline
+  // Populated only when single: true — immediate result for AI orchestrators to present to user.
+  singleTier?: TierIndex;       // 0..3 index into TIER_NAMES
+  singleTierName?: TierName;    // canonical name (skip / mass_apply / tailor / invest)
+  singleMd?: string;            // assembled markdown (## Tier / ## Pros / ## Cons), same as Job.scoreJustification
 }
 
 export interface TailorOptions {
