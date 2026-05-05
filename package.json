@@ -4,6 +4,9 @@
   "private": true,
   "description": "wolf monorepo — dev workspace. Stable npm distribution lives at @gerryt/wolf (built via scripts/publish-stable.sh + package.stable.json).",
   "type": "module",
+  "workspaces": [
+    "extension"
+  ],
   "bin": {
     "wolf-dev": "./dist/cli/index.js"
   },
