@@ -67,5 +67,10 @@ samples/*
 # Implementation plans (personal working docs, not shared)
 docs/plans/*
 
+# Visual review harness outputs (only baseline/ snapshots are committed)
+extension/test/visual/snapshots/current/
+extension/test/visual/snapshots/diffs/
+extension/test/visual/report.md
+
 # Always keep .gitkeep files (must be last)
 !**/.gitkeep

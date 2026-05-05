@@ -101,10 +101,8 @@ export function useCompanionActions(): CompanionActions {
   }, [dispatch]);
 
   const refreshInboxStatus = useCallback(async () => {
-    if (stateRef.current.connection.status !== 'connected') {
-      dispatch({ type: 'set-inbox', inbox: { hasRaw: false, rawCount: 0 } });
-      return;
-    }
+    // Always attempt; same reasoning as refreshQueues — stateRef lags React
+    // re-renders, so gating on it would drop the post-reconnect refresh.
     try {
       const result = await apiRef.current.getJson<{ hasRaw?: boolean; rawCount?: number }>('/api/inbox/status');
       const rawCount = Number(result.rawCount ?? 0);
@@ -119,13 +117,11 @@ export function useCompanionActions(): CompanionActions {
   }, [dispatch, log]);
 
   const refreshQueues = useCallback(async () => {
-    const ready = isRuntimeReady(stateRef.current);
-    if (!ready) {
-      dispatch({ type: 'set-queues', queues: { filling: [], ready: [], stuck: [] } });
-      dispatch({ type: 'set-tailor-counts', tailor: { untailoredJobCount: 0 } });
-      dispatch({ type: 'set-current-job-id', jobId: null });
-      return;
-    }
+    // Always attempt the fetch; the daemon itself returns an error when not
+    // ready, which the catch below converts to an empty-queue state. We do
+    // not gate on stateRef here because legacy main.js relied on synchronous
+    // global state — in React, stateRef trails the dispatch by one render,
+    // which would otherwise drop the very first post-reconnect refresh.
     try {
       const result = await apiRef.current.getJson<{ queues?: RawApiQueues; counts?: { untailoredJobs?: number } }>('/api/tabs');
       const queues = normalizeQueues(result.queues ?? {});

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "review": "node --experimental-strip-types --no-warnings test/visual/harness.ts"
   },
   "dependencies": {
     "framer-motion": "^11.11.0",
