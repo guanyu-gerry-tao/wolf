@@ -139,15 +139,35 @@ program
   .option('--poll', 'Drain pending score batches and write results back; submits no new jobs')
   .option('--ai-model <provider/model>', 'Override score.model from wolf.toml, e.g. anthropic/claude-haiku-4-5-20251001')
   .action(async (opts) => {
-    const result = await score({
-      profileId: opts.profile,
-      jobIds: opts.jobs,
-      single: Boolean(opts.single),
-      poll: Boolean(opts.poll),
-      aiModel: opts.aiModel,
-    });
-    const mode: ScoreMode = opts.poll ? 'poll' : opts.single ? 'single' : 'default';
-    console.log(formatScoreResult(result, mode));
+    // Wrap the call so plain `Error` thrown by the scoring stack (parse
+    // failures, "no candidate jobs", etc.) renders as a clean stderr line +
+    // exit 1, rather than bubbling into Node's default unhandled-rejection
+    // path which prints a stack trace and exits with code 7.
+    try {
+      const result = await score({
+        profileId: opts.profile,
+        jobIds: opts.jobs,
+        single: Boolean(opts.single),
+        poll: Boolean(opts.poll),
+        aiModel: opts.aiModel,
+      });
+      const mode: ScoreMode = opts.poll ? 'poll' : opts.single ? 'single' : 'default';
+      console.log(formatScoreResult(result, mode));
+    } catch (err) {
+      // Typed errors (MissingApiKeyError, WorkspaceNotInitializedError) are
+      // already handled by the global renderError handler — re-throw so they
+      // get the banner treatment. Plain Error gets the one-line render here.
+      if (
+        err instanceof MissingApiKeyError ||
+        err instanceof WorkspaceNotInitializedError ||
+        err instanceof MissingChromiumError
+      ) {
+        throw err;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`wolf score: ${message}\n`);
+      process.exit(1);
+    }
   });
 
 const tailorCmd = new Command('tailor')

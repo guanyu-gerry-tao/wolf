@@ -1,5 +1,6 @@
 import { parseModelRef } from '../../utils/parseModelRef.js';
 import { assertApiKey } from '../../utils/apiKeyGuard.js';
+import { isDevBuild } from '../../utils/instance.js';
 import { log } from '../../utils/logger.js';
 import { parseScoreResponse } from '../../service/impl/scoringServiceImpl.js';
 import { TIER_NAMES } from '../../utils/scoringTiers.js';
@@ -62,8 +63,16 @@ export class ScoreApplicationServiceImpl implements ScoreApplicationService {
       ? parseModelRef(options.aiModel)
       : this.defaultAiConfig;
     // Fail fast before any AI / batch call so the user sees a clear setup error
-    // rather than an opaque 401 from deep inside the SDK.
-    assertApiKey('ANTHROPIC_API_KEY');
+    // rather than an opaque 401 from deep inside the SDK. Skip the guard when
+    // the dev-only test-stub hook is active (`WOLF_TEST_AI_RESPONSE_FILE` in a
+    // dev build) — the AI dispatcher short-circuits before any network call,
+    // so requiring an API key in that path is just ceremony that breaks AC
+    // tests. Stable user builds ignore `WOLF_TEST_AI_RESPONSE_FILE`, so this
+    // bypass cannot be triggered in production.
+    const testStubActive = isDevBuild() && Boolean(process.env.WOLF_TEST_AI_RESPONSE_FILE);
+    if (!testStubActive) {
+      assertApiKey('ANTHROPIC_API_KEY');
+    }
 
     if (options.single) {
       return this.handleSingle(options, profileMd, profileScoreMd, aiConfig);
