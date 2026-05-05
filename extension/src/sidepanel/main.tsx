@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import './styles.css';
+import './styles/index.css';
 
 // S2b entry point. All behavior is now owned by React hooks (see hooks/*).
 // StrictMode is on so cleanup correctness for heartbeat + run polling is

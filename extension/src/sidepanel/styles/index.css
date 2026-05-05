@@ -1,0 +1,616 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* S3: Apple-style design tokens applied via @apply against the tailwind
+ * config in extension/tailwind.config.ts. Class names match the legacy
+ * markup so JSX in App.tsx remains stable; the visual update lands here.
+ *
+ * Key shifts vs the legacy buildless styles.css:
+ *  - System font stack instead of Avenir Next / Gill Sans.
+ *  - Accent color is the Apple system blue (#0a84ff via the `accent` token).
+ *  - Panel + queue + activity containers drop 1px borders in favor of
+ *    soft elevation (shadow-card / shadow-elevated).
+ *  - Larger spacing rhythm (8pt grid). Buttons round to 10px (button token).
+ */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  body {
+    margin: 0;
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    color: theme('colors.ink');
+    font-family: theme('fontFamily.sans');
+    background:
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), transparent 240px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.6), transparent 320px),
+      theme('colors.bg');
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    @apply min-h-[34px] rounded-button cursor-pointer transition-colors;
+    border: 0;
+    color: theme('colors.panel');
+    background: theme('colors.ink');
+  }
+
+  button:hover {
+    background: #2c2c2e;
+  }
+
+  button:disabled {
+    color: theme('colors.subtle');
+    background: #e8e8ec;
+    cursor: not-allowed;
+  }
+
+  button:disabled:hover {
+    background: #e8e8ec;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid theme('colors.accent.DEFAULT');
+    outline-offset: 2px;
+  }
+
+  h1, h2 {
+    margin: 0;
+  }
+
+  h1 {
+    @apply text-[22px] font-bold leading-[1.05] tracking-tight;
+  }
+
+  h2 {
+    @apply text-[15px] font-semibold;
+  }
+}
+
+@layer components {
+  /* Layout shell */
+  .shell {
+    @apply relative grid gap-2 p-2 min-w-0 max-w-full overflow-x-hidden;
+  }
+
+  .topbar {
+    @apply flex items-start justify-between gap-3;
+  }
+
+  .topbar > div {
+    @apply min-w-0;
+  }
+
+  .top-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .eyebrow,
+  .field-label,
+  .muted {
+    @apply text-[11px] text-muted m-0 tracking-wide;
+  }
+
+  .eyebrow,
+  .field-label {
+    @apply uppercase font-medium;
+  }
+
+  /* Buttons */
+  .ghost-button {
+    @apply min-h-[30px] px-3 text-ink;
+    background: theme('colors.panel');
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .ghost-button:hover {
+    background: #fafafc;
+  }
+
+  .button-success {
+    color: theme('colors.panel');
+    background: theme('colors.success.DEFAULT');
+  }
+
+  .button-success:hover {
+    background: #146a40;
+  }
+
+  .button-warning {
+    color: theme('colors.panel');
+    background: theme('colors.warning.DEFAULT');
+  }
+
+  .button-warning:hover {
+    background: #6e4800;
+  }
+
+  .danger-button {
+    color: theme('colors.panel');
+    background: theme('colors.danger.DEFAULT');
+  }
+
+  .danger-button:hover {
+    background: #8e1c16;
+  }
+
+  .square-button {
+    @apply grid place-items-center min-w-0 min-h-[32px] p-0 text-[17px] font-bold rounded-button;
+  }
+
+  .danger-square {
+    color: theme('colors.danger.DEFAULT');
+    background: theme('colors.danger.soft');
+    box-shadow: inset 0 0 0 1px rgba(179, 38, 30, 0.18);
+  }
+
+  .danger-square:hover {
+    color: theme('colors.panel');
+    background: theme('colors.danger.DEFAULT');
+  }
+
+  .danger-square:disabled {
+    color: theme('colors.subtle');
+    background: #f1f1f4;
+    box-shadow: none;
+  }
+
+  /* Status badges */
+  .status-badge {
+    @apply flex-none min-w-[64px] px-2 py-1 rounded-full text-xs text-center font-medium;
+    background: theme('colors.panel');
+    color: theme('colors.muted');
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .status-badge--connected {
+    color: theme('colors.success.DEFAULT');
+    background: theme('colors.success.soft');
+    box-shadow: none;
+  }
+
+  .status-badge--disconnected {
+    color: theme('colors.danger.DEFAULT');
+    background: theme('colors.danger.soft');
+    box-shadow: none;
+  }
+
+  .status-badge--idle {
+    color: theme('colors.warning.DEFAULT');
+    background: theme('colors.warning.soft');
+    box-shadow: none;
+  }
+
+  /* Panels — Apple-style elevation, no 1px border */
+  .panel,
+  .activity {
+    @apply rounded-card shadow-card;
+    background: theme('colors.panel');
+  }
+
+  .panel {
+    @apply grid gap-2 p-3;
+  }
+
+  /* Connection panel */
+  .connection-panel form {
+    @apply contents;
+  }
+
+  .port-row {
+    @apply grid grid-cols-[minmax(0,1fr)_84px] gap-2;
+  }
+
+  #portInput {
+    @apply w-full min-h-[34px] rounded-button px-3 text-ink;
+    background: theme('colors.panel');
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .port-help {
+    @apply text-xs text-muted -mt-0.5 leading-snug;
+  }
+
+  .browser-open-button {
+    @apply justify-self-start;
+  }
+
+  /* Workflow panel */
+  .workflow-panel {
+    @apply grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-3;
+  }
+
+  .workflow-progress {
+    @apply grid place-items-center w-12 h-12 rounded-2xl text-panel;
+    background: linear-gradient(145deg, #1d1d1f, #46464a);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 18px rgba(29, 29, 31, 0.16);
+  }
+
+  #workflowProgressNumber {
+    @apply text-[18px] font-extrabold tracking-tight;
+  }
+
+  .workflow-copy {
+    @apply min-w-0;
+  }
+
+  .workflow-copy h2 {
+    @apply text-[18px] font-semibold tracking-tight leading-[1.05] mt-0.5;
+  }
+
+  .workflow-hint {
+    @apply m-0 mt-1 text-xs text-muted leading-snug;
+  }
+
+  .workflow-steps {
+    @apply m-0 mt-1 text-[11px] text-subtle leading-snug;
+  }
+
+  .refresh-chip {
+    @apply self-start min-h-[28px] px-3 rounded-full text-xs;
+    color: theme('colors.accent.DEFAULT');
+    background: theme('colors.accent.soft');
+  }
+
+  /* Section titles */
+  .section-title,
+  .column-head {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .current-panel .section-title {
+    @apply grid grid-cols-[78px_minmax(0,1fr)] items-start;
+  }
+
+  #currentTabLabel {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Action grid */
+  .action-grid {
+    @apply grid gap-2 pt-1;
+  }
+
+  .action-step {
+    @apply grid gap-1.5 p-2 rounded-card;
+    background: rgba(248, 248, 250, 0.85);
+  }
+
+  .action-step--quiet {
+    background: rgba(248, 248, 250, 0.55);
+  }
+
+  .action-step__header {
+    @apply flex items-baseline justify-between gap-2 min-w-0;
+  }
+
+  .action-step__header span {
+    @apply flex-none text-[10px] font-bold uppercase tracking-wider;
+    color: theme('colors.ink');
+  }
+
+  .action-step__header small {
+    @apply min-w-0 overflow-hidden text-[10px] text-muted text-right truncate leading-tight;
+  }
+
+  .action-row {
+    @apply grid gap-1.5;
+  }
+
+  .action-row--with-delete {
+    @apply grid-cols-[minmax(0,1fr)_34px];
+  }
+
+  .action-row--two-plus-delete {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 34px;
+  }
+
+  .action-row--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-grid button,
+  .action-row button {
+    @apply min-w-0 min-h-[32px] overflow-hidden truncate text-[13px];
+  }
+
+  /* Incomplete badge — kept legacy look until S5 replaces with FeatureCard */
+  .incomplete-badge {
+    @apply inline-flex items-center justify-center w-[18px] h-[18px] ml-1 rounded-full text-[11px] leading-none;
+    color: #3b2a00;
+    background: #ffd866;
+    box-shadow: 0 0 0 1px rgba(92, 61, 0, 0.22);
+    vertical-align: -2px;
+  }
+
+  .ghost-button .incomplete-badge {
+    @apply w-4 h-4 ml-0.5 text-[10px];
+  }
+
+  #autofillQuickButton,
+  #outreachDraftButton {
+    grid-column: 1 / -1;
+  }
+
+  /* Prompt + edit boxes */
+  .prompt-box,
+  .edit-panel,
+  .config-panel {
+    @apply grid gap-2;
+  }
+
+  .prompt-box {
+    @apply p-3 rounded-card;
+    background: theme('colors.accent.soft');
+  }
+
+  .prompt-box textarea,
+  .edit-panel textarea {
+    @apply w-full p-3 rounded-button text-ink leading-snug;
+    background: theme('colors.panel');
+    resize: vertical;
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .edit-panel textarea {
+    @apply min-h-[150px];
+  }
+
+  .panel-heading-row {
+    @apply flex items-start justify-between gap-2.5;
+  }
+
+  .prompt-warning {
+    @apply m-0 p-3 rounded-card text-[13px] leading-snug;
+    color: #4e3300;
+    background: theme('colors.warning.soft');
+  }
+
+  .prompt-help {
+    @apply m-0 text-xs leading-snug;
+    color: theme('colors.warning.DEFAULT');
+  }
+
+  /* Page notice (duplicate / aggregator) */
+  .page-notice {
+    @apply m-0 px-3 py-2 rounded-button text-xs leading-snug;
+    overflow-wrap: anywhere;
+  }
+
+  .page-notice--success {
+    color: theme('colors.success.DEFAULT');
+    background: theme('colors.success.soft');
+  }
+
+  .page-notice--warning {
+    color: theme('colors.warning.DEFAULT');
+    background: theme('colors.warning.soft');
+  }
+
+  .page-notice a {
+    color: theme('colors.accent.DEFAULT');
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .page-notice a:hover {
+    color: #0066cc;
+  }
+
+  /* Config form */
+  .form-section {
+    @apply grid gap-1.5 py-2.5;
+    border-bottom: 1px solid theme('colors.line');
+  }
+
+  .form-section label {
+    @apply text-xs text-muted;
+  }
+
+  .form-section input {
+    @apply w-full min-h-[34px] rounded-button px-3 text-ink;
+    background: theme('colors.panel');
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .form-section code {
+    @apply px-1 py-0.5 rounded text-[11px];
+    background: #f0ebe0;
+  }
+
+  .config-actions {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .form-help,
+  .form-static {
+    @apply m-0 text-xs text-muted leading-snug;
+  }
+
+  /* Runtime overlay */
+  .runtime-overlay {
+    @apply absolute z-10 grid p-3 rounded-card;
+    inset: 64px 10px 10px;
+    place-items: start stretch;
+    background: rgba(255, 244, 220, 0.85);
+    backdrop-filter: blur(4px);
+  }
+
+  .runtime-overlay-card {
+    @apply grid gap-2 p-4 rounded-card shadow-elevated;
+    color: #4e3300;
+    background: theme('colors.warning.soft');
+  }
+
+  .runtime-overlay-card p {
+    @apply m-0;
+  }
+
+  .runtime-warning {
+    @apply text-[18px] font-extrabold leading-[1.15];
+    color: #4e3300;
+  }
+
+  /* Application queue (placeholder) */
+  .queue {
+    @apply relative grid grid-cols-3 gap-2 max-w-full overflow-x-auto pb-1.5;
+    grid-template-columns: repeat(3, minmax(124px, 1fr));
+    min-height: 250px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .queue-column {
+    @apply grid grid-rows-[auto_1fr] overflow-hidden rounded-card shadow-card;
+    min-width: 124px;
+    scroll-snap-align: start;
+    background: theme('colors.panel');
+  }
+
+  .queue--disabled .queue-column {
+    @apply opacity-40 pointer-events-none;
+  }
+
+  .queue-coming-soon {
+    @apply absolute z-[2] m-0 px-4 py-3 rounded-card shadow-elevated text-[13px] font-bold text-center leading-snug;
+    inset: 86px 14px auto;
+    color: #3e4541;
+    background: rgba(255, 253, 250, 0.96);
+  }
+
+  .column-head {
+    @apply grid grid-cols-1 content-start gap-2 px-3 py-2.5;
+    border-bottom: 1px solid theme('colors.line');
+    background: #f7f7f9;
+  }
+
+  .column-head p {
+    @apply m-0 text-xs text-muted;
+  }
+
+  .column-head strong {
+    @apply block text-[21px] leading-none font-bold;
+  }
+
+  .queue-column[data-column="filling"] .column-head {
+    background: theme('colors.accent.soft');
+  }
+
+  .queue-column[data-column="ready"] .column-head {
+    background: theme('colors.success.soft');
+  }
+
+  .queue-column[data-column="stuck"] .column-head {
+    background: theme('colors.danger.soft');
+  }
+
+  .next-button {
+    @apply w-full min-h-[30px] px-3 text-ink rounded-button;
+    background: theme('colors.panel');
+    box-shadow: inset 0 0 0 1px theme('colors.line');
+  }
+
+  .next-button:hover {
+    background: #fafafc;
+  }
+
+  .job-list,
+  #activityLog {
+    @apply m-0 p-0 list-none;
+  }
+
+  .job-list {
+    min-height: 138px;
+  }
+
+  .job-list li {
+    @apply grid gap-0.5 px-2 py-2 text-[12px];
+    border-bottom: 1px solid theme('colors.line');
+  }
+
+  .job-list li:last-child {
+    border-bottom: 0;
+  }
+
+  .job-title {
+    @apply font-bold text-[12px] truncate;
+    overflow-wrap: anywhere;
+  }
+
+  .job-meta {
+    @apply text-[11px] text-muted truncate;
+    overflow-wrap: anywhere;
+  }
+
+  .job-list .empty-state {
+    @apply text-xs italic text-muted;
+  }
+
+  /* Activity footer */
+  .activity {
+    @apply p-3;
+  }
+
+  #activityLog {
+    @apply grid gap-1.5 mt-2;
+  }
+
+  #activityLog li {
+    @apply text-xs text-muted leading-snug;
+  }
+}
+
+@media (max-width: 380px) {
+  .shell {
+    @apply p-3;
+  }
+
+  .current-panel .section-title {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .queue {
+    grid-template-columns: repeat(3, minmax(116px, 1fr));
+    gap: 6px;
+  }
+
+  .queue-column {
+    min-width: 116px;
+  }
+
+  .column-head {
+    padding: 8px;
+  }
+
+  .next-button {
+    padding: 0 6px;
+    font-size: 12px;
+  }
+}
