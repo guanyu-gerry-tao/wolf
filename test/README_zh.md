@@ -194,3 +194,8 @@ npm run review   # 抓状态矩阵
 
 harness 只需要 Node 22+（用 `--experimental-strip-types` 直接跑 TS，
 没有额外编译步骤），以及全仓已经装好的 Playwright Chromium。零新依赖。
+
+如果是 companion 重设计 PR 的**一次性人工验收**——load unpacked 进真
+Chrome，走 onboarding、import → process → tailor、resize side panel 等
+端到端流程——见 [`companion-redesign-manual_zh.md`](companion-redesign-manual_zh.md)。
+这份在合并 redesign 分支之前跑一遍即可；之后的回归交给视觉 harness。
