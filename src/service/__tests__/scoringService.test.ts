@@ -89,6 +89,26 @@ describe('ScoringServiceImpl.scoreOne', () => {
     expect(systemPrompt).toContain('Precision-apply companies');
   });
 
+  // Manual `wolf add` jobs often do not have structured sponsorship data.
+  // Unknown must reach the model as "not listed", not as "no sponsorship",
+  // otherwise profiles needing future visa support get false hard rejects.
+  it('renders unknown job sponsorship as not listed in the user prompt', async () => {
+    vi.mocked(aiClient).mockResolvedValue(
+      '<tier>mass_apply</tier><pros>- backend role</pros><cons>- sponsorship not listed</cons>',
+    );
+    const svc = new ScoringServiceImpl({} as BatchService);
+    await svc.scoreOne(
+      { ...JOB, workAuthorizationRequired: 'unknown' },
+      JD_TEXT,
+      PROFILE_MD,
+      PROFILE_SCORE_MD,
+      AI,
+    );
+    const [prompt] = vi.mocked(aiClient).mock.calls[0]!;
+    expect(prompt).toContain('Sponsorship: not listed');
+    expect(prompt).not.toContain('Sponsorship: no sponsorship');
+  });
+
   // The profile-level scoring guide is included as its own section so the
   // model can prioritize user-authored steering over generic heuristics.
   it('includes the profile-level scoring guide section when score.md has content', async () => {

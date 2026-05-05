@@ -2,8 +2,8 @@
 
 ## 目的
 
-验证当 AI 输出不符合 `<score>...</score><justification>...</justification>`
-契约时，同步 `--single` 路径会向用户返回明确错误，而不是默默写入默认分数。
+验证当 AI 输出不符合 `<tier>...</tier><pros>...</pros><cons>...</cons>`
+契约时，同步 `--single` 路径会向用户返回明确错误，而不是默默写入默认 tier。
 
 ## 覆盖
 
@@ -36,7 +36,7 @@ ADD_OUT=$(WOLF_DEV_HOME="$WS" npm run wolf -- add --title "Backend Engineer" --c
 JOB_ID=$(echo "$ADD_OUT" | python3 -c 'import sys,json,re;raw=sys.stdin.read();m=re.search(r"\\{[\\s\\S]*\\}",raw);print(json.loads(m.group(0))["jobId"])')
 
 mkdir -p "$WS/test-fixtures/score"
-# 缺少 <score> 标签
+# 缺少 <tier> 标签
 cat > "$WS/test-fixtures/score/single-bad.txt" <<'EOF'
 I cannot help with that request.
 EOF
@@ -53,7 +53,7 @@ WOLF_TEST_AI_RESPONSE_FILE="$WS/test-fixtures/score/single-bad.txt" \
 
 - `score` 调用以非 0 退出（`exit=1`）。
 - stderr / stdout 包含 `parse` 或 `score` 字样，便于用户定位问题。
-- `wolf job show <JOB_ID>` 仍显示 `score: null`（未写入默认值）。`--single`
+- `wolf job show <JOB_ID>` 仍显示 `tierAi:` 为空（未写入默认值）。`--single`
   路径以抛出错误的形式让用户感知失败；批量轮询路径中"标记为
   score_error"的语义由单元测试 `scoreApplicationService.test.ts` 覆盖。
 

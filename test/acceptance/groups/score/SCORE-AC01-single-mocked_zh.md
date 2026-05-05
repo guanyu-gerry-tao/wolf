@@ -1,16 +1,16 @@
-# SCORE-AC01 - 单次模式将解析后的分数写回
+# SCORE-AC01 - 单次模式将解析后的 tier 写回
 
 ## 目的
 
 验证 `wolf score --single` 能跑完整流程（加载 profile、构造 prompt、调用
-AI、解析回复、把 `Job.score` + `Job.scoreJustification` 写回 SQLite），且
+AI、解析回复、把 `Job.tierAi` + `Job.scoreJustification` 写回 SQLite），且
 不需要任何在线网络调用。借助 dev-only 的 `WOLF_TEST_AI_RESPONSE_FILE` 钩
-子注入预制的 `<score>0–10</score><justification>...</justification>` 文本。
+子注入预制的 `<tier>...</tier><pros>...</pros><cons>...</cons>` 文本。
 
 ## 覆盖
 
 - `UC-03.1.1`（单职位评分）
-- `AC-03-1`（分数写回）
+- `AC-03-1`（tier 写回）
 - `AC-03-2`（justification 写回）
 
 ## 执行方式
@@ -56,8 +56,15 @@ JOB_ID=$(echo "$ADD_OUT" | python3 -c 'import sys,json,re;raw=sys.stdin.read();m
 ```bash
 mkdir -p "$WS/test-fixtures/score"
 cat > "$WS/test-fixtures/score/single-good.txt" <<'EOF'
-<score>8.5</score>
-<justification>Backend role; remote OK; sponsorship aligns with profile.</justification>
+<tier>tailor</tier>
+<pros>
+- Backend role aligned with target roles
+- Sponsorship language matches profile
+- Remote-friendly setup matches preference
+</pros>
+<cons>
+- Tech stack mostly matches but cloud differs (GCP vs AWS)
+</cons>
 EOF
 ```
 
@@ -71,8 +78,9 @@ WOLF_TEST_AI_RESPONSE_FILE="$WS/test-fixtures/score/single-good.txt" \
 ## 通过标准
 
 - 所有 setup 命令与 `score` 均以 `0` 退出。
-- stdout 包含 `Score: 8.5 / 10` 与 justification 文本。
-- `wolf job show <JOB_ID>` 显示 `score: 0.85` 与非空 `scoreJustification`。
+- stdout 包含 canonical markdown：`## Tier\ntailor`、`## Pros\n- Backend role aligned`、`## Cons\n- Tech stack`。
+- `wolf job show <JOB_ID>` 显示 `tierAi: 2` 与非空 `scoreJustification`。
+- `Job.tierUser` 仍为 `null`，AI 路径不能写用户 override。
 - 没有任何 Anthropic 在线调用（dev binary 通过 `WOLF_TEST_AI_RESPONSE_FILE` 旁路 AI dispatcher）。
 
 ## 报告要求

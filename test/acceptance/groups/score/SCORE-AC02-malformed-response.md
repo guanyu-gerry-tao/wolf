@@ -3,9 +3,9 @@
 ## Purpose
 
 Verify that when the AI emits a response that doesn't conform to the
-`<score>...</score><justification>...</justification>` contract, the
+`<tier>...</tier><pros>...</pros><cons>...</cons>` contract, the
 synchronous `--single` path surfaces a clean error to the user without
-silently writing a default score.
+silently writing a default tier.
 
 ## Covers
 
@@ -38,7 +38,7 @@ ADD_OUT=$(WOLF_DEV_HOME="$WS" npm run wolf -- add --title "Backend Engineer" --c
 JOB_ID=$(echo "$ADD_OUT" | python3 -c 'import sys,json,re;raw=sys.stdin.read();m=re.search(r"\\{[\\s\\S]*\\}",raw);print(json.loads(m.group(0))["jobId"])')
 
 mkdir -p "$WS/test-fixtures/score"
-# Malformed: no <score> tag at all.
+# Malformed: no <tier> tag at all.
 cat > "$WS/test-fixtures/score/single-bad.txt" <<'EOF'
 I cannot help with that request.
 EOF
@@ -56,7 +56,7 @@ WOLF_TEST_AI_RESPONSE_FILE="$WS/test-fixtures/score/single-bad.txt" \
 - The `score` invocation exits non-zero (`exit=1`).
 - stderr (or stdout) contains the word `parse` (or `score`) so the user
   understands the issue.
-- `wolf job show <JOB_ID>` reports `score: null` (no silent default written).
+- `wolf job show <JOB_ID>` reports `tierAi:` blank (no silent default written).
   Note: this case is `--single`, which surfaces parse failure as a thrown
   error — the Job row is left untouched. The poll path's "mark as
   score_error" semantics are exercised by the unit tests

@@ -190,10 +190,14 @@ function buildJobSection(job: Job, jdText: string): string {
     `Location: ${job.location}`,
     `Remote: ${job.remote ? 'yes' : 'no'}`,
     formatSalary(job.salaryLow, job.salaryHigh),
-    `Sponsorship: ${job.workAuthorizationRequired}`,
+    `Sponsorship: ${formatSponsorship(job.workAuthorizationRequired)}`,
     `Clearance required: ${job.clearanceRequired ? 'yes' : 'no'}`,
   ].join('\n');
   return `## Job Posting\n\n${header}\n\n### Job Description\n${jdText}`;
+}
+
+function formatSponsorship(value: Job['workAuthorizationRequired']): string {
+  return value === 'unknown' ? 'not listed' : value;
 }
 
 function formatSalary(low: number | null, high: number | null): string {

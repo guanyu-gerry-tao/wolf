@@ -57,6 +57,7 @@ export interface JobFieldMeta {
 const SOURCE_VALUES = ['LinkedIn', 'Indeed', 'handshake', 'Company website', 'Other'] as const;
 
 const SPONSORSHIP_VALUES = [
+  'unknown',
   'no sponsorship',
   'Green card',
   'Work visa',
@@ -92,7 +93,7 @@ export const JOB_FIELDS: ReadonlyArray<JobFieldMeta> = [
   //   (unpaid base + bonus ceiling). Coercion does not validate the pair.
   { name: 'salaryLow',                   type: 'number',           required: false, help: 'Lower bound of annual USD. Use 0 for unpaid (explicit). Blank = unknown / not listed by JD.' },
   { name: 'salaryHigh',                  type: 'number',           required: false, help: 'Upper bound of annual USD. Blank if single-point comp or unknown. Allowed even when salaryLow is 0 (e.g. unpaid base + bonus).' },
-  { name: 'workAuthorizationRequired',   type: 'enum',             required: true,  help: 'Sponsorship stance per JD.', enumValues: SPONSORSHIP_VALUES },
+  { name: 'workAuthorizationRequired',   type: 'enum',             required: true,  help: 'Sponsorship stance per JD. Use unknown when the JD does not state it.', enumValues: SPONSORSHIP_VALUES },
   { name: 'clearanceRequired',           type: 'boolean',          required: true,  help: 'Whether the role requires a security clearance.' },
 
   // ---- AI score (v3 tier model)

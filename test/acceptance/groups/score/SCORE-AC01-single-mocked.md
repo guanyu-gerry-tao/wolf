@@ -1,17 +1,17 @@
-# SCORE-AC01 - Single Mode Writes Back Parsed AI Score
+# SCORE-AC01 - Single Mode Writes Back Parsed AI Tier
 
 ## Purpose
 
 Verify that `wolf score --single` runs the full pipeline (load profile, build
-prompt, call AI, parse response, persist `Job.score` + `Job.scoreJustification`)
+prompt, call AI, parse response, persist `Job.tierAi` + `Job.scoreJustification`)
 without any live network call. Uses the dev-only `WOLF_TEST_AI_RESPONSE_FILE`
-hook to inject a canned `<score>0–10</score><justification>...</justification>`
+hook to inject a canned `<tier>...</tier><pros>...</pros><cons>...</cons>`
 response.
 
 ## Covers
 
 - `UC-03.1.1` (single-job score)
-- `AC-03-1` (score persisted to Job row)
+- `AC-03-1` (tier persisted to Job row)
 - `AC-03-2` (justification persisted)
 
 ## Execution Mode

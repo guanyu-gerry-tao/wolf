@@ -33,7 +33,7 @@ skipped by default; only run it when the user explicitly authorizes the spend.
 ## Cost / Risk
 
 - SCORE-AC01 / SCORE-AC02: free (no network, no API key needed beyond the dummy one set by the dev binary).
-- SCORE-AC03: medium (one Anthropic call per fixture job × 3 fixtures = 3 calls).
+- SCORE-AC03: medium (one Anthropic call per fixture job × 3 fixtures × 2 personas = 6 calls).
 - Risk: SCORE-AC03 requires `WOLF_ANTHROPIC_API_KEY` or `WOLF_DEV_ANTHROPIC_API_KEY`. Missing keys are FAIL on opt-in, SKIP otherwise.
 
 ## Cases
@@ -45,7 +45,7 @@ skipped by default; only run it when the user explicitly authorizes the spend.
 ## AI Review Rubric
 
 Only SCORE-AC03 is `ai-reviewed`. Use
-`test/acceptance/reviewers/score-artifact-review.md` for the score band sanity
+`test/acceptance/reviewers/score-artifact-review.md` for the tier band sanity
 and justification quality checks.
 
 ## Report Expectations

@@ -48,7 +48,7 @@ export class AddApplicationServiceImpl implements AddApplicationService {
       remote: false,
       salaryLow: null,
       salaryHigh: null,
-      workAuthorizationRequired: 'no sponsorship',
+      workAuthorizationRequired: 'unknown',
       clearanceRequired: false,
       score: null,
       scoreJustification: null,

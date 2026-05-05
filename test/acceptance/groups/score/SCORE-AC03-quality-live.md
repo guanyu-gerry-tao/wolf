@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Sanity check that the production scoring prompt produces score bands that
+Sanity check that the production scoring prompt produces tier bands that
 match human intuition for clear-fit and clear-mismatch JDs against two
 distinct personas. This is the only case in the group that calls the live
 Claude API; it is paid and skipped by default.
@@ -34,10 +34,10 @@ WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC03
 WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
 JD_FIXTURE=test/fixtures/jd/raw/computer-related-job-postings-cc0.csv
-# Three JDs spanning the score band: pick row ids that are clearly aligned
-# (backend SWE), borderline (DevOps adjacent), and mismatched (data analyst /
-# non-engineering). Update the row ids if the CSV changes.
-for ROW in 119 250 412; do
+# Three JDs spanning the tier bands: clearly aligned (Software Engineer),
+# adjacent but friction-heavy (System Administrator), and mismatched
+# non-engineering (Product Designer). Update the row ids if the CSV changes.
+for ROW in 523 172 288; do
   JD_TEXT="$(python3 test/fixtures/jd/scripts/sample_raw_jd.py "$JD_FIXTURE" --row-id "$ROW")"
   TITLE="Fixture Job $ROW"
   WOLF_DEV_HOME="$WS" npm run wolf -- add --title "$TITLE" --company "Fixture Co" --jd-text "$JD_TEXT"
@@ -64,10 +64,13 @@ Use [`../../reviewers/score-artifact-review.md`](../../reviewers/score-artifact-
 
 ### Case-specific checks
 
-- The clearly-aligned backend JD scores ≥ 0.7 against `ng-swe`.
-- The clearly-mismatched non-engineering JD scores ≤ 0.4 against `ng-swe`.
-- The borderline JD scores between the two extremes; the justification
-  should name the specific friction.
+- The clearly-aligned backend/SWE JD resolves to `tailor` or `invest` against
+  `ng-swe`.
+- The clearly-mismatched non-engineering JD resolves to `skip` against
+  `ng-swe`.
+- The borderline / adjacent JD resolves to `skip` or `mass_apply`; the
+  justification should name the specific friction rather than giving generic
+  praise.
 - The same JD set against `swe-mid` should score *differently* than `ng-swe`
   in at least one case (the persona shift must change at least one score
   band) — otherwise the prompt is ignoring the profile.
@@ -83,5 +86,5 @@ Use [`../../reviewers/score-artifact-review.md`](../../reviewers/score-artifact-
 
 ## Report Requirements
 
-Include each `Job.score` + `Job.scoreJustification`, the persona name, the
+Include each `Job.tierAi` + `Job.scoreJustification`, the persona name, the
 JD row id, and the AI reviewer's findings.

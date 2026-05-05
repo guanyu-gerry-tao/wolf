@@ -103,7 +103,7 @@ export interface Job {
   // validate the pair; the AI / scorer interprets shape.
   salaryLow: number | null;
   salaryHigh: number | null;
-  workAuthorizationRequired: Sponsorship; // e.g. "no sponsorship", "US citizens only"
+  workAuthorizationRequired: Sponsorship; // "unknown" means the JD did not state sponsorship.
   clearanceRequired: boolean;
   /**
    * @deprecated v3 — replaced by `tierAi` / `tierUser`. Existing column
