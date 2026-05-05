@@ -66,17 +66,57 @@ Right-click panel → **Inspect**. Then:
 
 ---
 
-## Stage 4 — Connect to wolf serve (5 min)
+## Stage 4 — Start the daemon + connect (5 min)
 
-In a new terminal:
+`wolf serve` **is the daemon**. The companion side panel talks to it
+over `http://127.0.0.1:<port>`; without it running, every action the
+companion tries is rejected. Keep this terminal open through the rest
+of the test (Stages 5–7 all need it alive).
+
+This stage uses a **throwaway workspace under `/tmp/wolf-test/`** so the
+wolf browser profile created in Stage 5 lands at
+`/tmp/wolf-test/manual-companion-<id>/ws/data/wolf-browser-profile/`
+instead of polluting your real workspace. Aligns with the CLAUDE.md
+rule that smoke + acceptance tests must only use `/tmp/wolf-test/`
+paths.
+
+### 4a — Build the dev binary (once per session)
+
+In **terminal A**:
 
 ```bash
 cd /Users/guanyutao/developers/personal-projects/wolf
-npm run dev
+npm run build:dev   # produces dist/cli/index.js for the dev workspace
+```
+
+### 4b — Init throwaway workspace (once)
+
+In **terminal B** (keep this one open for serve):
+
+```bash
+# Throwaway workspace path; same value reused for init + serve.
+export WOLF_DEV_HOME="/tmp/wolf-test/manual-companion-$(date +%Y%m%d-%H%M%S)/ws"
+mkdir -p "$WOLF_DEV_HOME"
+
+# One-time init for the throwaway workspace (no prompts).
+node dist/cli/index.js init --here --empty --dev
+```
+
+### 4c — Start the daemon (foreground, keep running)
+
+Still in terminal B:
+
+```bash
 node dist/cli/index.js serve --port 47823
 ```
 
-Wait for `wolf serve listening on http://127.0.0.1:47823`.
+Wait for `wolf serve listening on http://127.0.0.1:47823`. **Do not
+close this terminal** until you finish Stage 7 — the side panel needs
+the daemon alive for every action. The wolf browser profile is created
+under `$WOLF_DEV_HOME/data/wolf-browser-profile/` the first time you
+click **Open wolf browser** in Stage 5.
+
+### 4d — Reconnect from the side panel
 
 Back in side panel:
 
@@ -84,9 +124,17 @@ Back in side panel:
 2. Confirm port = 47823, click **Reconnect**
 3. Pill cycles idle (yellow) → connected (green dot + `:47823`)
 4. Activity log: "Connected: wolf <version>"
-5. Hero switches to "STEP 1 OF 4 / Open wolf browser" with body explaining the **separate Chrome profile** rationale (this is the Q1 honest copy — verify it reads right)
+5. Hero switches to "STEP 1 OF 4 / Open wolf browser" with body
+   explaining the **separate Chrome profile** rationale (this is the
+   Q1 honest copy — verify it reads right)
 
-**Pass:** Pill turns green, Hero advances, Activity log records the transition.
+**Pass:** Pill turns green, Hero advances, Activity log records the
+transition. Terminal B keeps logging GET /api/runtime/status every 5s
+(heartbeat) — that's expected.
+
+> **Cleanup after the whole run:** `rm -rf /tmp/wolf-test/manual-companion-*`
+> wipes the workspace + the wolf browser profile in one shot. Your real
+> `~/wolf/` (or wherever your stable workspace lives) is never touched.
 
 ---
 
@@ -101,7 +149,9 @@ Back in side panel:
    - [ ] ProgressStrip segment 1 turns blue (active)
 
 **Verify profile isolation:**
-- New Chrome window's `chrome://version` → **Profile Path** ends in `data/wolf-browser-profile/...`
+- New Chrome window's `chrome://version` → **Profile Path** ends in
+  `/tmp/wolf-test/manual-companion-<timestamp>/ws/data/wolf-browser-profile/...`
+  (matching `$WOLF_DEV_HOME` from Stage 4b)
 - Daily Chrome's cookies/history are unchanged
 
 **Pass:** Two Chrome processes coexist; daily browser is untouched.
