@@ -93,13 +93,10 @@
     @apply relative grid gap-2 p-2 min-w-0 max-w-full overflow-x-hidden;
   }
 
-  .topbar {
-    @apply flex items-start justify-between gap-3;
-  }
-
-  .topbar > div {
-    @apply min-w-0;
-  }
+  /* The .topbar layout itself is owned by the S4 rule lower in this
+   * file (.topbar { display: grid }). Earlier S3-era flex rules were
+   * removed here because they fought the grid layout and pushed the
+   * expanded ConnectionPanel into the wrong column. */
 
   .top-actions {
     @apply flex items-center gap-2;
@@ -590,7 +587,7 @@
 
 @layer components {
   .topbar {
-    @apply rounded-card shadow-card p-3;
+    @apply grid rounded-card shadow-card p-3;
     background: theme('colors.panel');
     grid-template-columns: 1fr;
     gap: 0.625rem;
@@ -643,11 +640,16 @@
    * .topbar-row so it pushes the page below it down instead of
    * floating absolutely on top of the WelcomeCard / Hero. The whole
    * form spans the topbar's width, so port input + Reconnect button
-   * are always fully visible at any side-panel width. */
+   * are always fully visible at any side-panel width.
+   *
+   * Visually tinted with accent-soft + a 3px accent left stripe so it
+   * reads as "transient input zone" rather than another opaque card —
+   * users can tell at a glance that this row is interactive setup
+   * rather than ongoing UI. */
   .connection-panel-row {
-    @apply grid gap-2 mt-2 p-3 rounded-card;
-    background: rgba(248, 248, 250, 0.85);
-    box-shadow: inset 0 0 0 1px rgba(210, 210, 215, 0.6);
+    @apply grid gap-2 p-3 rounded-card;
+    background: theme('colors.accent.soft');
+    box-shadow: inset 3px 0 0 theme('colors.accent.DEFAULT');
   }
 
   .connection-panel-actions {
