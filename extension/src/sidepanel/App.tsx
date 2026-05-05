@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Settings } from 'lucide-react';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { CompanionStateProvider, useCompanionState } from './state/StateContext';
 import { useCompanionActions, type ConfigPayload } from './hooks/useCompanionActions';
 import type { CompanionState } from './state/types';
@@ -25,9 +26,15 @@ import {
 
 export function App() {
   return (
-    <CompanionStateProvider>
-      <AppShell />
-    </CompanionStateProvider>
+    // MotionConfig gives every motion element a single consistent default
+    // and respects prefers-reduced-motion at the OS level by setting
+    // reducedMotion="user" — animations collapse to instant transitions
+    // when the user has motion reduced in their system preferences.
+    <MotionConfig reducedMotion="user">
+      <CompanionStateProvider>
+        <AppShell />
+      </CompanionStateProvider>
+    </MotionConfig>
   );
 }
 
@@ -45,7 +52,9 @@ function AppShell() {
       <Topbar phase={phase} />
       <RuntimeOverlay actions={actions} />
 
-      {!seen && <WelcomeCard onDismiss={markSeen} />}
+      <AnimatePresence>
+        {!seen && <WelcomeCard key="welcome" onDismiss={markSeen} />}
+      </AnimatePresence>
 
       <Hero phase={phase} />
 

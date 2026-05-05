@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { useCompanionState } from '../state/StateContext';
 import { useCompanionActions } from '../hooks/useCompanionActions';
 import type { AppPhase } from '../state/phase';
@@ -26,21 +27,35 @@ export function Hero({ phase }: HeroProps) {
 
   const content = computeHero(phase, state, actions);
   return (
-    <section className="hero" aria-label="next step">
+    <motion.section
+      className="hero"
+      aria-label="next step"
+      // Re-key on phase so the card subtly re-enters when the user
+      // advances (or rewinds) along the workflow. Cheap visual feedback
+      // that "you just did something".
+      key={phase}
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+    >
       <p className="eyebrow">{content.kicker}</p>
       <h2 className="hero-title">{content.title}</h2>
       <p className="hero-body">{content.body}</p>
       {(content.primary || content.secondary) && (
         <div className="hero-actions">
           {content.primary && (
-            <button
+            <motion.button
               type="button"
               className="hero-primary"
               disabled={content.primary.disabled}
               onClick={content.primary.onClick}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             >
               {content.primary.label}
-            </button>
+            </motion.button>
           )}
           {content.secondary && (
             <button
@@ -53,7 +68,7 @@ export function Hero({ phase }: HeroProps) {
           )}
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }
 

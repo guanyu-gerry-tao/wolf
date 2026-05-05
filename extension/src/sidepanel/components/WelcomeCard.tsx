@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 
 const STORAGE_KEY = 'wolf.firstRunSeen';
 
@@ -44,7 +45,15 @@ interface WelcomeCardProps {
 
 export function WelcomeCard({ onDismiss }: WelcomeCardProps) {
   return (
-    <section className="welcome-card" role="dialog" aria-label="welcome to wolf">
+    <motion.section
+      className="welcome-card"
+      role="dialog"
+      aria-label="welcome to wolf"
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+    >
       <p className="eyebrow">Welcome</p>
       <h2 className="welcome-title">wolf is your job hunt copilot</h2>
       <p className="welcome-body">
@@ -56,6 +65,6 @@ export function WelcomeCard({ onDismiss }: WelcomeCardProps) {
         <li>3. Import → Process → Tailor.</li>
       </ul>
       <button type="button" className="hero-primary" onClick={onDismiss}>Got it</button>
-    </section>
+    </motion.section>
   );
 }
