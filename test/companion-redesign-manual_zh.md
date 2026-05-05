@@ -67,9 +67,19 @@ side panel 上右键 → **Inspect**。然后：
 
 ## 阶段 4 — 启动 daemon + 连接（5 分钟）
 
-`wolf serve` **就是 daemon**。companion side panel 通过
+`wolf serve` **就是 daemon（仅 HTTP server）**。companion side panel 通过
 `http://127.0.0.1:<port>` 跟它通信；不起来的话每个动作都会被拒绝。
-**这个 terminal 整个测试期间（阶段 5–7）都不能关**。
+
+> **注意：daemon 不会启动 wolf Chrome。** `wolf serve` 只起 HTTP server；
+> wolf Chrome 窗口是**懒启动**的，由阶段 5 点 **Open wolf browser**
+> 触发 `POST /api/browser/open` 才打开。这是设计如此 —— daemon 保持轻量，
+> 你可以在 Chrome 启动前就连上 side panel（比如只想看 status）。
+> runtime overlay 会在需要 Chrome 时提示你点按钮。
+
+整个测试**用真实的前台 terminal 窗口跑**（两个可见的 session，
+**terminal A** 和 **terminal B**）。不要 `&` 后台 serve，不要 `nohup`，
+不要 `tmux detach`。把进程留在真 terminal 里，才能实时看 heartbeat 日志、
+能 Ctrl-C 干净关 daemon、能立刻观察错误。
 
 这一阶段用 **`/tmp/wolf-test/` 下的临时 workspace**，所以阶段 5 创建的
 wolf 浏览器 profile 会落在
@@ -101,7 +111,8 @@ node dist/cli/index.js init --here --empty --dev
 
 ### 4c — 启动 daemon（前台跑，保持打开）
 
-仍然在 terminal B：
+仍然在 terminal B（前台跑，挂在真 terminal 上 —— **不要 `&`，
+不要 `nohup`，不要 detach**）：
 
 ```bash
 node dist/cli/index.js serve --port 47823
@@ -109,8 +120,9 @@ node dist/cli/index.js serve --port 47823
 
 等到 `wolf serve listening on http://127.0.0.1:47823`。**直到阶段 7
 跑完之前都不要关这个 terminal** —— side panel 每个动作都需要 daemon
-活着。阶段 5 第一次点 **Open wolf browser** 时，wolf 浏览器 profile
-就会被创建在 `$WOLF_DEV_HOME/data/wolf-browser-profile/` 下。
+活着。wolf 浏览器 profile 只有在你阶段 5 点 **Open wolf browser** 时
+才会被创建在 `$WOLF_DEV_HOME/data/wolf-browser-profile/` 下；
+现在 `data/` 还是空的。
 
 ### 4d — 在 side panel 里 Reconnect
 

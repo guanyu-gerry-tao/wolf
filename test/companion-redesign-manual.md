@@ -68,10 +68,24 @@ Right-click panel → **Inspect**. Then:
 
 ## Stage 4 — Start the daemon + connect (5 min)
 
-`wolf serve` **is the daemon**. The companion side panel talks to it
-over `http://127.0.0.1:<port>`; without it running, every action the
-companion tries is rejected. Keep this terminal open through the rest
-of the test (Stages 5–7 all need it alive).
+`wolf serve` **is the daemon (HTTP server only)**. The companion side
+panel talks to it over `http://127.0.0.1:<port>`; without it running,
+every action the companion tries is rejected.
+
+> **Note: the daemon does NOT start the wolf Chrome.** `wolf serve`
+> launches the HTTP server only; the wolf Chrome window is started
+> lazily by clicking **Open wolf browser** in Stage 5, which triggers
+> `POST /api/browser/open`. This is intentional — the daemon stays
+> light, and you can connect from the side panel before Chrome is
+> needed (e.g., to check status). The runtime overlay tells you to
+> click the button when Chrome is required.
+
+Run everything **in real foreground terminal windows** (two visible
+sessions, **terminal A** and **terminal B**). Do not `&`-background
+serve, do not use `nohup`, do not use `tmux detach`. Keeping the
+processes attached to a real terminal is what lets you read the
+heartbeat logs, kill the daemon with Ctrl-C cleanly, and observe
+errors in real time.
 
 This stage uses a **throwaway workspace under `/tmp/wolf-test/`** so the
 wolf browser profile created in Stage 5 lands at
@@ -104,7 +118,8 @@ node dist/cli/index.js init --here --empty --dev
 
 ### 4c — Start the daemon (foreground, keep running)
 
-Still in terminal B:
+Still in terminal B (foreground, attached to your real terminal —
+**no `&`, no `nohup`, no detach**):
 
 ```bash
 node dist/cli/index.js serve --port 47823
@@ -112,9 +127,10 @@ node dist/cli/index.js serve --port 47823
 
 Wait for `wolf serve listening on http://127.0.0.1:47823`. **Do not
 close this terminal** until you finish Stage 7 — the side panel needs
-the daemon alive for every action. The wolf browser profile is created
-under `$WOLF_DEV_HOME/data/wolf-browser-profile/` the first time you
-click **Open wolf browser** in Stage 5.
+the daemon alive for every action. The wolf browser profile will be
+created under `$WOLF_DEV_HOME/data/wolf-browser-profile/` only when
+you click **Open wolf browser** in Stage 5; right now `data/` is still
+empty.
 
 ### 4d — Reconnect from the side panel
 
