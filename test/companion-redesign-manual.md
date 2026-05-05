@@ -21,6 +21,16 @@ npm run build --workspace=@wolf/companion
 ls extension/dist/          # manifest.json + service-worker-loader.js + src/sidepanel/index.html
 ```
 
+> **Do NOT run `npm run dev --workspace=@wolf/companion`.** That starts
+> the Vite dev server, which rewrites `dist/` with HMR client code
+> that imports from `localhost:5173`. Chrome MV3 in
+> `chrome-extension://` scheme rejects those module scripts with
+> `Failed to load module script: ... MIME type "application/octet-stream"`
+> and the side panel renders blank. Always use `npm run build` for
+> load-unpacked testing. If you accidentally ran dev, run build again
+> to overwrite the polluted dist, then reload the extension from
+> `chrome://extensions`.
+
 **Pass:** `extension/dist/manifest.json` and `dist/src/sidepanel/index.html` exist.
 
 ---

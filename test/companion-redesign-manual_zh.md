@@ -20,6 +20,14 @@ npm run build --workspace=@wolf/companion
 ls extension/dist/          # manifest.json + service-worker-loader.js + src/sidepanel/index.html
 ```
 
+> **不要跑 `npm run dev --workspace=@wolf/companion`。** 那会启 Vite
+> dev server，把 `dist/` 改成 HMR 模式（脚本指向 `localhost:5173`）。
+> Chrome MV3 在 `chrome-extension://` scheme 下会拒绝这些 module 脚本，
+> 报 `Failed to load module script: ... MIME type "application/octet-stream"`，
+> side panel 变全白。**load unpacked 测试只用 `npm run build`**。
+> 如果不小心跑了 dev，再跑一次 build 覆盖污染的 dist，然后在
+> `chrome://extensions` 里 reload extension。
+
 **通过条件：** `extension/dist/manifest.json` 和 `dist/src/sidepanel/index.html` 存在。
 
 ---
