@@ -39,7 +39,7 @@ Goes into a file under the workspace when it is *any* of:
 
 - External original text (job description, company description copied from a careers page)
 - A rendered binary or large document that downstream tools consume directly (PDF resume for ATS, HTML/PDF cover letter for email attachment, screenshot)
-- Human-authored content (the three profile MD files, freeform notes the user types)
+- Human-authored content (`profile.toml`, `score.md`, prompt strategy files, attachments, freeform notes the user types)
 - A program-generated file whose **location is fixed by convention**, so the database does not need to record where it lives
 
 Examples:
@@ -47,7 +47,8 @@ Examples:
 - `data/jobs/<slug>/jd.md` — JD original
 - `data/jobs/<slug>/tailored_resume.pdf` — rendered artifact, fixed name
 - `data/jobs/<slug>/cover_letter.{html,pdf}` — same
-- `<workspace>/profiles/<id>/profile.md`, `resume_pool.md`, `standard_questions.md` — user-authored
+- `<workspace>/profiles/<id>/profile.toml` — governed user-authored profile, resume pool, work authorization, Q&A, and scoring facts
+- `<workspace>/profiles/<id>/score.md`, `prompts/`, `attachments/` — optional user-authored guidance and supporting files
 
 ### 3. Convention paths — neither schema nor a separate index
 
