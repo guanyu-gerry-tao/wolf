@@ -45,8 +45,8 @@ skipped by default; only run it when the user explicitly authorizes the spend.
 ## AI Review Rubric
 
 Only SCORE-AC03 is `ai-reviewed`. Use
-`test/acceptance/reviewers/score-artifact-review.md` for the tier band sanity
-and justification quality checks.
+`test/acceptance/reviewers/score-artifact-review.md` to check that each live
+score produced a valid tier and a grounded, reviewable justification.
 
 ## Report Expectations
 

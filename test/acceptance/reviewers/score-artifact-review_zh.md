@@ -13,15 +13,16 @@
 
 ## 评判口径
 
-对每个 (job, persona) 给出结论：
+对每个 (job, persona) 的 verdict 给出结论：
 
-- **PASS** —— tier 区间与人类合理判断一致，justification 引用了具体的 JD
-  / profile 事实，没有捏造。
-- **PASS_WITH_MINOR_IMPROVEMENTS** —— tier 区间正确，但 justification 偏笼
-  统（"Good fit overall."）或漏掉某个明显信号。说出漏掉了什么。
-- **FAIL** —— 区间错（例如明显错位的 JD 给了 `tailor`），或 justification
-  捏造了 `profile.toml` 里没有的事实，或忽略了 `scoring_notes` 中本应起
-  决定作用的指令。
+- **PASS** —— 有合法 tier，解释引用了具体 JD / profile 事实，并且这些事实
+  能合理支撑该 tier。
+- **PASS_WITH_MINOR_IMPROVEMENTS** —— 有合法 tier 且大体说得通，但
+  justification 略笼统（"Good fit overall."）或漏掉某个明显信号。说出漏掉
+  了什么。
+- **FAIL** —— tier 缺失或非法，或 justification 缺失、泛泛到无法审查、捏造
+  `profile.toml` 里没有的事实、忽略了 `scoring_notes` 中本应起决定作用的
+  指令，或在没有具体依据时把明显错位的 JD 推到高 tier。
 
 ## Tier 区间 rubric
 
@@ -33,7 +34,7 @@
 
 ## 常见失败模式
 
-- **忽视 profile** —— 同一 JD 在两个 `scoring_notes` 明显不同的 persona 下得到同样分数。
+- **解释忽视 persona** —— 当 persona 应明显影响 verdict 时，解释完全不提相关 persona 偏好。
 - **泛泛 justification** —— "Strong fit on backend technologies" 而不引用具体 stack、薪资或地点。
 - **捏造 profile 事实** —— 声称候选人有 X 经验，但 `resume_pool` 里没有。
 - **忽略 scoring_notes** —— 候选人写了 "skip Bay Area onsite"，JD 是 Bay Area onsite，tier 却给到 `tailor` 或 `invest`。

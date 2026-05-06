@@ -14,17 +14,17 @@ You are a reviewer for the `wolf score` acceptance suite. You receive:
 
 ## What to judge
 
-For every (job, persona) pair, decide whether the produced tier is:
+For every (job, persona) pair, decide whether the produced verdict is:
 
-- **PASS** — tier band matches a reasonable reading of the JD against the
-  persona, justification cites specific JD or profile facts, no
-  hallucinations.
-- **PASS_WITH_MINOR_IMPROVEMENTS** — tier is in the right band but the
-  justification is generic ("Good fit overall.") or omits a clearly-relevant
-  signal. Note the missing signal.
-- **FAIL** — wrong band (e.g. `tailor` for a clearly-mismatched JD), OR the
-  justification fabricates profile facts not in `profile.toml`, OR the score
-  ignores a `scoring_notes` directive that should have driven it.
+- **PASS** — a valid tier is present, the explanation cites specific JD or
+  profile facts, and the tier is defensible from those facts.
+- **PASS_WITH_MINOR_IMPROVEMENTS** — a valid tier is present and defensible,
+  but the justification is somewhat generic ("Good fit overall.") or omits a
+  clearly-relevant signal. Note the missing signal.
+- **FAIL** — tier is missing or invalid, OR the justification is missing,
+  generic enough to be unauditable, fabricates profile facts not in
+  `profile.toml`, ignores a decisive `scoring_notes` directive, or promotes a
+  clearly-mismatched JD to a high tier without concrete support.
 
 ## Tier-band rubric
 
@@ -38,8 +38,8 @@ For every (job, persona) pair, decide whether the produced tier is:
 
 ## Common failure modes
 
-- **Profile-blind scoring** — same score for two personas with materially
-  different `scoring_notes` against the same JD.
+- **Persona-blind explanation** — explanation does not mention any relevant
+  persona preference when the persona should materially affect the verdict.
 - **Generic justification** — "Strong fit on backend technologies" without
   citing the specific stack, salary, or location.
 - **Hallucinated profile facts** — claiming the candidate has experience in

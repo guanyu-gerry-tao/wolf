@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Sanity check that the production scoring prompt produces tier bands that
-match human intuition for clear-fit and clear-mismatch JDs against two
-distinct personas. This is the only case in the group that calls the live
-Claude API; it is paid and skipped by default.
+Sanity check that the production scoring prompt can produce a persisted,
+reviewable tier verdict with a grounded explanation for several real fixture
+JDs. This is the only case in the group that calls the live Claude API; it is
+paid and skipped by default.
 
 ## Covers
 
 - `UC-03.1.1` (single-job score, live)
-- Indirectly: prompt quality, score-band rubric calibration.
+- Indirectly: prompt output quality and explanation grounding.
 
 ## Execution Mode
 
@@ -34,9 +34,9 @@ WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC03
 WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
 JD_FIXTURE=test/fixtures/jd/raw/computer-related-job-postings-cc0.csv
-# Three JDs spanning the tier bands: clearly aligned (Software Engineer),
-# adjacent but friction-heavy (System Administrator), and mismatched
-# non-engineering (Product Designer). Update the row ids if the CSV changes.
+# Three fixture JDs with different fit profiles: Software Engineer,
+# System Administrator, and Product Designer. Update the row ids if the CSV
+# changes.
 for ROW in 523 172 288; do
   JD_TEXT="$(python3 test/fixtures/jd/scripts/sample_raw_jd.py "$JD_FIXTURE" --row-id "$ROW")"
   TITLE="Fixture Job $ROW"
@@ -55,8 +55,8 @@ WOLF_DEV_HOME="$WS" npm run wolf -- score --single --jobs "<JOB_ID>"
 ```
 
 Repeat the entire flow with the `swe-mid` persona (a separate workspace
-recommended) so the reviewer can compare how the same JDs score against two
-distinct profiles.
+recommended) so the reviewer can compare whether the explanations account for
+the active persona.
 
 ## AI Review Rubric
 
@@ -64,24 +64,26 @@ Use [`../../reviewers/score-artifact-review.md`](../../reviewers/score-artifact-
 
 ### Case-specific checks
 
-- The clearly-aligned backend/SWE JD resolves to `tailor` or `invest` against
-  `ng-swe`.
-- The clearly-mismatched non-engineering JD resolves to `skip` against
-  `ng-swe`.
-- The borderline / adjacent JD resolves to `skip` or `mass_apply`; the
-  justification should name the specific friction rather than giving generic
-  praise.
-- The same JD set against `swe-mid` should score *differently* than `ng-swe`
-  in at least one case (the persona shift must change at least one score
-  band) — otherwise the prompt is ignoring the profile.
-- No justification claims a profile fact that isn't in the persona's
-  `profile.toml` (e.g. "candidate has 10 years of Kotlin experience" when
-  the persona's resume_pool says nothing of the kind).
+- Each scored job has a persisted `Job.tierAi` value corresponding to one of
+  `skip`, `mass_apply`, `tailor`, or `invest`.
+- Each scored job has a non-empty `Job.scoreJustification` with `## Tier`,
+  `## Pros`, and `## Cons` sections.
+- The justification should be grounded in the JD and persona: it must cite
+  concrete signals such as role, stack, salary, location, remote preference,
+  sponsorship, or explicit profile preferences.
+- The reviewer may accept any tier if the explanation makes a reasonable case
+  for that tier. For example, a relevant SWE job may still be `mass_apply` if
+  the explanation names real friction such as missing salary, unclear
+  sponsorship, off-stack technologies, or logistics mismatch.
+- A run should fail only when the tier is empty/invalid, the explanation is
+  missing or generic, the explanation fabricates facts, or the verdict is
+  clearly unreasonable (for example, a non-engineering JD promoted to a high
+  tier without a concrete justification).
 
 ## Pass Criteria
 
 - All wolf commands exit `0`.
-- Score bands match the rubric above.
+- Every scored job persists a valid tier and a grounded explanation.
 - Reviewer result is `PASS` or `PASS_WITH_MINOR_IMPROVEMENTS`.
 
 ## Report Requirements
