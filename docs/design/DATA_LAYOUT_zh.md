@@ -39,7 +39,7 @@ wolf 决定"什么数据放 SQLite、什么数据放磁盘文件"的依据。
 
 - 外部原文(JD 文本、从招聘页拷贝的公司介绍)
 - 渲染产物或下游工具直接消费的大型文档(给 ATS 的 PDF 简历、给邮件附件用的 HTML/PDF cover letter、截图)
-- 人手写的内容(profile 的三 MD、用户敲进去的备忘)
+- 人手写的内容(`profile.toml`、`score.md`、prompt strategy 文件、附件、用户敲进去的备忘)
 - **位置由约定固定**的程序生成文件,数据库不必再记录它在哪里
 
 例子:
@@ -47,7 +47,8 @@ wolf 决定"什么数据放 SQLite、什么数据放磁盘文件"的依据。
 - `data/jobs/<slug>/jd.md` — JD 原文
 - `data/jobs/<slug>/tailored_resume.pdf` — 渲染产物,文件名固定
 - `data/jobs/<slug>/cover_letter.{html,pdf}` — 同上
-- `<workspace>/profiles/<id>/profile.md`、`resume_pool.md`、`standard_questions.md` — 用户手写
+- `<workspace>/profiles/<id>/profile.toml` — 受治理的用户 profile、简历池、work authorization、Q&A 和打分事实
+- `<workspace>/profiles/<id>/score.md`、`prompts/`、`attachments/` — 可选的用户 guidance 和支撑文件
 
 ### 3. 约定路径 — 既不进 schema 也不另外建索引
 
