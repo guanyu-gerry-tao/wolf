@@ -43,3 +43,38 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wol
 ### 报告要求
 
 记录 command、exit code、stdout path、stderr path、文件存在性检查、证明 dev mode 的 `wolf.toml` 摘录，以及安全检查结果。
+
+## Case B-02 - `wolf init --empty --preset` 创建 dev 演示 profile
+
+**执行模式：** automated  
+**成本：** free  
+**Workspace id：** `bootstrap-B02`
+
+### 目标
+
+确认 dev-only preset 路径会为演示和 acceptance 调试写入已填好的默认 profile，同时保持 job search 存储为空。
+
+### 步骤
+
+使用：
+
+```bash
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B02 npm run wolf -- init --empty --preset
+```
+
+### 通过标准
+
+- 退出码是 `0`。
+- stderr 出现 dev banner。
+- `wolf.toml` 包含 `[instance]` 和 `mode = "dev"`。
+- `profiles/default/profile.toml` 包含 default preset 的 identity、resume
+  entries、projects、education、skills 和 builtin question answers。
+- `data/` 存在于测试 workspace 下。
+- init 结束后 `data/wolf.sqlite` 不存在，证明 preset 没有写入 SQLite job/search 记录。
+- 在 stable build 下运行同一个参数会非零退出，并给出清晰的
+  `--preset requires a dev build` 错误。
+
+### 报告要求
+
+记录 command、exit code、stdout path、stderr path、证明 dev mode 的 `wolf.toml`
+摘录、证明 preset 内容的 profile 摘录、`data/wolf.sqlite` 不存在的检查，以及 stable-build 拒绝输出。

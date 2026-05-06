@@ -10,6 +10,7 @@ import { DEFAULT_COMPANION_CONFIG, DEFAULT_WORKSPACE_CONFIG } from '../../utils/
 import { currentBinaryName, isDevBuild } from '../../utils/instance.js';
 import { CURRENT_SCHEMA_VERSION } from '../../runtime/migrations/index.js';
 import { ensureProfilePromptPack } from '../../utils/profilePromptPack.js';
+import { profileTomlForInitPreset } from './initPresets.js';
 import type { AppConfig } from '../../utils/types/index.js';
 import type {
   InitApplicationService,
@@ -45,7 +46,7 @@ export class InitApplicationServiceImpl implements InitApplicationService {
 
   /** @inheritdoc */
   async writeWorkspace(options: WriteWorkspaceOptions): Promise<void> {
-    const { workspaceDir, config, overwriteConfig } = options;
+    const { workspaceDir, config, overwriteConfig, presetName } = options;
     await fs.mkdir(workspaceDir, { recursive: true });
 
     const configPath = path.join(workspaceDir, 'wolf.toml');
@@ -54,7 +55,7 @@ export class InitApplicationServiceImpl implements InitApplicationService {
       await saveConfig(config, workspaceDir);
     }
 
-    await writeProfileSkeleton(path.join(workspaceDir, 'profiles', DEFAULT_PROFILE_NAME));
+    await writeProfileSkeleton(path.join(workspaceDir, 'profiles', DEFAULT_PROFILE_NAME), presetName);
     await fs.mkdir(path.join(workspaceDir, 'data'), { recursive: true });
     await ensureGitignore(workspaceDir);
     await ensureAgentInstructions(workspaceDir);
@@ -66,9 +67,10 @@ export class InitApplicationServiceImpl implements InitApplicationService {
 // re-running `wolf init` is safe. v1's profile.md / resume_pool.md /
 // standard_questions.md trio is no longer written; existing v1 workspaces
 // upgrade via `wolf migrate`.
-async function writeProfileSkeleton(profileDir: string): Promise<void> {
+async function writeProfileSkeleton(profileDir: string, presetName?: WriteWorkspaceOptions['presetName']): Promise<void> {
   await fs.mkdir(profileDir, { recursive: true });
-  await writeIfAbsent(path.join(profileDir, 'profile.toml'), profileTomlTemplate);
+  const profileToml = presetName === undefined ? profileTomlTemplate : profileTomlForInitPreset(presetName);
+  await writeIfAbsent(path.join(profileDir, 'profile.toml'), profileToml);
   const attachmentsDir = path.join(profileDir, 'attachments');
   await fs.mkdir(attachmentsDir, { recursive: true });
   await writeIfAbsent(path.join(attachmentsDir, 'README.md'), attachmentsReadmeTemplate);

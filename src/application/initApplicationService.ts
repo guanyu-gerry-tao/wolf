@@ -1,4 +1,5 @@
 import type { AppConfig } from '../utils/types/index.js';
+import type { InitPresetName } from './impl/initPresets.js';
 
 /**
  * Arguments for `writeWorkspace`. `overwriteConfig=true` replaces an existing
@@ -8,6 +9,7 @@ export interface WriteWorkspaceOptions {
   workspaceDir: string;
   config: AppConfig;
   overwriteConfig: boolean;
+  presetName?: InitPresetName;
 }
 
 /**

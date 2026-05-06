@@ -14,7 +14,8 @@ extension 使用的 ping 请求。
 - `POST /api/inbox/process`
 - `GET /api/runs/:runId`
 - Companion extension reload 和手动 import 路径
-- 未完成 companion service 的结构化 TODO 响应
+- 已实现 companion action 的 queued run 响应
+- 仍未完成 companion route 的结构化 TODO 响应
 - no-auto-submit fill 的安全 Stagehand 占位行为
 
 ## Case SERVE-01 - `wolf serve` 响应 `/api/ping`
@@ -89,7 +90,7 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 
 - `wolf init --dev --empty` 退出码为 `0`。
 - `wolf serve --port 49152` 能启动并打印
-  `wolf serve listening on http://127.0.0.1:49152`。
+  `wolf serve listening on http://127.0.0.1:49152` 到 stdout。
 - `curl` 退出码为 `0`。
 - JSON 响应包含 `"nonce":"serve-smoke"`。
 - JSON 响应包含非空的 `serverTime` 和 `version`。
@@ -98,10 +99,12 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
   `ready`。如果 Session 1 使用 `--no-browser`,则可以返回 `not_started`,
   companion 应显示 wolf browser overlay。
 - 两个 manual inbox item 被写入 SQLite。
-- `POST /api/inbox/process` 返回 `202`,并带 `status:"completed"` 和
-  `jobIds`；如果 inbox 已经处理过,可以返回 `status:"empty"`。
-- 处理非空 raw inbox 后,SQLite 能看到 promoted inbox rows 和匹配的 `jobs`
-  rows。本地 no-provider MVP 路径下可以没有 background AI batch rows。
+- 当 provider-backed inbox promotion 被排队时，`POST /api/inbox/process`
+  返回 `202`，并带 `status:"queued"` 和 batch metadata；如果 inbox 已经处理过，
+  可以返回 `status:"empty"`。
+- 处理非空 raw inbox 后，SQLite 能看到 inbox rows 进入 `queued`。本地
+  no-provider build 可以返回 `completed`，并直接创建 `jobs` rows；在某些 build
+  里，provider-backed background batch tables 可能要等 worker/persistence 路径启用后才会有 rows。
 - 未完成 companion endpoint 返回结构化
   `{ "status": "todo", "todo": "...", "nextStep": "..." }`,不能是 404。
 - Autofill 保持 no-auto-submit。任何 fill endpoint 或 UI 文案都必须说明 wolf
@@ -121,9 +124,9 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 8. 点击 `Process Inbox`; 确认 prompt; 用 Session 2 查询 promoted inbox rows
    和 job rows。
 
-### TODO Endpoint 检查
+### Queued Action Endpoint 检查
 
-用一个未完成 endpoint 确认稳定 TODO 行为:
+用一个已实现的 companion action endpoint 确认稳定 queued-run 行为：
 
 ```bash
 curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/artifacts/regenerate" \
@@ -131,11 +134,21 @@ curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/artifacts/regenerate" \
   -d '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"","userPrompt":"tighten bullets"}'
 ```
 
-预期: HTTP `501`,响应包含 `status:"todo"` 和说明缺失 application/service
+预期：HTTP `200`，响应包含 `status:"queued"` 和 `runId`。
+
+### TODO Endpoint 检查
+
+用一个仍未完成的 endpoint 确认稳定 TODO 行为：
+
+```bash
+curl -sS "http://127.0.0.1:$WOLF_SERVE_PORT/api/runs"
+```
+
+预期：HTTP `501`，响应包含 `status:"todo"` 和说明缺失 application/service
 method 的 `nextStep`。
 
 ### 报告要求
 
 记录 init command、serve command、curl command、退出码、stdout/stderr log
 路径（如果重定向了）、JSON 响应、extension reload 结果、import 结果、
-SQLite 查询输出、TODO endpoint 响应和安全检查结果。
+SQLite 查询输出、queued action 响应、TODO endpoint 响应和安全检查结果。
