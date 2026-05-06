@@ -38,7 +38,7 @@ npm run build:dev
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC01
-WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
+WOLF_DEV_HOME="$WS" npm run wolf -- init --preset empty
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
 ```
 

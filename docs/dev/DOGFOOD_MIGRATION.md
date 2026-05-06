@@ -32,9 +32,9 @@ copy plus a couple of identity-string fixups.
 ├── wolf.toml                     ← config (model picks, default profile name)
 ├── CLAUDE.md / AGENTS.md         ← AI agent instructions (binary-specific)
 ├── profiles/<name>/
-│   ├── profile.md                ← your identity facts
-│   ├── resume_pool.md            ← your experience bank
-│   ├── standard_questions.md     ← application-only Q&A
+│   ├── profile.toml              ← identity, resume pool, work auth, Q&A
+│   ├── score.md                  ← optional profile-level scoring guidance
+│   ├── prompts/                  ← editable strategy prompt pack
 │   └── attachments/              ← transcripts, references, etc.
 └── data/
     ├── wolf.sqlite               ← jobs DB
@@ -44,7 +44,7 @@ copy plus a couple of identity-string fixups.
 
 | Bucket | Migrate? |
 |---|---|
-| Profile files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | **Yes** — your real content |
+| Profile files (`profile.toml`, `score.md`, `prompts/`, `attachments/`) | **Yes** — your real content |
 | Jobs DB (`data/wolf.sqlite`) | **Yes if you added jobs during dogfood** |
 | Job artifacts (`data/jobs/<jobId>/`) | **Yes if you tailored during dogfood** |
 | `wolf.toml` | **Skip** — let stable regenerate; it'll have stable defaults instead of `instance.mode = "dev"` |
@@ -62,14 +62,15 @@ Lets stable's `wolf init` produce a clean `wolf.toml` + `CLAUDE.md` /
 #    - WOLF_ANTHROPIC_API_KEY set:       wolf env set
 #    - ~/wolf does not yet exist (otherwise back it up first)
 
-# 1. Stable workspace skeleton — produces wolf.toml + empty profiles/default/
-#    + CLAUDE.md/AGENTS.md with `wolf <verb>` references.
-wolf init --empty
+# 1. Stable workspace skeleton — use the stable init flow so wolf.toml and
+#    CLAUDE.md/AGENTS.md contain stable `wolf <verb>` references.
+wolf init
 
-# 2. Copy the three profile markdown files
-cp ~/wolf-dev/profiles/default/profile.md            ~/wolf/profiles/default/
-cp ~/wolf-dev/profiles/default/resume_pool.md        ~/wolf/profiles/default/
-cp ~/wolf-dev/profiles/default/standard_questions.md ~/wolf/profiles/default/
+# 2. Copy profile content
+cp ~/wolf-dev/profiles/default/profile.toml ~/wolf/profiles/default/
+cp ~/wolf-dev/profiles/default/score.md     ~/wolf/profiles/default/ 2>/dev/null
+cp -r ~/wolf-dev/profiles/default/prompts/. \
+      ~/wolf/profiles/default/prompts/ 2>/dev/null
 
 # 3. Copy attachments if you have any
 cp -r ~/wolf-dev/profiles/default/attachments/. \
@@ -88,7 +89,7 @@ wolf job list                # should show the jobs you added in dev
 
 **Why not just `cp -r ~/wolf-dev/ ~/wolf/`?** That would carry the dev
 build's `wolf.toml` (with `instance.mode = "dev"` if you used
-`wolf-dev init --dev --empty`) and the dev-flavoured `CLAUDE.md` /
+`wolf-dev init --preset empty`) and the dev-flavoured `CLAUDE.md` /
 `AGENTS.md` (where AI agents would see `wolf-dev <verb>` and tell you to
 run a binary that doesn't exist on stable). Cherry-pick avoids both.
 
@@ -110,7 +111,7 @@ rm ~/wolf/wolf.toml.bak
 
 # 3. Regenerate the AI-agent docs from the stable template
 rm ~/wolf/CLAUDE.md ~/wolf/AGENTS.md
-wolf init --empty       # writeIfAbsent fills the two files; existing ones stay
+wolf init                      # writeIfAbsent fills the two files; existing ones stay
 
 # 4. Drop the dev log (let stable start fresh)
 rm -f ~/wolf/data/logs/wolf.log.jsonl
@@ -153,7 +154,7 @@ on PATH and operate on independent workspaces.
 If you want to start fresh on dev too:
 ```bash
 rm -rf ~/wolf-dev
-wolf-dev init --dev --empty
+wolf-dev init --preset empty
 ```
 
 ## When does this guide stop being needed?

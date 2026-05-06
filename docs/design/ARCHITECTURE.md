@@ -80,7 +80,7 @@ AppContext (src/runtime/appContext.ts) — manual DI container, shared by CLI, M
 | Layer | Directory | Does | Does NOT |
 |---|---|---|---|
 | **Utils** | `src/utils/` (with `types/`, `errors/`) | Cross-cutting helpers (logger, config, env, parseModelRef); shared domain types; typed error classes | Contain command logic or hold state |
-| **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.md`, `resume_pool.md`, `standard_questions.md`, `attachments/`) | Contain business logic or call other layers |
+| **Repository** | `src/repository/` | Read/write SQLite (via Drizzle) and workspace files (`profile.toml`, `score.md`, prompt strategy files, `attachments/`) | Contain business logic or call other layers |
 | **Service** | `src/service/` (incl. `service/ai/`) | Single-responsibility operations (AI provider registry + clients, external API fetch, rendering, batch submit) | Orchestrate multi-step flows or access DB directly |
 | **Application** | `src/application/` | Orchestrate every use-case — even one-line ones like config get/set or env list. Owns init templates. | Know about CLI options, MCP schemas, or terminal formatting |
 | **Presentation** | `src/cli/` (`index.ts` + `commands/<verb>.ts`), `src/mcp/`, `src/serve/` | Parse input/protocol, format output, hold inquirer prompts, expose local HTTP routes | Contain logic beyond argument mapping, protocol mapping, and formatting |
@@ -263,12 +263,12 @@ Entry point for human users. Built with **commander.js**.
 ```
 src/cli/
 ├── index.ts          # CLI entry point, registers all commands
-└── formatters.ts     # Terminal output formatting (tables, colors, etc.)
+└── commands/         # Thin command wrappers plus adjacent CLI-edge tests
 ```
 
 **Responsibilities:**
 - Parse command-line arguments and flags
-- Call the corresponding function in `src/commands/`
+- Call the corresponding application service via the shared `AppContext`
 - Format return values for terminal display (tables, colors, progress bars)
 - Handle interactive prompts (e.g. `wolf init` wizard)
 
@@ -289,10 +289,10 @@ src/mcp/
 **Responsibilities:**
 - Start/stop MCP server (`wolf mcp serve`)
 - Define tool schemas (name, description, input JSON Schema, output JSON Schema)
-- Map incoming tool calls to the corresponding function in `src/commands/`
+- Map incoming tool calls to CLI/application wrappers that share the same runtime behavior
 - Return structured JSON results (no terminal formatting)
 
-The MCP layer registers tools: `wolf_hunt`, `wolf_add`, `wolf_score`, `wolf_list`, `wolf_select`, `wolf_tailor`, `wolf_cover_letter`, `wolf_fill`, `wolf_reach`, `wolf_status`. `wolf_add` is MCP-only — its caller (an AI agent) extracts structure from user input; wolf only stores it. Input/output schemas are defined in `src/mcp/tools.ts`.
+The MCP layer registers tools with build-aware names: stable builds use `wolf_*`, dev builds use `wolfdev_*`. Current base tools are `hunt`, `add`, `score`, `tailor`, `fill`, `reach`, and `status`; some remain not-yet-implemented roadmap surfaces. Input/output schemas are defined in `src/mcp/tools.ts`.
 
 ### 3. CLI command wrappers (`src/cli/commands/`)
 
@@ -328,24 +328,24 @@ src/cli/commands/
 **Example signatures:**
 
 ```typescript
-// src/application/impl/add/index.ts — single job from AI orchestrator (MCP only)
-export async function add(options: AddOptions): Promise<AddResult> {
-  // 1. Receive already-structured { title, company, jdText, url? } from AI caller
-  // 2. Save to DB with status: raw, score: null
-  // 3. Return jobId for chaining into wolf_score or wolf_tailor
+// src/application/impl/addApplicationServiceImpl.ts
+class AddApplicationServiceImpl {
+  async add(options: AddOptions): Promise<AddResult> {
+    // Receive already-structured { title, company, jdText, url? },
+    // save it to SQLite, and return the jobId.
+  }
 }
 
-// src/application/impl/hunt/index.ts — fetch only
-export async function hunt(options: HuntOptions): Promise<HuntResult> {
-  // 1. Load enabled providers from config
-  // 2. Run each provider, collect raw jobs
-  // 3. Deduplicate across providers
-  // 4. Save to DB with status: raw, score: null
-  // 5. Return ingested count
+// src/application/impl/huntApplicationServiceImpl.ts
+class HuntApplicationServiceImpl {
+  async hunt(options: HuntOptions): Promise<HuntResult> {
+    // Roadmap surface: provider ingestion plugs in here.
+  }
 }
 
-// src/application/impl/scoreApplicationServiceImpl.ts — AI-only scoring
-export async function score(options: ScoreOptions): Promise<ScoreResult> {
+// src/application/impl/scoreApplicationServiceImpl.ts
+class ScoreApplicationServiceImpl {
+  async score(options: ScoreOptions): Promise<ScoreResult> {
   // poll  : drain BatchService.pollAiBatches, walk completed score batches,
   //         parse each item, and write Job.score + Job.scoreJustification
   //         (parse failure → status='error', error='score_error'). Items
@@ -360,6 +360,7 @@ export async function score(options: ScoreOptions): Promise<ScoreResult> {
   // No code-side dealbreakers — the user's `scoring_notes` (free prose) is
   // fed straight to the prompt and the AI emits the verdict. See
   // DECISIONS.md (2026-05-04) which supersedes the older hybrid design.
+  }
 }
 ```
 
@@ -369,7 +370,7 @@ The types module defines shared data structures across all layers — the single
 
 - `Company` — a first-class entity, stored separately from jobs. Multiple jobs share one company record. `Job.companyId` is a foreign key to `Company.id`. The `reach` command uses `Company.domain` to infer email patterns.
 - `Job` — job listing data, the core object persisted to SQLite.
-- `Profile` — per-profile identity. As of 2026-04-26 a profile is a small `{ name, md }` envelope plus three sibling files on disk: `profile.md` (identity, contact, address, links, job preferences, demographics, clearance — all H2-keyed prose), `resume_pool.md` (the full resume content pool), `standard_questions.md` (Q&A bank for `wolf fill`). Plus an `attachments/` directory for uploadable files (transcripts, etc.). Loaded by `FileProfileRepositoryImpl`. There is no zod schema for the prose: validation is content-shape only (REQUIRED H2 sections are filled, resume pool has enough substantive lines), enforced at command time by `assertReadyForTailor` and surfaced proactively by `wolf doctor`.
+- `Profile` — per-profile identity and resume source. The active disk source is `profiles/<id>/profile.toml`: identity, contact, work authorization, job preferences, skills, resume entries, projects, education, awards, and builtin application questions live in one governed TOML file. `FileProfileRepositoryImpl` parses it and renders markdown views for AI-facing services that still consume prose. Each profile folder also has `score.md` for profile-level scoring guidance, `prompts/` for editable strategy prompts, and `attachments/` for uploadable files. Validation is content-shape oriented (required TOML fields filled, resume content has enough substantive entries), enforced at command time by `assertReadyForTailor` and surfaced proactively by `wolf doctor`.
 - `AppConfig` — workspace-level config, loaded from `wolf.toml`. Contains the default profile name, command model settings, and companion settings (`servePort`, `maxStagehandSessions`, fixed `browserMode`). The fixed companion browser mode means a separate Google Chrome instance with a wolf-owned persistent profile under the workspace; users may install wolf companion and password-manager extensions there once, and the profile is reused by later `wolf serve` runs. Validated at parse time by `AppConfigSchema` (zod). Does **not** embed profile data.
 - Per-command Options/Result pairs.
 
@@ -405,7 +406,7 @@ Job data can come from **many different channels**. The `hunt` command uses a **
 
 **Why:** Different platforms have wildly different accessibility and each user may have different data sources available.
 
-`JobProvider` interface requires only `name` and `hunt()`. Definition in `src/types/commands.ts`.
+`JobProvider` interface requires only `name` and `hunt()`. Definition in `src/service/jobProvider.ts`.
 
 **Built-in providers (planned):**
 
@@ -472,7 +473,7 @@ export async function score(options: ScoreOptions): Promise<ScoreResult> {
 }
 ```
 
-The single AI prompt is composed of the user's full `profile.md` (especially `## Job Preferences > Scoring notes`) + the JD body + an output contract. The model emits `<score>0–10</score><justification>...</justification>`; `parseScoreResponse` divides by 10 for storage in `Job.score`. Filtering is handled downstream — `wolf tailor` decides thresholds.
+The single AI prompt is composed of the rendered profile markdown view from `profile.toml` (especially the job-preferences scoring notes) + the JD body + an output contract. The model emits `<score>0–10</score><justification>...</justification>`; `parseScoreResponse` divides by 10 for storage in `Job.score`. Filtering is handled downstream — `wolf tailor` decides thresholds.
 
 **Configuration (in `wolf.toml` in workspace root):**
 
@@ -664,9 +665,9 @@ This design aligns with how AI agents work: Claude Code's working context is the
 ├── wolf.toml           # Workspace-level config: defaultProfileId, providers, hunt, reach
 ├── profiles/           # Per-profile content — committable (not gitignored)
 │   └── <profileId>/    # e.g. profiles/default/
-│       ├── profile.md            # Identity, contact, links, job prefs, demographics, clearance
-│       ├── resume_pool.md        # Full resume content pool (AI-written / user-edited)
-│       ├── standard_questions.md # Behavioral / framework Q&A bank for `wolf fill`
+│       ├── profile.toml          # Identity, resume pool, work auth, Q&A, scoring facts
+│       ├── score.md              # Optional profile-level scoring guidance
+│       ├── prompts/              # Editable strategy prompt pack
 │       └── attachments/          # Uploadable files (transcripts, portfolio, etc.)
 ├── .gitignore          # Auto-generated by wolf init
 ├── credentials/        # OAuth tokens (Gmail) — gitignored

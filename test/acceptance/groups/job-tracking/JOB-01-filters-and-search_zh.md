@@ -30,7 +30,7 @@
 
 ```bash
 npm run build:dev
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run wolf -- add --title "Backend Engineer" --company "Acme" --jd-text "Build TypeScript APIs."
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run wolf -- add --title "Frontend Engineer" --company "Acme" --jd-text "Build React UI."
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-01 npm run wolf -- add --title "Data Engineer" --company "Northstar" --jd-text "Build data pipelines."

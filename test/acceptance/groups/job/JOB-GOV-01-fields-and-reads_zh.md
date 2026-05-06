@@ -25,7 +25,7 @@
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-GOV-01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-GOV-01 npm run wolf -- init --preset empty
 JD_FIXTURE=test/fixtures/jd/raw/computer-related-job-postings-cc0.csv
 JD_TEXT="$(python3 test/fixtures/jd/scripts/sample_raw_jd.py "$JD_FIXTURE" --row-id 119)"
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-GOV-01 npm run wolf -- add --title "Backend Fixture Engineer" --company "Fixture Company" --jd-text "$JD_TEXT" --url "https://jobs.example.test/job-gov-01"

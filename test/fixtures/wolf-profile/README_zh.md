@@ -42,7 +42,7 @@ Acceptance 测试 setup 初始化 workspace 后,通过 CLI 填充默认 profile:
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/<test-id>
-WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
+WOLF_DEV_HOME="$WS" npm run wolf -- init --preset empty
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
 ```
 

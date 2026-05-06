@@ -25,7 +25,7 @@ Use `WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-05 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-05 npm run wolf -- init --preset empty
 ```
 
 Pick one builtin question id from `profile show` and record it in the report.

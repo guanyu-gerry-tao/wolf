@@ -31,7 +31,7 @@ Use `WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC03`.
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC03
-WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
+WOLF_DEV_HOME="$WS" npm run wolf -- init --preset empty
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
 JD_FIXTURE=test/fixtures/jd/raw/computer-related-job-postings-cc0.csv
 # Three fixture JDs with different fit profiles: Software Engineer,

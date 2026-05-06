@@ -38,7 +38,7 @@ npm run build:dev
 初始化 workspace：
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --preset empty
 ```
 
 填充共享的 NG SWE fixture（见 `test/fixtures/wolf-profile/`）。这是 wolf 的主用户

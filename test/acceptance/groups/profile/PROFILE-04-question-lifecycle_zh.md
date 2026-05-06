@@ -24,7 +24,7 @@
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-04 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-04 npm run wolf -- init --preset empty
 ```
 
 ## Steps

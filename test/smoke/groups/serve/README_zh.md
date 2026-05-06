@@ -53,7 +53,7 @@ export WOLF_SERVE_PORT="$WOLF_SERVE_PORT"
 EOF
 
 echo "Session 2 should run: source $WOLF_TEST_ENV_FILE"
-npm run wolf -- init --dev --empty
+npm run wolf -- init --preset empty
 npm run wolf -- serve --port "$WOLF_SERVE_PORT"
 ```
 
@@ -88,7 +88,7 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 
 ### 通过标准
 
-- `wolf init --dev --empty` 退出码为 `0`。
+- `wolf init --preset empty` 退出码为 `0`。
 - `wolf serve --port 49152` 能启动并打印
   `wolf serve listening on http://127.0.0.1:49152` 到 stdout。
 - `curl` 退出码为 `0`。

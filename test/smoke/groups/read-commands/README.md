@@ -23,7 +23,7 @@ crashing or returning partial output.
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/read-R01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/read-R01 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/read-R01 npm run wolf -- status
 ```
 
@@ -48,7 +48,7 @@ search term rather than a SQL error.
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/read-R02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/read-R02 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/read-R02 npm run wolf -- job list --search "%"
 ```
 

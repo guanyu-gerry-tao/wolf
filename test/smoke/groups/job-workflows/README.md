@@ -22,7 +22,7 @@ counts, and list matching jobs from the same workspace.
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J01 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J01 npm run wolf -- add --title "Backend Engineer" --company "Acme" --jd-text "Build APIs in TypeScript."
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J01 npm run wolf -- status
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J01 npm run wolf -- job list --search Acme
@@ -45,7 +45,7 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J01 npm run wolf -- 
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J02 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J02 npm run wolf -- add --title "Frontend Engineer" --company "Acme" --jd-text "React UI work."
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J02 npm run wolf -- add --title "Platform Engineer" --company "Acme" --jd-text "Internal platform work."
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/jobs-J02 npm run wolf -- job list --search Acme

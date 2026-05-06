@@ -17,7 +17,7 @@
 ### 步骤
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C01 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C01 npm run wolf -- config get tailor.model
 ```
 
@@ -36,7 +36,7 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C01 npm run wolf -
 ### 步骤
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C02 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C02 npm run wolf -- config set tailor.model anthropic/claude-haiku-4-5
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/config-C02 npm run wolf -- config get tailor.model
 ```

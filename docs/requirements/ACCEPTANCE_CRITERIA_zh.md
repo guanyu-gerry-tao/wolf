@@ -31,11 +31,11 @@
 
 **AC-01-5 — 可脚本化的空初始化**
 - Given 自动化 agent 需要一个非交互式 workspace
-- When 它运行 `wolf init --empty`
+- When 它运行 `wolf init --preset empty`
 - Then wolf 写入 schema-valid 的 `wolf.toml`、`profiles/default/profile.toml`、空的 `profiles/default/attachments/` 目录，以及 `data/`，且不触发任何 prompt
 
 **AC-01-6 — Dev 初始化隔离**
-- Given dev build 以 `npm run wolf -- init --dev --empty` 调用
+- Given dev build 以 `npm run wolf -- init --preset empty` 调用
 - When 设置了 `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`
 - Then 所有 workspace 文件都创建在该测试 workspace 下，且 `wolf.toml` 包含 `[instance].mode = "dev"`
 

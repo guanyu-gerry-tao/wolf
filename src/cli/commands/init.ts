@@ -19,7 +19,6 @@ const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
 export interface InitOptions {
-  empty?: boolean;
   dev?: boolean;
   here?: boolean;
   preset?: string | true;
@@ -66,19 +65,21 @@ export async function init(options: InitOptions = {}): Promise<void> {
   if (options.preset !== undefined && !isDevBuild()) {
     throw new Error('--preset requires a dev build; run `npm run build:dev` then retry from the clone.');
   }
-  const presetName = normalizeInitPresetName(options.preset);
-  const mode = options.dev || presetName !== undefined ? 'dev' : undefined;
+  const requestedPresetName = normalizeInitPresetName(options.preset);
+  const presetName = requestedPresetName;
+  const mode = options.dev || requestedPresetName !== undefined ? 'dev' : undefined;
+  const nonInteractive = requestedPresetName !== undefined;
 
   const workspaceDir = resolveWorkspaceDir({ here: options.here });
 
-  if (options.empty) {
+  if (nonInteractive) {
     await initApp.writeWorkspace({
       workspaceDir,
       config: initApp.buildDefaultConfig(mode),
       overwriteConfig: false,
       presetName,
     });
-    console.log(`Initialized empty workspace at ${workspaceDir}.`);
+    console.log(`Initialized workspace at ${workspaceDir}.`);
     return;
   }
 
