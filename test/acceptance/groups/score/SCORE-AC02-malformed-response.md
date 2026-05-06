@@ -30,7 +30,7 @@ Use `WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC02`.
 
 ```bash
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/score-AC02
-WOLF_DEV_HOME="$WS" npm run wolf -- init --dev --empty
+WOLF_DEV_HOME="$WS" npm run wolf -- init --preset empty
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh ng-swe "$WS"
 JD_FIXTURE=test/fixtures/jd/raw/computer-related-job-postings-cc0.csv
 JD_TEXT="$(python3 test/fixtures/jd/scripts/sample_raw_jd.py "$JD_FIXTURE" --row-id 119)"

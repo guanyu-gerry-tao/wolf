@@ -13,7 +13,7 @@
 ### 步骤
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/profile-P01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/profile-P01 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/profile-P01 npm run wolf -- profile list
 ```
 

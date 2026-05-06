@@ -16,7 +16,7 @@ are exercised in the acceptance group `score` instead.
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S01 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S01 npm run wolf -- score --help
 ```
 
@@ -35,7 +35,7 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S01 npm run wolf --
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S02 npm run wolf -- init --preset empty
 # Explicitly clear both forms of the key for the score invocation only:
 ( unset WOLF_DEV_ANTHROPIC_API_KEY WOLF_ANTHROPIC_API_KEY \
   && WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S02 npm run wolf -- score --single ) ; echo "exit=$?"
@@ -56,7 +56,7 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S02 npm run wolf --
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S03 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S03 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S03 npm run wolf -- score --profile does-not-exist --single ; echo "exit=$?"
 ```
 
@@ -74,7 +74,7 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S03 npm run wolf --
 ### Steps
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S04 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S04 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/score-S04 npm run wolf -- score --poll
 ```
 

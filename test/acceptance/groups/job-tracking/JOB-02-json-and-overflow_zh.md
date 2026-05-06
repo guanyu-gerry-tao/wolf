@@ -26,7 +26,7 @@
 
 ```bash
 npm run build:dev
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run wolf -- add --title "Role One" --company "Acme" --jd-text "One"
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run wolf -- add --title "Role Two" --company "Acme" --jd-text "Two"
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-02 npm run wolf -- add --title "Role Three" --company "Acme" --jd-text "Three"

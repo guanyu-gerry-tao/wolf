@@ -6,7 +6,8 @@ before handing a branch to review.
 Smoke verifies:
 
 - the dev build compiles
-- `wolf init --dev --empty` can create isolated workspaces
+- `wolf init --preset empty` and `wolf init --preset default` can create
+  isolated workspaces
 - core read/write CLI paths do not crash
 - safety rules are followed
 - each group writes a durable report

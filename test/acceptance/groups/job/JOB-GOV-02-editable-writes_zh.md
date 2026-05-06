@@ -24,7 +24,7 @@
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-GOV-02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-GOV-02 npm run wolf -- init --preset empty
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-GOV-02 npm run wolf -- add --title "Governance Test Role" --company "Fixture Company" --jd-text "Original JD text" --url "https://jobs.example.test/job-gov-02"
 mkdir -p /tmp/wolf-test/acceptance/<run-id>/inputs
 printf 'Updated JD line one\nUpdated JD line two\n' > /tmp/wolf-test/acceptance/<run-id>/inputs/job-description.md

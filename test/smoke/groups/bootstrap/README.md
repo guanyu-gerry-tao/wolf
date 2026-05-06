@@ -11,10 +11,10 @@ acceptance groups.
 - `AC-01-5`
 - `AC-01-6`
 
-## Case B-01 - `wolf init --dev --empty` creates a valid dev workspace
+## Case B-01 - `wolf init --preset empty` creates a valid dev workspace
 
-**Execution mode:** automated  
-**Cost:** free  
+**Execution mode:** automated
+**Cost:** free
 **Workspace id:** `bootstrap-B01`
 
 ### Goal
@@ -27,7 +27,7 @@ marks the workspace as dev, and does not touch real user workspaces.
 Use:
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wolf -- init --preset empty
 ```
 
 ### Pass Criteria
@@ -37,7 +37,9 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wol
 - `wolf.toml` exists under the test workspace.
 - `profiles/default/profile.toml` exists under the test workspace.
 - `profiles/default/attachments/README.md` exists under the test workspace.
+- `profiles/default/score.md` exists under the test workspace.
 - `data/` exists under the test workspace.
+- `data/wolf.sqlite` does not exist after init.
 - `wolf.toml` contains `[instance]` and `mode = "dev"`.
 - `wolf.toml` contains `default = "default"` (the profile-folder pointer).
 - No files were created under `~/wolf`, `~/wolf-dev`, or repo-local runtime
@@ -46,12 +48,13 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B01 npm run wol
 ### Report Requirements
 
 Record the command, exit code, stdout path, stderr path, file existence checks,
-the `wolf.toml` excerpt proving dev mode, and the safety check result.
+the `wolf.toml` excerpt proving dev mode, the `data/wolf.sqlite` absence check,
+and the safety check result.
 
-## Case B-02 - `wolf init --empty --preset` creates a dev demo profile
+## Case B-02 - `wolf init --preset default` creates a dev demo profile
 
-**Execution mode:** automated  
-**Cost:** free  
+**Execution mode:** automated
+**Cost:** free
 **Workspace id:** `bootstrap-B02`
 
 ### Goal
@@ -64,7 +67,7 @@ and acceptance debugging, while leaving job search storage blank.
 Use:
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B02 npm run wolf -- init --empty --preset
+WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B02 npm run wolf -- init --preset default
 ```
 
 ### Pass Criteria
@@ -77,11 +80,9 @@ WOLF_DEV_HOME=/tmp/wolf-test/smoke/<run-id>/workspaces/bootstrap-B02 npm run wol
 - `data/` exists under the test workspace.
 - `data/wolf.sqlite` does not exist after init, proving the preset did not
   seed SQLite job/search records.
-- Running the same command from a stable build exits non-zero with a clear
-  `--preset requires a dev build` error.
 
 ### Report Requirements
 
 Record the command, exit code, stdout path, stderr path, the `wolf.toml`
 excerpt proving dev mode, profile excerpts proving preset content, the
-`data/wolf.sqlite` absence check, and the stable-build rejection output.
+`data/wolf.sqlite` absence check.

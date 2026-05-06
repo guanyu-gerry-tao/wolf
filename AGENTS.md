@@ -70,8 +70,8 @@ wolf/
 | Command | Description |
 |---|---|
 | `wolf init` | Interactive setup wizard; defaults to `~/wolf` |
-| `wolf init --empty` | Non-interactive skeleton workspace |
-| `wolf init --dev --empty` | Dev skeleton workspace (dev build only; tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
+| `wolf init --preset empty` | Dev non-interactive blank skeleton workspace (tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
+| `wolf init --preset default` | Dev non-interactive demo workspace with John Smith profile data and empty SQLite job/search storage |
 | `wolf hunt` | Find and score jobs |
 | `wolf tailor` | Tailor resume to a JD |
 | `wolf fill` | Auto-fill job application form |

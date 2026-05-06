@@ -129,7 +129,7 @@ npm run build:dev                              # 编译 dev-aware dist
 export WOLF_DEV_HOME=~/wolf-dev                # 或任何你想测试的目录
 export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # 跟生产 key 分开
 
-npm run wolf -- init --dev --empty             # 创建 dev workspace（无交互提示）
+npm run wolf -- init --preset empty            # 创建 dev workspace（无交互提示）
 npm run wolf -- <command>                      # 用 dev build 跑任意 wolf 命令
 ```
 

@@ -143,7 +143,7 @@ npm run build:dev                              # build the dev-aware dist
 export WOLF_DEV_HOME=~/wolf-dev                # or any directory you want for testing
 export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # keep your dev key separate from your real one
 
-npm run wolf -- init --dev --empty             # create a dev workspace (no prompts)
+npm run wolf -- init --preset empty            # create a dev workspace (no prompts)
 npm run wolf -- <command>                      # run any wolf command against the dev build
 ```
 
