@@ -4,8 +4,9 @@ import path from 'node:path';
 import { confirm } from '@inquirer/prompts';
 import { backupConfig } from '../../utils/config.js';
 import { envSet } from './env.js';
-import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir, currentBinaryName } from '../../utils/instance.js';
+import { assertDevBuildForDevFlag, getEnvValue, resolveWorkspaceDir, currentBinaryName, isDevBuild } from '../../utils/instance.js';
 import { InitApplicationServiceImpl } from '../../application/impl/initApplicationServiceImpl.js';
+import { normalizeInitPresetName } from '../../application/impl/initPresets.js';
 
 // init must run in a fresh workspace where wolf.toml does not yet exist, so
 // it cannot depend on a fully-wired AppContext (createAppContext loads
@@ -21,6 +22,7 @@ export interface InitOptions {
   empty?: boolean;
   dev?: boolean;
   here?: boolean;
+  preset?: string | true;
 }
 
 // Onboarding message printed at the end of an interactive `wolf init`.
@@ -61,14 +63,20 @@ ${dim(`Workspace path: ${workspaceDir}`)}
  */
 export async function init(options: InitOptions = {}): Promise<void> {
   if (options.dev) assertDevBuildForDevFlag();
+  if (options.preset !== undefined && !isDevBuild()) {
+    throw new Error('--preset requires a dev build; run `npm run build:dev` then retry from the clone.');
+  }
+  const presetName = normalizeInitPresetName(options.preset);
+  const mode = options.dev || presetName !== undefined ? 'dev' : undefined;
 
   const workspaceDir = resolveWorkspaceDir({ here: options.here });
 
   if (options.empty) {
     await initApp.writeWorkspace({
       workspaceDir,
-      config: initApp.buildDefaultConfig(options.dev ? 'dev' : undefined),
+      config: initApp.buildDefaultConfig(mode),
       overwriteConfig: false,
+      presetName,
     });
     console.log(`Initialized empty workspace at ${workspaceDir}.`);
     return;
@@ -151,8 +159,9 @@ Consider cd-ing to a dedicated folder first, e.g.:
   // ── Step 1: Write workspace files ────────────────────────────────────────
   await initApp.writeWorkspace({
     workspaceDir,
-    config: initApp.buildDefaultConfig(options.dev ? 'dev' : undefined),
+    config: initApp.buildDefaultConfig(mode),
     overwriteConfig,
+    presetName,
   });
 
   // ── Step 2: Onboarding message + optional API key setup ──────────────────

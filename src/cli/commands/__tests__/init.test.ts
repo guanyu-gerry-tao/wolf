@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { parse } from 'smol-toml';
 import { AppConfigSchema } from '../../../utils/schemas.js';
+import { parseProfileToml } from '../../../utils/profileToml.js';
 
 // Mock @inquirer/prompts so tests never open interactive TTY prompts. Init
 // no longer collects profile data via prompts (everything is markdown the user
@@ -258,11 +259,97 @@ describe('init()', () => {
     }
   });
 
+  // Dev presets are for fast local demos and acceptance debugging. They fill
+  // the profile.toml resume/profile data, but must not seed job search rows.
+  it('writes the default preset profile for dev-build --preset default workspaces without creating SQLite data', async () => {
+    const dir = makeTempDir();
+    process.env.WOLF_BUILD_MODE = 'dev';
+    process.env.WOLF_DEV_HOME = dir;
+
+    try {
+      await init({ empty: true, preset: 'default' });
+
+      const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
+      const config = AppConfigSchema.parse(parse(raw));
+      expect(config.instance?.mode).toBe('dev');
+
+      const profileToml = await fs.readFile(path.join(dir, 'profiles', 'default', 'profile.toml'), 'utf-8');
+      const profile = parseProfileToml(profileToml);
+
+      expect(profile.identity.legal_first_name).toBe('John');
+      expect(profile.identity.legal_last_name).toBe('Smith');
+      expect(profile.contact.email).toBe('john.smith@example.test');
+      expect(profile.job_preferences.target_roles).toContain('Software Engineer');
+      expect(profile.skills.text).toContain('TypeScript');
+      expect(profile.experience).toHaveLength(2);
+      expect(profile.experience[0]?.company).toBe('Northbridge Cloud');
+      expect(profile.experience.every((entry) => entry.job_title.includes('Intern'))).toBe(true);
+      expect(profile.project).toHaveLength(2);
+      expect(profile.education[0]?.degree).toBe('M.S. Computer Science');
+      expect(profile.education[0]?.school).toBe('Northlake University');
+      expect(profile.job_preferences.sponsorship_preferences).toContain('OPT');
+      expect(profile.question.find((q) => q.id === 'authorized_to_work')?.answer)
+        .toContain('legally authorized');
+
+      await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
+      await expect(fs.access(path.join(dir, 'data', 'wolf.sqlite'))).rejects.toThrow();
+    } finally {
+      delete process.env.WOLF_BUILD_MODE;
+      delete process.env.WOLF_DEV_HOME;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Commander passes `true` for an optional value flag written as `--preset`.
+  // Treating that as default keeps the dev command short for repeated demos.
+  it('treats bare --preset as the default preset', async () => {
+    const dir = makeTempDir();
+    process.env.WOLF_BUILD_MODE = 'dev';
+    process.env.WOLF_DEV_HOME = dir;
+
+    try {
+      await init({ empty: true, preset: true });
+
+      const profileToml = await fs.readFile(path.join(dir, 'profiles', 'default', 'profile.toml'), 'utf-8');
+      const profile = parseProfileToml(profileToml);
+      expect(profile.identity.legal_first_name).toBe('John');
+    } finally {
+      delete process.env.WOLF_BUILD_MODE;
+      delete process.env.WOLF_DEV_HOME;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Only `default` exists today. Fail loudly so future preset typos do not
+  // quietly create a half-empty workspace that looks like a successful demo.
+  it('rejects unknown preset names', async () => {
+    const dir = makeTempDir();
+    process.env.WOLF_BUILD_MODE = 'dev';
+    process.env.WOLF_DEV_HOME = dir;
+
+    try {
+      await expect(init({ empty: true, preset: 'hunter' }))
+        .rejects.toThrow('Unknown init preset "hunter"');
+    } finally {
+      delete process.env.WOLF_BUILD_MODE;
+      delete process.env.WOLF_DEV_HOME;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   // A stable build must not be able to create a dev-marked workspace; otherwise
   // a user or agent could confuse the real binary with the local dev build.
   it('rejects --dev when the binary is not a dev build', async () => {
     delete process.env.WOLF_BUILD_MODE;
     await expect(init({ dev: true, empty: true, here: true }))
       .rejects.toThrow('--dev requires a dev build');
+  });
+
+  // Preset data is intentionally dev-only, even if the caller forgets --dev.
+  // Stable users should get an error instead of a fake profile.
+  it('rejects --preset when the binary is not a dev build', async () => {
+    delete process.env.WOLF_BUILD_MODE;
+    await expect(init({ empty: true, preset: 'default', here: true }))
+      .rejects.toThrow('--preset requires a dev build');
   });
 });

@@ -95,8 +95,9 @@ program
   .option('--empty', 'Non-interactive: create skeleton only, no prompts')
   .option('--dev', 'Create a dev workspace (requires npm run build:dev)')
   .option('--here', 'Create the workspace in the current directory')
+  .option('--preset [name]', 'Dev only: seed a demo profile preset (default: default)')
   .action(async (opts) => {
-    await init({ empty: opts.empty, dev: opts.dev, here: opts.here });
+    await init({ empty: opts.empty, dev: opts.dev, here: opts.here, preset: opts.preset });
   });
 
 program
