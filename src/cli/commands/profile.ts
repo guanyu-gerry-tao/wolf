@@ -282,3 +282,45 @@ export async function profilePromptsRepair(ctx: AppContext = createAppContext())
   for (const filePath of result.created) console.log(`  + ${filePath}`);
   console.log(`preserved: ${result.preserved.length}`);
 }
+
+// ---------------------------------------------------------------------------
+// `wolf profile score *` — profile-level scoring guide.
+// ---------------------------------------------------------------------------
+
+/** Print profiles/<active>/score.md to stdout. Silent if the file is empty. */
+export async function profileScoreShow(ctx: AppContext = createAppContext()): Promise<void> {
+  const result = await ctx.profileApp.scoreMdContent();
+  if (result.content.length === 0) {
+    console.error(`# ${result.path}\n# (empty — run \`${currentBinaryName()} profile score init\` to create the placeholder)`);
+    return;
+  }
+  process.stdout.write(result.content);
+}
+
+/** Open profiles/<active>/score.md in $EDITOR (vi fallback). Creates the
+ *  placeholder first if the file is missing so the editor opens to readable
+ *  guidance instead of a blank buffer. */
+export async function profileScoreEdit(ctx: AppContext = createAppContext()): Promise<void> {
+  await ctx.profileApp.scoreMdInit();   // idempotent — creates placeholder iff absent
+  const { path: filePath } = await ctx.profileApp.scoreMdPath();
+  const editor = process.env.EDITOR ?? process.env.VISUAL ?? 'vi';
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync(editor, [filePath], { stdio: 'inherit' });
+  if (result.status !== 0) {
+    console.error(`Editor exited with status ${result.status}`);
+    process.exitCode = result.status ?? 1;
+  }
+}
+
+/** Create profiles/<active>/score.md with the placeholder header. Idempotent. */
+export async function profileScoreInit(ctx: AppContext = createAppContext()): Promise<void> {
+  const result = await ctx.profileApp.scoreMdInit();
+  if (result.created) {
+    console.log(`Created ${result.path}`);
+  } else {
+    console.log(`${result.path} already exists (no changes).`);
+  }
+}
+
+// avoid unused-import lint when EDITOR fallback dynamic import is used.
+void fs;

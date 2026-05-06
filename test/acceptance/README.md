@@ -66,7 +66,7 @@ You are the Wolf Acceptance Test Orchestrator.
 | `add` | Manual structured job intake | automated | implemented |
 | `profile` | Profile field and question data governance | automated | implemented |
 | `hunt` | Job discovery providers and dedupe | automated / ai-reviewed | planned |
-| `score` | Job scoring and hard filters | ai-reviewed | planned |
+| `score` | Job scoring against profile (AI-only; no code dealbreakers) | mixed (automated + ai-reviewed paid) | implemented |
 | `job` | Job row data governance (`show` / `get` / `set` / `fields`) | automated | implemented |
 | `job-tracking` | Rich `wolf job list` filters and output modes | automated | implemented |
 | `tailor` | Resume and cover-letter artifact generation | ai-reviewed | implemented |

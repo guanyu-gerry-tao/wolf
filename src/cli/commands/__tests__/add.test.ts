@@ -53,6 +53,7 @@ describe('add()', () => {
     expect(savedJob.title).toBe('SWE');
     expect(savedJob.status).toBe('new');
     expect(savedJob.score).toBeNull();
+    expect(savedJob.workAuthorizationRequired).toBe('unknown');
 
     // JD text is persisted to disk (jd.md) via writeJdText, not in the Job row.
     expect(ctx.jobRepository.writeJdText).toHaveBeenCalledWith(savedJob.id, 'Build things.');

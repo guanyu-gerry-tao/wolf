@@ -49,6 +49,8 @@ export function initializeSchema(db: DrizzleDb): void {
       description_md              TEXT    NOT NULL DEFAULT '',
       score                       REAL,
       score_justification         TEXT,
+      tier_ai                     INTEGER,
+      tier_user                   INTEGER,
       status                      TEXT    NOT NULL,
       error                       TEXT,
       applied_profile_id          TEXT,
@@ -67,6 +69,19 @@ export function initializeSchema(db: DrizzleDb): void {
   // COLUMN. Idempotent at the runtime level.
   try {
     db.run(sql`ALTER TABLE jobs ADD COLUMN description_md TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    /* column already present — nothing to do */
+  }
+
+  // v3 added tier_ai / tier_user for tier-based scoring. ALTER TABLE for
+  // upgrades; safe-to-fail when columns already exist.
+  try {
+    db.run(sql`ALTER TABLE jobs ADD COLUMN tier_ai INTEGER`);
+  } catch {
+    /* column already present — nothing to do */
+  }
+  try {
+    db.run(sql`ALTER TABLE jobs ADD COLUMN tier_user INTEGER`);
   } catch {
     /* column already present — nothing to do */
   }

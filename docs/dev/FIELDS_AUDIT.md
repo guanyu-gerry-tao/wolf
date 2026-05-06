@@ -289,7 +289,7 @@ fields (refused by `wolf job set`).
 | `remote` | **boolean** | **REQ** | — | Accepts `true`/`false`/`yes`/`no`/`1`/`0`. |
 | `salaryLow` | **number** | OPT | null | Lower bound of annual USD. **0 = explicitly unpaid; null = unknown.** β.10j+k. |
 | `salaryHigh` | **number** | OPT | null | Upper bound of annual USD. Blank if single-point or unknown. Allowed even when `salaryLow=0` (e.g. unpaid base + bonus). |
-| `workAuthorizationRequired` | **enum** | **REQ** | — | `no sponsorship` / `Green card` / `Work visa` / `OPT` / `CPT`. |
+| `workAuthorizationRequired` | **enum** | **REQ** | `unknown` | `unknown` / `no sponsorship` / `Green card` / `Work visa` / `OPT` / `CPT`. `unknown` means the JD did not state sponsorship. |
 | `clearanceRequired` | **boolean** | **REQ** | — | true/false. |
 | `score` | **number** | OPT | null | AI relevance score 0.0..1.0. Blank to clear. |
 | `scoreJustification` | multilineString | OPT | null | AI-generated explanation. |

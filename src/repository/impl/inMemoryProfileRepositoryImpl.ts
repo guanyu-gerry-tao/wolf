@@ -79,4 +79,13 @@ export class InMemoryProfileRepositoryImpl implements ProfileRepository {
   async getAttachmentsList(_name: string): Promise<string[]> {
     return [];
   }
+  async getScoreMd(_name: string): Promise<string> {
+    return '';
+  }
+  async writeScoreMd(_name: string, _content: string): Promise<void> {
+    /* tests don't persist anything */
+  }
+  async ensureScoreMd(_name: string): Promise<void> {
+    /* in-memory repo has no files to create */
+  }
 }

@@ -205,4 +205,25 @@ export interface ProfileApplicationService {
    * overwriting user-edited strategy files.
    */
   repairPrompts(): Promise<ProfilePromptsRepairResult>;
+
+  /**
+   * Reports the absolute path of `profiles/<active>/score.md` (the
+   * profile-level scoring guide). The CLI's `wolf profile score show / edit`
+   * subcommands use this to cat or open the file.
+   */
+  scoreMdPath(): Promise<{ profileName: string; path: string }>;
+
+  /**
+   * Returns the raw contents of `profiles/<active>/score.md`. Empty string
+   * if the file is missing — `wolf profile score show` prints nothing in
+   * that case so AI orchestrators can detect the empty-guide state.
+   */
+  scoreMdContent(): Promise<{ profileName: string; path: string; content: string }>;
+
+  /**
+   * Idempotently creates `profiles/<active>/score.md` with the placeholder
+   * `> [!TODO]` header if absent. Returns whether a file was created and
+   * the absolute path so the CLI can print a confirming message.
+   */
+  scoreMdInit(): Promise<{ profileName: string; path: string; created: boolean }>;
 }

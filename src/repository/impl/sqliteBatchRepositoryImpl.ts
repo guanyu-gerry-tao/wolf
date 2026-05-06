@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm';
-import type { BatchRepository, Batch } from '../batchRepository.js';
+import { and, eq } from 'drizzle-orm';
+import type { BatchRepository, Batch, BatchType } from '../batchRepository.js';
 import type { DrizzleDb } from './drizzleDb.js';
 import { batches } from './schema.js';
 
@@ -32,6 +32,15 @@ export class SqliteBatchRepositoryImpl implements BatchRepository {
       .select()
       .from(batches)
       .where(eq(batches.status, 'pending'));
+    return rows.map(rowToBatch);
+  }
+
+  /** @inheritdoc */
+  async listCompletedByType(type: BatchType): Promise<Batch[]> {
+    const rows = await this.db
+      .select()
+      .from(batches)
+      .where(and(eq(batches.type, type), eq(batches.status, 'completed')));
     return rows.map(rowToBatch);
   }
 

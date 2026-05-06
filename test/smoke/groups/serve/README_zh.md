@@ -123,16 +123,22 @@ sqlite3 "$WOLF_DEV_HOME/data/wolf.sqlite" \
 
 ### TODO Endpoint 检查
 
-用一个未完成 endpoint 确认稳定 TODO 行为:
+用一个真正未完成的 endpoint 来确认稳定的 TODO 行为。挑一个仍然走
+`nodeHttpServerImpl.ts` 中 `todoRoute` 的路由（grep
+`Run listing is not implemented yet`）；自 serve 落地起 `GET /api/runs`
+一直是规范的 TODO 路由。
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:$WOLF_SERVE_PORT/api/artifacts/regenerate" \
-  -H "content-type: application/json" \
-  -d '{"jobId":"job-1","artifactType":"resume","existingArtifactText":"","userPrompt":"tighten bullets"}'
+curl -sS "http://127.0.0.1:$WOLF_SERVE_PORT/api/runs"
 ```
 
-预期: HTTP `501`,响应包含 `status:"todo"` 和说明缺失 application/service
-method 的 `nextStep`。
+预期: HTTP `501`,响应形如 `{"status":"todo","todo":"...","nextStep":"..."}`,
+其中 `nextStep` 指出缺失的 application/service 方法。
+
+注意: 早期的 `POST /api/artifacts/regenerate` 已经接入
+`companionActionApp.regenerateArtifact` 并返回 `202`,不再是 TODO。
+如果未来 `/api/runs` 也实现了,请更新本节,从 `todoRouteSpec` 中再挑
+一个仍未实现的路由。
 
 ### 报告要求
 
