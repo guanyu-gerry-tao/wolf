@@ -1,18 +1,20 @@
 import type { ScoreOptions, ScoreResult } from '../utils/types/index.js';
 
 /**
- * Use case for `wolf score` (Milestone 2) — processes unscored jobs:
- * AI extraction of structured fields (sponsorship / tech stack / remote /
- * salary), dealbreaker filters, then submission to Claude Batch API for
- * async scoring. `--single` switches to synchronous Haiku for one job.
+ * Use case for `wolf score` — produces tier-based job triage against the
+ * active profile.
  *
- * Currently a stub; the full pipeline lands in M2.
+ * Default mode submits unscored jobs to the async AI Batch API. `--poll`
+ * applies completed batch items back to Job rows. `--single` runs one
+ * synchronous score and writes the verdict immediately.
+ *
+ * AI scoring writes `Job.tierAi` plus `Job.scoreJustification`; manual user
+ * overrides live on `Job.tierUser` and are not changed by this use case.
  */
 export interface ScoreApplicationService {
   /**
-   * Scans for jobs with `score: null`, extracts fields, applies hard filters
-   * (filtered → `status: filtered`), submits the rest to Batch API. Returns
-   * batch id + counts for the CLI summary.
+   * Runs score in one of its supported modes and returns counts or the
+   * synchronous markdown verdict for CLI formatting.
    */
   score(options: ScoreOptions): Promise<ScoreResult>;
 }

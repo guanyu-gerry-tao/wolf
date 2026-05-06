@@ -1,3 +1,4 @@
+import type { TierIndex } from "../scoringTiers.js";
 import { Sponsorship } from "./sponsorship.js";
 
 /**
@@ -102,13 +103,33 @@ export interface Job {
   // validate the pair; the AI / scorer interprets shape.
   salaryLow: number | null;
   salaryHigh: number | null;
-  workAuthorizationRequired: Sponsorship; // e.g. "no sponsorship", "US citizens only"
+  workAuthorizationRequired: Sponsorship; // "unknown" means the JD did not state sponsorship.
   clearanceRequired: boolean;
-  score: number | null; // AI relevance score 0.0–1.0; null if unscored
-  scoreJustification: string | null; // AI-generated explanation: why the job scored this way,
-  // what's a strong match, and any flags or concerns.
-  // Persisted permanently — shown in wolf status and used
-  // by AI orchestrators to present results to the user.
+  /**
+   * @deprecated v3 — replaced by `tierAi` / `tierUser`. Existing column
+   * kept for backward-compat with workspaces created on v1; new code
+   * neither reads nor writes it. Will be dropped when the migration
+   * framework lands.
+   */
+  score: number | null;
+  /**
+   * AI-generated markdown evaluation. v3 uses this column to hold the
+   * full markdown blob (`## Tier`, `## Pros`, `## Cons` sections); v1
+   * used it for plain prose justification. Always plain text.
+   */
+  scoreJustification: string | null;
+  /**
+   * AI tier verdict. Index into `TIER_NAMES` from `src/utils/scoringTiers.ts`.
+   * Set by `wolf score` family of commands; never overwritten by user
+   * actions. `null` until the job has been scored.
+   */
+  tierAi: TierIndex | null;
+  /**
+   * User tier override. Set by `wolf job set tier ...` and cleared by
+   * `wolf job unlock`. Never overwritten by AI paths. The effective tier
+   * for downstream commands is `tierUser ?? tierAi`.
+   */
+  tierUser: TierIndex | null;
   status: JobStatus;
   error: JobError | null;          // set when status is "error"; null otherwise
   appliedProfileId: string | null; // which profile was used; null if not yet applied
@@ -178,6 +199,8 @@ export interface JobUpdate {
   appliedProfileId?: string | null;
   score?: number | null;
   scoreJustification?: string | null;
+  tierAi?: TierIndex | null;
+  tierUser?: TierIndex | null;
   hasTailoredResume?: boolean;
   hasTailoredCoverLetter?: boolean;
   hasScreenshots?: boolean;

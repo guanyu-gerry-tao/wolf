@@ -4,6 +4,77 @@ All notable changes to wolf are recorded here. wolf follows
 [semantic versioning](https://semver.org/) (with the `0.x` caveat: minor
 version bumps may include breaking changes until `1.0`).
 
+## Unreleased — `feat/m2-score-ai-only` branch (M2 score, tier-based v3)
+
+### Added
+
+- **`wolf score`** lands as the first Milestone-2 deliverable (CLI + HTTP).
+  AI emits one of four tiers — `skip` / `mass_apply` / `tailor` /
+  `invest` — plus pros/cons markdown. Tier names are stored in TypeScript
+  (`src/utils/scoringTiers.ts`); SQL stores the integer index.
+  - CLI flags: `--profile`, `--jobs`, `--single`, `--poll`, `--ai-model`.
+    Default mode submits every unscored (`tierAi: null`) job to the
+    Anthropic Batch API; `--single` triages one job synchronously for
+    inline AI-orchestrator presentation; `--poll` drains pending score
+    batches (idempotent via `batch_items.consumed_at`).
+  - HTTP route `POST /api/score` mirrors the CLI 1:1. Body matches
+    `ScoreOptions`, response matches `ScoreResult` (`singleTier`,
+    `singleTierName`, `singleMd`). 503 if the score app is not wired,
+    400 on schema violation.
+  - **Two tier columns per Job**: `tier_ai` (AI verdict, written by
+    `wolf score`) and `tier_user` (manual override, written by `wolf job
+    set <id> tierUser <name|index>`). AI never overwrites user; user
+    actions never invalidate AI history. Effective tier =
+    `tierUser ?? tierAi`.
+  - **Profile-level scoring guide**: new file `profiles/<name>/score.md`,
+    bootstrapped with a `> [!TODO]` placeholder by `wolf init`. Edited
+    via `wolf profile score show / edit / init`. Merged into the
+    score-system prompt at scoring time so users can give the AI
+    long-form steering.
+  - `job_preferences.hard_reject_companies` and
+    `job_preferences.precision_apply_companies` (already existed) double
+    as `skip` and `invest` signals — the score-system prompt names them
+    explicitly. No code-side dealbreaker filter; the AI is told what the
+    lists mean.
+  - MCP tool `wolf_score` is intentionally **not yet wired** in this PR.
+
+### Schema
+
+- `jobs` table grew two columns: `tier_ai INTEGER`, `tier_user INTEGER`
+  (idempotent ALTER TABLE for upgrades).
+- `Job.score` (0..1 numeric) is **deprecated** — kept for backward-compat
+  with v1 workspaces; new code neither reads nor writes it. Will be
+  dropped after the migration framework lands.
+
+### Test infra
+
+- Smoke group `test/smoke/groups/score/` (4 deterministic cases: help,
+  missing API key, missing profile, empty `--poll`).
+- Acceptance group `test/acceptance/groups/score/` promoted from
+  "Planned" to "Implemented". 3 cases: mocked single tier write-back,
+  malformed response surfaces score_error, paid live tier-quality review.
+  Reviewer rubric at `test/acceptance/reviewers/score-artifact-review.md`.
+- Dev-only `WOLF_TEST_AI_RESPONSE_FILE` env-var hook: when set in a dev
+  build, `aiClient` returns the file's contents instead of calling
+  Anthropic. AC tests use it to assert tier write-back without spending
+  money. Stable user builds ignore the env var.
+
+### Repository
+
+- New `BatchRepository.listCompletedByType(type)` for per-type apply
+  loops (drains unconsumed score items left over from prior poll runs).
+- New `ProfileRepository.getScoreMd / writeScoreMd / ensureScoreMd` for
+  the profile-level scoring guide.
+
+### Follow-ups (not in this PR)
+
+- `wolf job unlock <id>` shortcut for clearing `tier_user` (today: `wolf
+  job set <id> tierUser null`).
+- `wolf job list --tier <names>` filter.
+- Default content for `profiles/<name>/score.md` (today: just a
+  `> [!TODO]` placeholder).
+- MCP tool wiring for `wolf_score`.
+
 ## Unreleased — `feat/migration-runner-framework` branch
 
 Schema-shape work building on top of the v2 single-file profile (β.1–.10c

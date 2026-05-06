@@ -64,6 +64,7 @@ You are the Wolf Smoke Test Orchestrator.
 | `env` | Environment key display safety | automated | free |
 | `job-workflows` | Add/status/list job workflow | automated | free |
 | `serve` | Local HTTP daemon ping route | automated | free |
+| `score` | Score CLI deterministic surface (help, missing key, missing profile, empty `--poll`) | automated | free |
 
 ## Report Addendum
 

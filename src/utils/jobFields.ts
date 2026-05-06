@@ -1,4 +1,5 @@
 import { ALL_JOB_STATUSES } from './types/job.js';
+import { TIER_NAMES } from './scoringTiers.js';
 
 /**
  * Wolf-defined metadata for every editable field on a job row. Drives:
@@ -36,7 +37,9 @@ export type JobFieldType =
   | 'boolean'            // 'true'/'false', 'yes'/'no', '1'/'0'
   | 'enum'               // one of `enumValues`
   | 'nullableString'     // string OR empty/'null' for null
-  | 'nullableEnum';      // enum OR empty/'null' for null
+  | 'nullableEnum'       // enum OR empty/'null' for null
+  | 'nullableTier';      // tier name (skip / mass_apply / tailor / invest)
+                         // OR stringified index (0..3) OR empty/'null' for null
 
 export interface JobFieldMeta {
   /** Field name — plain SQL column or special `description_md`. */
@@ -54,6 +57,7 @@ export interface JobFieldMeta {
 const SOURCE_VALUES = ['LinkedIn', 'Indeed', 'handshake', 'Company website', 'Other'] as const;
 
 const SPONSORSHIP_VALUES = [
+  'unknown',
   'no sponsorship',
   'Green card',
   'Work visa',
@@ -89,12 +93,16 @@ export const JOB_FIELDS: ReadonlyArray<JobFieldMeta> = [
   //   (unpaid base + bonus ceiling). Coercion does not validate the pair.
   { name: 'salaryLow',                   type: 'number',           required: false, help: 'Lower bound of annual USD. Use 0 for unpaid (explicit). Blank = unknown / not listed by JD.' },
   { name: 'salaryHigh',                  type: 'number',           required: false, help: 'Upper bound of annual USD. Blank if single-point comp or unknown. Allowed even when salaryLow is 0 (e.g. unpaid base + bonus).' },
-  { name: 'workAuthorizationRequired',   type: 'enum',             required: true,  help: 'Sponsorship stance per JD.', enumValues: SPONSORSHIP_VALUES },
+  { name: 'workAuthorizationRequired',   type: 'enum',             required: true,  help: 'Sponsorship stance per JD. Use unknown when the JD does not state it.', enumValues: SPONSORSHIP_VALUES },
   { name: 'clearanceRequired',           type: 'boolean',          required: true,  help: 'Whether the role requires a security clearance.' },
 
-  // ---- AI score
-  { name: 'score',                       type: 'number',           required: false, help: 'AI relevance score 0.0..1.0; blank = unscored.' },
-  { name: 'scoreJustification',          type: 'multilineString',  required: false, help: 'AI-generated explanation for the score.' },
+  // ---- AI score (v3 tier model)
+  // `score` is deprecated since v3 — kept for backward-compat with existing
+  // workspaces. New code uses `tierAi` / `tierUser` instead.
+  { name: 'score',                       type: 'number',           required: false, help: '[deprecated] Numeric score 0.0..1.0 from v1; superseded by tierAi.' },
+  { name: 'scoreJustification',          type: 'multilineString',  required: false, help: 'AI-generated markdown evaluation (## Tier / ## Pros / ## Cons sections).' },
+  { name: 'tierAi',                      type: 'nullableTier',     required: false, help: `AI tier verdict, one of: ${TIER_NAMES.join(' / ')}. Blank = unscored. Set by 'wolf score'.` },
+  { name: 'tierUser',                    type: 'nullableTier',     required: false, help: `Manual tier override; blank = no override. Set by 'wolf job set tier' / cleared by 'wolf job unlock'. AI never overwrites this.` },
 
   // ---- pipeline state
   { name: 'status',                      type: 'enum',             required: true,  help: 'Pipeline status.', enumValues: ALL_JOB_STATUSES },

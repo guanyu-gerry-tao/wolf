@@ -2,6 +2,7 @@
  * Represents the sponsorship status for a job.
  */
 export type Sponsorship =
+  | "unknown" // JD does not state whether sponsorship is available
   | "no sponsorship" // job doesn't offer sponsorship
   | "Green card" // offering green card sponsorship, or equivalent for other countries (e.g. Canada's permanent residency sponsorship)
   | "Work visa" // offering H-1B sponsorship, L1 or O1, or equivalent for other countries (e.g. Canada's LMIA work permits)

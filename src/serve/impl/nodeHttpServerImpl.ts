@@ -10,6 +10,7 @@ import {
   QuickFillRequestSchema,
   QuickTailorRequestSchema,
   RegenerateArtifactRequestSchema,
+  ScoreRequestSchema,
   type RuntimeStatusResponse,
   type PingResponse,
 } from '../protocol.js';
@@ -22,6 +23,7 @@ import type { JobApplicationService } from '../../application/jobApplicationServ
 import type { StatusApplicationService } from '../../application/statusApplicationService.js';
 import type { ConfigApplicationService } from '../../application/configApplicationService.js';
 import type { ProfileApplicationService } from '../../application/profileApplicationService.js';
+import type { ScoreApplicationService } from '../../application/scoreApplicationService.js';
 import type { CompanyRepository } from '../../repository/companyRepository.js';
 import type { JobRepository } from '../../repository/jobRepository.js';
 import type { ServeBrowserManager } from '../browserManager.js';
@@ -40,6 +42,7 @@ export interface NodeHttpServerOptions {
   statusApp?: StatusApplicationService;
   configApp?: ConfigApplicationService;
   profileApp?: ProfileApplicationService;
+  scoreApp?: ScoreApplicationService;
   jobRepository?: JobRepository;
   companyRepository?: CompanyRepository;
 }
@@ -121,6 +124,7 @@ export class NodeHttpServerImpl implements HttpServer {
       statusApp: this.opts.statusApp,
       configApp: this.opts.configApp,
       profileApp: this.opts.profileApp,
+      scoreApp: this.opts.scoreApp,
       jobRepository: this.opts.jobRepository,
       companyRepository: this.opts.companyRepository,
     });
@@ -143,6 +147,7 @@ export async function dispatchHttpRequest(input: {
   statusApp?: StatusApplicationService;
   configApp?: ConfigApplicationService;
   profileApp?: ProfileApplicationService;
+  scoreApp?: ScoreApplicationService;
   jobRepository?: JobRepository;
   companyRepository?: CompanyRepository;
   workspacePath?: string;
@@ -462,6 +467,23 @@ export async function dispatchHttpRequest(input: {
     return { status: 200, body: await input.profileApp.list() };
   }
 
+  // POST /api/score — single endpoint mirroring `wolf score`. Body matches
+  // ScoreOptions; response matches ScoreResult. Empty body is valid (default
+  // mode submits every unscored job).
+  if (input.method === 'POST' && url.pathname === '/api/score') {
+    if (!input.scoreApp) {
+      return { status: 503, body: { error: 'score unavailable' } };
+    }
+    const parsedJson = parseJsonBody(input.body);
+    if (!parsedJson.ok) return parsedJson.result;
+    const parsed = ScoreRequestSchema.safeParse(parsedJson.value);
+    if (!parsed.success) {
+      return { status: 400, body: { error: 'invalid score request' } };
+    }
+    const result = await input.scoreApp.score(parsed.data);
+    return { status: 200, body: result };
+  }
+
   if (isCommandSurfaceStub(input.method, url.pathname)) {
     return todoRoute(input.method, url.pathname);
   }
@@ -623,7 +645,7 @@ function todoRouteSpec(method: string, pathname: string): { todo: string; nextSt
       nextStep: 'Expose ProfileApplicationService through GET /api/profile.',
     },
     {
-      matches: method === 'POST' && ['/api/tailor', '/api/score', '/api/fill'].includes(pathname),
+      matches: method === 'POST' && ['/api/tailor', '/api/fill'].includes(pathname),
       todo: `Legacy command route ${pathname} is not implemented yet.`,
       nextStep: 'Use the newer companion-specific route or wire the legacy command route deliberately.',
     },

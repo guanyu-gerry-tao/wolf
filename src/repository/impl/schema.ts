@@ -63,8 +63,19 @@ export const jobs = sqliteTable('jobs', {
   // Default '' makes the column safe on legacy v1 rows that haven't run
   // migration yet — they read empty until v1→v2 populates them from disk.
   descriptionMd: text('description_md').notNull().default(''),
+  // Deprecated since v3 (tier-based scoring). Kept for backward-compat with
+  // existing workspaces — no new code reads or writes this. Will be dropped
+  // when the migration framework lands.
   score: real('score'),
+  // Holds the AI-generated markdown evaluation (tier + pros + cons block).
+  // Reused from v1; populated by the v3 score command.
   scoreJustification: text('score_justification'),
+  // v3: tier-based scoring. Index into `TIER_NAMES` from
+  // src/utils/scoringTiers.ts. `tierAi` is set by `wolf score`;
+  // `tierUser` is set by manual override (`wolf job set tier ...`); the
+  // two never overwrite each other. Effective tier is `tierUser ?? tierAi`.
+  tierAi: integer('tier_ai'),
+  tierUser: integer('tier_user'),
   status: text('status').$type<JobStatus>().notNull(),
   error: text('error').$type<JobError>(),
   appliedProfileId: text('applied_profile_id'),

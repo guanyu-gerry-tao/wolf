@@ -39,14 +39,14 @@
 - [ ] Store job in DB with `status: raw`, `score: null`; return `jobId`
 - [ ] No CLI equivalent — AI caller (Claude/OpenClaw) is responsible for extracting structure from user input (screenshot, pasted text, URL)
 
-### `wolf score` / `wolf_score`
-- [ ] Read unscored jobs (`score: null` OR `status: score_error`) from DB
-- [ ] AI field extraction — Claude API extracts structured fields (sponsorship, tech stack, remote, salary) from raw JD text
-- [ ] Apply dealbreakers (hard filters) — disqualified jobs saved as `status: filtered`
-- [ ] Claude API (Batch) — async scoring of remaining jobs against user profile (0.0–1.0)
-- [ ] Hybrid scoring: algorithm scores structured dimensions (location, salary, work auth); Claude scores `roleMatch` only
-- [ ] `--jobid` flag — skip Batch API, score one job synchronously via Haiku (for AI-orchestrated flows after `wolf_add`)
-- [ ] Wire up MCP tool (replace stub)
+### `wolf score` / `wolf_score` — landed (AI-only scoring; superseded approach below)
+- [x] Read unscored jobs (`score: null`) from DB; honor `--jobs <ids>` to re-score explicit ids.
+- [x] One AI call per job — full profile (especially `scoring_notes`) + JD piped to a single scoring prompt; output `<score>0–10</score><justification>...</justification>` parsed and stored as `[0.0, 1.0]` in `Job.score`.
+- [x] **No code dealbreakers** — replaced by free-form `scoring_notes` consumed by the AI. See DECISIONS.md superseding §51.
+- [x] Claude Batch API (default) — `BatchService.submitAiBatch`; `wolf score --poll` drains and writes back; idempotent via `batchItems.consumedAt`.
+- [x] `--single` flag — synchronous Haiku score; returns `singleScore` + `singleComment` for inline AI-orchestrator presentation.
+- [x] HTTP route `POST /api/score` mirrors the CLI 1:1.
+- [ ] MCP tool `wolf_score` — paused; CLI + HTTP cover the orchestrator surfaces for now.
 
 ### `wolf list` / `wolf_list`
 - [ ] `--jobs` mode: filter by score, status, date, company; return table sorted by score

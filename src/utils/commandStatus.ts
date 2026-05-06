@@ -19,6 +19,7 @@ export const COMMAND_STATUS = {
   init: { available: true },
   add: { available: true },
   tailor: { available: true },
+  score: { available: true },
   status: { available: true },
   doctor: { available: true },
   job: { available: true },
@@ -29,7 +30,6 @@ export const COMMAND_STATUS = {
 
   // Not yet — milestone they ship in
   hunt: { available: false, milestone: 'M2' },
-  score: { available: false, milestone: 'M2' },
   fill: { available: false, milestone: 'M4' },
   reach: { available: false, milestone: 'M5' },
 } as const satisfies Record<string, { available: true } | { available: false; milestone: string }>;

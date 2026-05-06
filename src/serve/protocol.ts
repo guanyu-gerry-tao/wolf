@@ -99,3 +99,28 @@ export const QuickFillRequestSchema = z.object({
   userPrompt: z.string().optional(),
 });
 export type QuickFillRequest = z.infer<typeof QuickFillRequestSchema>;
+
+/**
+ * `POST /api/score` request body. Mirrors `ScoreOptions` from
+ * `src/utils/types/commands.ts` so the HTTP surface is the same as the CLI:
+ * one verb, one shape. Every field is optional — `{}` is a valid request and
+ * triggers default-mode batch submission for every unscored job.
+ */
+export const ScoreRequestSchema = z.object({
+  profileId: z.string().min(1).optional(),
+  jobIds: z.array(z.string().min(1)).optional(),
+  poll: z.boolean().optional(),
+  single: z.boolean().optional(),
+  aiModel: z.string().min(1).optional(),
+});
+export type ScoreRequest = z.infer<typeof ScoreRequestSchema>;
+
+/** `POST /api/score` response — mirrors `ScoreResult` (v3 tier model). */
+export const ScoreResponseSchema = z.object({
+  submitted: z.number().int().nonnegative(),
+  polled: z.number().int().nonnegative().optional(),
+  singleTier: z.number().int().min(0).max(3).optional(),
+  singleTierName: z.enum(['skip', 'mass_apply', 'tailor', 'invest']).optional(),
+  singleMd: z.string().optional(),
+});
+export type ScoreResponse = z.infer<typeof ScoreResponseSchema>;

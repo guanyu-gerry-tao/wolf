@@ -18,6 +18,7 @@ import {
   JOB_SYSTEM_FIELDS,
   type JobFieldMeta,
 } from '../../utils/jobFields.js';
+import { TIER_NAMES, tierIndexOf } from '../../utils/scoringTiers.js';
 
 /**
  * SQLite-backed `JobApplicationService`. Runs `query` and `countMatching`
@@ -233,6 +234,18 @@ function coerceFieldValue(meta: JobFieldMeta, raw: string): unknown {
         );
       }
       return raw;
+    }
+
+    case 'nullableTier': {
+      const trimmed = raw.trim();
+      if (trimmed.length === 0 || trimmed === 'null' || trimmed === '-') return null;
+      const idx = tierIndexOf(trimmed);
+      if (idx === null) {
+        throw new Error(
+          `Field "${meta.name}" must be one of: ${TIER_NAMES.join(', ')} (or blank to clear; got "${raw}").`,
+        );
+      }
+      return idx;
     }
   }
 }
