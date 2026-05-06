@@ -172,45 +172,6 @@ describe('init()', () => {
     });
   });
 
-  // Non-interactive init is the acceptance-test bootstrap path. It must not
-  // call any prompt, and it must produce the same files as the interactive path.
-  it('creates a workspace without prompts when --empty is set', async () => {
-    const dir = makeTempDir();
-    await fs.mkdir(dir, { recursive: true });
-    const originalCwd = process.cwd();
-    process.chdir(dir);
-
-    await init({ empty: true, here: true });
-
-    try {
-      const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
-      const config = AppConfigSchema.parse(parse(raw));
-      expect(config.default).toBe('default');
-      expect(config.instance?.mode).toBeUndefined();
-
-      // The same v2 profile.toml is written under --empty.
-      const profileDir = path.join(dir, 'profiles', 'default');
-      const profileToml = await fs.readFile(path.join(profileDir, 'profile.toml'), 'utf-8');
-      expect(profileToml).toContain('[identity]');
-      expect(profileToml).toContain('[[question]]');
-      expect(profileToml).toContain('[[question]]');
-
-      await expect(fs.access(path.join(dir, 'data'))).resolves.toBeUndefined();
-      await expect(fs.access(path.join(profileDir, 'attachments'))).resolves.toBeUndefined();
-      await expect(fs.access(path.join(profileDir, 'prompts', 'README.md'))).resolves.toBeUndefined();
-
-      // Crucially: no prompt of any kind in --empty mode.
-      expect(input).not.toHaveBeenCalled();
-      expect(confirm).not.toHaveBeenCalled();
-      expect(select).not.toHaveBeenCalled();
-    } finally {
-      process.chdir(originalCwd);
-      await fs.rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  // Dev empty init is the exact path the acceptance orchestrator will run in
-  // /tmp/wolf-at-* workspaces. The dev marker makes the workspace self-labeling.
   // Asserts the `__WOLF_BIN__` placeholder in workspace-claude.md gets
   // substituted at write time. A typo in the placeholder regex (or a forgotten
   // .replace() call) would silently ship the literal token to friends'
@@ -223,7 +184,7 @@ describe('init()', () => {
     process.chdir(dir);
 
     try {
-      await init({ empty: true, here: true });
+      await init({ here: true });
 
       for (const filename of ['CLAUDE.md', 'AGENTS.md']) {
         const content = await fs.readFile(path.join(dir, filename), 'utf-8');
@@ -241,13 +202,13 @@ describe('init()', () => {
     }
   });
 
-  it('writes instance.mode = dev for --dev --empty workspaces', async () => {
+  it('writes instance.mode = dev for --dev workspaces', async () => {
     const dir = makeTempDir();
     process.env.WOLF_BUILD_MODE = 'dev';
     process.env.WOLF_DEV_HOME = dir;
 
     try {
-      await init({ dev: true, empty: true });
+      await init({ dev: true });
 
       const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
       const config = AppConfigSchema.parse(parse(raw));
@@ -267,7 +228,7 @@ describe('init()', () => {
     process.env.WOLF_DEV_HOME = dir;
 
     try {
-      await init({ empty: true, preset: 'default' });
+      await init({ preset: 'default' });
 
       const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
       const config = AppConfigSchema.parse(parse(raw));
@@ -300,6 +261,38 @@ describe('init()', () => {
     }
   });
 
+  // Dev preset empty is the blank non-interactive init path.
+  it('treats --preset empty as a blank non-interactive workspace', async () => {
+    const dir = makeTempDir();
+    process.env.WOLF_BUILD_MODE = 'dev';
+    process.env.WOLF_DEV_HOME = dir;
+
+    try {
+      await init({ preset: 'empty' });
+
+      const raw = await fs.readFile(path.join(dir, 'wolf.toml'), 'utf-8');
+      const config = AppConfigSchema.parse(parse(raw));
+      expect(config.instance?.mode).toBe('dev');
+
+      const profileToml = await fs.readFile(path.join(dir, 'profiles', 'default', 'profile.toml'), 'utf-8');
+      const profile = parseProfileToml(profileToml);
+      expect(profile.identity.legal_first_name.trim()).toBe('');
+      expect(profile.identity.legal_last_name.trim()).toBe('');
+      expect(profile.experience).toHaveLength(0);
+      expect(profile.project).toHaveLength(0);
+      expect(profile.education).toHaveLength(0);
+
+      await expect(fs.access(path.join(dir, 'profiles', 'default', 'score.md'))).resolves.toBeUndefined();
+      expect(input).not.toHaveBeenCalled();
+      expect(confirm).not.toHaveBeenCalled();
+      expect(select).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.WOLF_BUILD_MODE;
+      delete process.env.WOLF_DEV_HOME;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
   // Commander passes `true` for an optional value flag written as `--preset`.
   // Treating that as default keeps the dev command short for repeated demos.
   it('treats bare --preset as the default preset', async () => {
@@ -308,7 +301,7 @@ describe('init()', () => {
     process.env.WOLF_DEV_HOME = dir;
 
     try {
-      await init({ empty: true, preset: true });
+      await init({ preset: true });
 
       const profileToml = await fs.readFile(path.join(dir, 'profiles', 'default', 'profile.toml'), 'utf-8');
       const profile = parseProfileToml(profileToml);
@@ -328,7 +321,7 @@ describe('init()', () => {
     process.env.WOLF_DEV_HOME = dir;
 
     try {
-      await expect(init({ empty: true, preset: 'hunter' }))
+      await expect(init({ preset: 'hunter' }))
         .rejects.toThrow('Unknown init preset "hunter"');
     } finally {
       delete process.env.WOLF_BUILD_MODE;
@@ -337,19 +330,19 @@ describe('init()', () => {
     }
   });
 
-  // A stable build must not be able to create a dev-marked workspace; otherwise
+  // A non-dev build must not be able to create a dev-marked workspace; otherwise
   // a user or agent could confuse the real binary with the local dev build.
   it('rejects --dev when the binary is not a dev build', async () => {
     delete process.env.WOLF_BUILD_MODE;
-    await expect(init({ dev: true, empty: true, here: true }))
+    await expect(init({ dev: true, here: true }))
       .rejects.toThrow('--dev requires a dev build');
   });
 
   // Preset data is intentionally dev-only, even if the caller forgets --dev.
-  // Stable users should get an error instead of a fake profile.
+  // A non-dev build should get an error instead of a fake profile.
   it('rejects --preset when the binary is not a dev build', async () => {
     delete process.env.WOLF_BUILD_MODE;
-    await expect(init({ empty: true, preset: 'default', here: true }))
+    await expect(init({ preset: 'default', here: true }))
       .rejects.toThrow('--preset requires a dev build');
   });
 });

@@ -27,7 +27,7 @@
 
 ```bash
 npm run build:dev
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-03 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/job-JOB-03 npm run wolf -- init --preset empty
 ```
 
 ## 步骤

@@ -46,7 +46,7 @@ mid-career SWE fixture through the public `wolf profile` CLI:
 
 ```bash
 WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub> \
-  npm run wolf -- init --dev --empty
+  npm run wolf -- init --preset empty
 WS=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-04-<sub>
 bash test/fixtures/wolf-profile/scripts/populate_v2_profile.sh <persona> "$WS"
 WOLF_DEV_HOME="$WS" npm run wolf -- doctor

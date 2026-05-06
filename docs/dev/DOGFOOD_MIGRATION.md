@@ -64,7 +64,7 @@ Lets stable's `wolf init` produce a clean `wolf.toml` + `CLAUDE.md` /
 
 # 1. Stable workspace skeleton — produces wolf.toml + empty profiles/default/
 #    + CLAUDE.md/AGENTS.md with `wolf <verb>` references.
-wolf init --empty
+wolf init --preset empty
 
 # 2. Copy the three profile markdown files
 cp ~/wolf-dev/profiles/default/profile.md            ~/wolf/profiles/default/
@@ -88,7 +88,7 @@ wolf job list                # should show the jobs you added in dev
 
 **Why not just `cp -r ~/wolf-dev/ ~/wolf/`?** That would carry the dev
 build's `wolf.toml` (with `instance.mode = "dev"` if you used
-`wolf-dev init --dev --empty`) and the dev-flavoured `CLAUDE.md` /
+`wolf-dev init --preset empty`) and the dev-flavoured `CLAUDE.md` /
 `AGENTS.md` (where AI agents would see `wolf-dev <verb>` and tell you to
 run a binary that doesn't exist on stable). Cherry-pick avoids both.
 
@@ -110,7 +110,7 @@ rm ~/wolf/wolf.toml.bak
 
 # 3. Regenerate the AI-agent docs from the stable template
 rm ~/wolf/CLAUDE.md ~/wolf/AGENTS.md
-wolf init --empty       # writeIfAbsent fills the two files; existing ones stay
+wolf init --preset empty       # writeIfAbsent fills the two files; existing ones stay
 
 # 4. Drop the dev log (let stable start fresh)
 rm -f ~/wolf/data/logs/wolf.log.jsonl
@@ -153,7 +153,7 @@ on PATH and operate on independent workspaces.
 If you want to start fresh on dev too:
 ```bash
 rm -rf ~/wolf-dev
-wolf-dev init --dev --empty
+wolf-dev init --preset empty
 ```
 
 ## When does this guide stop being needed?

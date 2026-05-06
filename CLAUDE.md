@@ -72,8 +72,8 @@ wolf/
 | Command | Description |
 |---|---|
 | `wolf init` | Interactive setup wizard; defaults to `~/wolf` |
-| `wolf init --empty` | Non-interactive skeleton workspace |
-| `wolf init --dev --empty` | Dev skeleton workspace (dev build only; tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
+| `wolf init --preset empty` | Dev non-interactive blank skeleton workspace (tests use `WOLF_DEV_HOME=/tmp/wolf-test/<suite>/<run-id>/workspaces/<workspace-id>`) |
+| `wolf init --preset default` | Dev non-interactive demo workspace with John Smith profile data and empty SQLite job/search storage |
 | `wolf hunt` | Find jobs (Milestone 2 — not yet) |
 | `wolf score` | Triage unscored jobs into 4 tiers (`skip` / `mass_apply` / `tailor` / `invest`) via Claude Batch API. `--single` for synchronous Haiku; `--poll` to drain pending; `--jobs <ids>` to (re)score specific jobs. AI writes `Job.tierAi`. |
 | `wolf job set <id> tierUser <name\|index>` | Manual tier override that survives any `wolf score` call. AI never writes `tierUser`. |

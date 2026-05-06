@@ -92,12 +92,11 @@ program
 program
   .command('init')
   .description('Interactive setup wizard')
-  .option('--empty', 'Non-interactive: create skeleton only, no prompts')
   .option('--dev', 'Create a dev workspace (requires npm run build:dev)')
   .option('--here', 'Create the workspace in the current directory')
-  .option('--preset [name]', 'Dev only: seed a demo profile preset (default: default)')
+  .option('--preset [name]', 'Dev only: non-interactive content preset: default or empty (bare = default)')
   .action(async (opts) => {
-    await init({ empty: opts.empty, dev: opts.dev, here: opts.here, preset: opts.preset });
+    await init({ dev: opts.dev, here: opts.here, preset: opts.preset });
   });
 
 program

@@ -24,7 +24,7 @@
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-03 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-03 npm run wolf -- init --preset empty
 mkdir -p /tmp/wolf-test/acceptance/<run-id>/inputs
 printf '%s\n' '- Built backend fixture service' '- Improved acceptance report quality' > /tmp/wolf-test/acceptance/<run-id>/inputs/experience-bullets.md
 ```

@@ -26,7 +26,7 @@ Use `WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-02 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-02 npm run wolf -- init --preset empty
 mkdir -p /tmp/wolf-test/acceptance/<run-id>/inputs
 printf 'Line one\nLine two\n' > /tmp/wolf-test/acceptance/<run-id>/inputs/profile-note.txt
 ```

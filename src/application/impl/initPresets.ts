@@ -3,7 +3,7 @@ import { WOLF_BUILTIN_QUESTIONS } from '../../utils/profileFields.js';
 import { parseProfileToml, type QuestionEntry } from '../../utils/profileToml.js';
 import { profileTomlTemplate } from '../../utils/profileTomlGenerate.js';
 
-export const INIT_PRESET_NAMES = ['default'] as const;
+export const INIT_PRESET_NAMES = ['default', 'empty'] as const;
 export type InitPresetName = typeof INIT_PRESET_NAMES[number];
 
 export function normalizeInitPresetName(value: string | true | undefined): InitPresetName | undefined {
@@ -15,6 +15,8 @@ export function normalizeInitPresetName(value: string | true | undefined): InitP
 
 export function profileTomlForInitPreset(name: InitPresetName): string {
   switch (name) {
+    case 'empty':
+      return profileTomlTemplate;
     case 'default':
       return buildDefaultProfileToml();
   }

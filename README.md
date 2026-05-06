@@ -146,7 +146,7 @@ npm link                                       # installs `wolf-dev` globally
 export WOLF_DEV_HOME=~/wolf-dev                # separate workspace
 export WOLF_DEV_ANTHROPIC_API_KEY=sk-ant-...   # separate API key
 
-wolf-dev init --dev --empty                    # create dev workspace
+wolf-dev init --preset empty                    # create dev workspace
 wolf-dev <command>                             # run any wolf command in dev mode
 ```
 

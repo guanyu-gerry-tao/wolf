@@ -257,7 +257,7 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **2026-04-24 — 为 AI 编排验收测试隔离 dev/stable**
 **我：** 验收测试需要让 AI agent 从 shell 层运行 `wolf` 命令，但同一台机器上也有真实 dogfood 数据。测试绝不能碰 `~/wolf`、`~/wolf-dev`、repo `data/` 或 shell RC 文件。
 **AI：** 采用两个 build mode 和不同默认值。Stable build 来自 `npm run build`，读取 `WOLF_*`，默认 workspace 是 `~/wolf` 或 `WOLF_HOME`。Dev build 来自 `npm run build:dev`，优先读取 `WOLF_DEV_*`，再 fallback 到 `WOLF_*`，默认 workspace 是 `~/wolf-dev` 或 `WOLF_DEV_HOME`。本地 dev 调用方式是 `npm run wolf -- <command>`。自动化验收测试必须始终设置 `WOLF_DEV_HOME=/tmp/wolf-at-<ID>`，并且只能在 `/tmp/wolf-at-*` 下创建和删除文件。
-**结果：** 采用。`src/utils/instance.ts` 统一负责 build mode、workspace、环境变量命名空间和 dev warning。`wolf init --empty --dev` 为 agent 创建 schema-valid 的 dev workspace。Dev CLI 输出带 warning，dev MCP 工具使用 `wolfdev_*` 名称并在响应里包含结构化 warning。
+**结果：** 采用。`src/utils/instance.ts` 统一负责 build mode、workspace、环境变量命名空间和 dev warning。`wolf init --preset empty` 为 agent 创建 schema-valid 的 dev workspace。Dev CLI 输出带 warning，dev MCP 工具使用 `wolfdev_*` 名称并在响应里包含结构化 warning。
 
 ---
 
@@ -285,7 +285,7 @@ Milestone 1 期间的决策根据 commit 历史和对话记录进行了追溯整
 **2026-04-26 — Profile 迁移：typed TOML → 三 MD 布局（E8）**
 **我：** 原来的 `profile.toml` + `UserProfileSchema`（zod）模型一直在和真实使用场景对着干。Profile 内容大多是给 AI 读的自由文本：地址、"why this role" 模板、五年规划段落。强行套类型化 schema 的结果是：(a) 每加一个字段都要 schema bump + 迁移 + form 提示；或者 (b) schema 退化成一堆 `string | null` 槽位，AI 还是要重新解析一遍。同时有 senior / 国际背景的用户经常撞"字段不够用"—— 中间名、多重国籍、比"是 / 否"更细的 relocation preference。schema 还是一个不友好的编辑表面：TOML 引号规则 + zod 严格解析意味着多一个逗号或写错 key 就会让 `wolf init` 直接抛栈。
 **AI：** 把 `profile.toml` 替换成 `profiles/<id>/` 下三个同级 MD 文件：`profile.md`（identity / contact / address / links / job preferences / demographics / clearance —— H1 = 大类，H2 = 字段，body = 答案）、`resume_pool.md`（已经是 MD）、`standard_questions.md`（给 `wolf fill` 用的问答库 —— H1 = 大类，H2 = 问题，body = 答案或思路）。再加 `attachments/` 子目录放可上传文件。Repository 退化成一个薄薄的文件读取器；`Profile` 类型缩成 `{ name, md }`。校验从 "schema 形态" 移到 "内容形态"：唯一契约就是某些 H1 大类下的 REQUIRED H2 在 strip 掉指引标记后 body 非空，外加 `resume_pool.md` 至少 5 行实质内容。校验在该校验的地方做 —— 命令调用时由 `assertReadyForTailor`（每个文件由 `wolf doctor`）执行，而不是解析时。代价：丢了 profile 字段的类型化补全，换来 (1) 普通用户可以真正编辑的表面；(2) 加字段零迁移；(3) AI 直接逐字读 prose，零格式转换；(4) git diff 可读。
-**结果：** 采用。提交 4511499 落地，配套若干跟进（姓名拆 first/middle/last、预填默认值、清掉 EAD、扩 Job Preferences）。`UserProfile` 和 `UserProfileSchema` 删除；`Profile` 与 `ProfileRepository.getProfileMd / getResumePool / getStandardQuestions / getAttachmentsList` 是新接口。`wolf init` / `wolf init --empty` 写三份模板而不是一份 TOML。Acceptance / smoke spec + AC fixture 在同一提交链路里全部跟着改。
+**结果：** 采用。提交 4511499 落地，配套若干跟进（姓名拆 first/middle/last、预填默认值、清掉 EAD、扩 Job Preferences）。`UserProfile` 和 `UserProfileSchema` 删除；`Profile` 与 `ProfileRepository.getProfileMd / getResumePool / getStandardQuestions / getAttachmentsList` 是新接口。`wolf init` / `wolf init --preset empty` 写三份模板而不是一份 TOML。Acceptance / smoke spec + AC fixture 在同一提交链路里全部跟着改。
 
 ---
 

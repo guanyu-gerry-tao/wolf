@@ -39,7 +39,7 @@ npm run build:dev
 Initialize the workspace:
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/tailor-TAILOR-01 npm run wolf -- init --preset empty
 ```
 
 Populate the shared NG SWE fixture (see `test/fixtures/wolf-profile/`).

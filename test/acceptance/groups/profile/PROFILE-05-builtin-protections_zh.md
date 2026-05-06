@@ -24,7 +24,7 @@
 ## Setup
 
 ```bash
-WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-05 npm run wolf -- init --dev --empty
+WOLF_DEV_HOME=/tmp/wolf-test/acceptance/<run-id>/workspaces/profile-PROFILE-05 npm run wolf -- init --preset empty
 ```
 
 从 `profile show` 中选一个 builtin question id，并写入报告。runner 可以使用第一个
